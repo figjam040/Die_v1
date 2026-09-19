@@ -1468,7 +1468,7 @@
 
 <div class="top-bar">
   <div class="top-bar-left">
-    <div id="buildStamp">DIE V1 — STAGE 2.65<br>BUILD <span id="buildStampNumber"></span></div>
+    <div id="buildStamp">DIE V1 — STAGE 2.66<br>BUILD <span id="buildStampNumber"></span></div>
     <!-- BUILD 109: run record — player-facing, not dev chrome. Sits beside
          the build stamp rather than in .controls-buttons/near End Turn,
          same reasoning BUILD 087 gave New Run for staying out of the way
@@ -1528,7 +1528,12 @@
         <div class="die-row nat-twenty"><button class="face-btn">20</button><span class="die-mod">NAT 20</span></div>
       </div>
       <div class="stats-col enemy-stats">
-        <div class="panel-title">ENEMY</div>
+        <!-- BUILD 139: text set by refreshInspector() (rendering.js) from
+             gameState.enemy.id ('Fight'/'Elite'/'Boss') — ENEMY/ELITE/BOSS,
+             with a plain-text skull mark for a boss and star mark for an
+             elite, no mark for a normal fight. Same font/colour as every
+             other .panel-title, no new palette. -->
+        <div class="panel-title" id="enemyPanelTitle">ENEMY</div>
         <div class="hero-stats">
           <div class="stat-hero"><span class="stat-icon">♥</span><span class="stat-hero-value" id="enemyHpValue">— / —</span></div>
           <div class="stat-hero">

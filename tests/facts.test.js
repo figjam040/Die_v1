@@ -644,6 +644,111 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   });
 
   // ---------------------------------------------------------------
+  // BUILD 139 (enemy readability): the fight panel title/mark — ENEMY (no
+  // mark) for a normal fight, ELITE (star) for the elite, BOSS (skull) for
+  // the boss — driven from gameState.enemy.id (beginFightFromSlot()).
+  // ---------------------------------------------------------------
+  await runTest('BUILD 139: fight panel title reads ENEMY/ELITE/BOSS with the right mark for each fight type', async () => {
+    const page = await freshPage(browser);
+    await page.click('#startGameBtn');
+
+    await page.evaluate(() => { devJumpToSlot('upper', 0); }); // upper[0] === 'Fight' (F16)
+    await advanceUntilPhase(page, 'ROLL_PHASE');
+    const normalTitle = await page.evaluate(() => document.getElementById('enemyPanelTitle').textContent);
+    assert.strictEqual(normalTitle, 'ENEMY', 'a normal fight must show ENEMY with no mark');
+
+    await page.evaluate(() => { devJumpToSlot('upper', 3); }); // upper[3] === 'Elite' (F16)
+    await advanceUntilPhase(page, 'ROLL_PHASE');
+    const eliteTitle = await page.evaluate(() => document.getElementById('enemyPanelTitle').textContent);
+    assert.strictEqual(eliteTitle, 'ELITE ★', 'an elite fight must show ELITE with a star mark');
+
+    await page.evaluate(() => { devJumpToSlot('boss', null); });
+    await advanceUntilPhase(page, 'ROLL_PHASE');
+    const bossTitle = await page.evaluate(() => document.getElementById('enemyPanelTitle').textContent);
+    assert.strictEqual(bossTitle, 'BOSS ☠', 'a boss fight must show BOSS with a skull mark');
+    await page.close();
+  });
+
+  // ---------------------------------------------------------------
+  // BUILD 139: the enemy poison face's hover text names the real,
+  // act-scaled stack count — read live off buildAct()'s own output, never
+  // a second hand-typed copy of the per-act numbers (F31 already covers
+  // the numbers themselves; this covers the hover text stating them).
+  // ---------------------------------------------------------------
+  await runTest('BUILD 139: the poison face hover text names the right stack count in each of the three acts', async () => {
+    const page = await freshPage(browser);
+    const perAct = await page.evaluate(() => {
+      return [1, 2, 3].map(function(actNumber) {
+        const act = buildAct(actNumber);
+        const poisonFace = act.boss.enemy.die.faces.find(function(f) { return f.modId === 'enemy_buff_poison'; });
+        return { actNumber: actNumber, stacks: act.boss.enemy.buffPoisonStacks, text: faceHoverText(poisonFace, act.boss.enemy.buffPoisonStacks) };
+      });
+    });
+    await page.close();
+    perAct.forEach(function(v) {
+      assert.ok(v.text && v.text.indexOf(String(v.stacks)) !== -1, 'act ' + v.actNumber + ' poison face hover must name ' + v.stacks + ' — got: ' + v.text);
+    });
+    assert.deepStrictEqual(perAct.map(function(v) { return v.stacks; }), [3, 4, 5], 'the three acts must scale 3/4/5, per F31');
+  });
+
+  // ---------------------------------------------------------------
+  // BUILD 139: every loaded enemy face (poison + both Nats) has non-empty
+  // hover text, both live in a fight (enemyDieList) and on the map's own
+  // elite/boss die previews.
+  // ---------------------------------------------------------------
+  await runTest('BUILD 139: every loaded enemy face has non-empty hover text, in a fight and on the map preview', async () => {
+    const page = await freshPage(browser);
+    await page.click('#startGameBtn');
+    await page.evaluate(() => { devJumpToSlot('boss', null); });
+    await advanceUntilPhase(page, 'ROLL_PHASE');
+    const fightHoverEmpty = await page.evaluate(() => {
+      // The enemy die column's rows render face 20 down to face 1 (CSS
+      // column-reverse), not the ascending order gameState.enemy.die.faces
+      // itself is stored in — key off each row's own .face-num text, never
+      // its position in the row list.
+      const rows = Array.from(document.getElementById('enemyDieList').querySelectorAll('.die-row'));
+      const facesByNumber = {};
+      gameState.enemy.die.faces.forEach(function(f) { facesByNumber[f.number] = f; });
+      const empties = [];
+      rows.forEach(function(row) {
+        const faceNumber = parseInt(row.querySelector('.face-num').textContent, 10);
+        const face = facesByNumber[faceNumber];
+        if (face.modId === null) return; // blank faces carry no hover, by design
+        const tip = row.querySelector('.hover-tip');
+        if (!tip || !tip.textContent) { empties.push(face.number); }
+      });
+      return empties;
+    });
+    assert.deepStrictEqual(fightHoverEmpty, [], 'every loaded boss face must show non-empty hover text in the fight panel');
+
+    // renderMapScreen() (rendering.js) runs on every refreshInspector() call
+    // regardless of which screen is visible, so the preview containers are
+    // already populated — no need to switch gameState.run.screen.
+    const mapHoverEmpty = await page.evaluate(() => {
+      const results = [];
+      ['eliteDiePreviewList', 'bossDiePreviewList'].forEach(function(containerId) {
+        const container = document.getElementById(containerId);
+        const rows = Array.from(container.querySelectorAll('.die-row'));
+        const faces = containerId === 'eliteDiePreviewList'
+          ? gameState.run.act.upper.find(function(s) { return s.label === 'Elite'; }).enemy.die.faces
+          : gameState.run.act.boss.enemy.die.faces;
+        const facesByNumber = {};
+        faces.forEach(function(f) { facesByNumber[f.number] = f; });
+        rows.forEach(function(row) {
+          const faceNumber = parseInt(row.querySelector('.face-num').textContent, 10);
+          const face = facesByNumber[faceNumber];
+          if (face.modId === null) return;
+          const tip = row.querySelector('.hover-tip');
+          if (!tip || !tip.textContent) { results.push(containerId + ' face ' + face.number); }
+        });
+      });
+      return results;
+    });
+    assert.deepStrictEqual(mapHoverEmpty, [], 'every loaded elite/boss face must show non-empty hover text on the map preview');
+    await page.close();
+  });
+
+  // ---------------------------------------------------------------
   // BUILD 109 — the run record. Not an F-number (nothing on the Notion
   // page names this), so these are named descriptively rather than F-NN,
   // matching this file's own convention for non-fact behavioural checks.

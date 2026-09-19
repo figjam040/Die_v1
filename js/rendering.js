@@ -88,7 +88,21 @@ function refreshInspector() {
   const enemyPanelEl = document.getElementById('enemyPanel');
   enemyDieListEl.style.display = '';
   enemyPanelEl.classList.remove('combat-panel-no-die');
-  renderDieList('enemyDieList', gameState.enemy.die.faces, forceEnemyRoll);
+  // BUILD 139: fight-type title/mark — gameState.enemy.id is set to the
+  // entering slot's own label (beginFightFromSlot(), run-and-map.js):
+  // 'Fight' for a normal fight, 'Elite', or 'Boss'. Plain text marks, no
+  // new colour/image.
+  const enemyTitleEl = document.getElementById('enemyPanelTitle');
+  if (enemyTitleEl) {
+    if (gameState.enemy.id === 'Boss') {
+      enemyTitleEl.textContent = 'BOSS ☠';
+    } else if (gameState.enemy.id === 'Elite') {
+      enemyTitleEl.textContent = 'ELITE ★';
+    } else {
+      enemyTitleEl.textContent = 'ENEMY';
+    }
+  }
+  renderDieList('enemyDieList', gameState.enemy.die.faces, forceEnemyRoll, null, gameState.enemy.buffPoisonStacks);
   renderPhaseBadge();
   renderResultBanner();
   renderDieActionPanel();
@@ -252,15 +266,26 @@ function modDisplayName(modId) {
 
 // BUILD 071: resolves a face to its hover description, or null if none
 // exists — never invents one. Covers loaded mod faces and the player's
-// Nat faces (MOD_DESCRIPTION / NAT_DESCRIPTION above); blank faces, the
-// enemy's still-stub Nat faces, and enemy_buff_poison (no registered
-// ENEMY_BUFF_TRIGGER listener — see completion notes) all return null on
-// purpose. Appends the face's own ×N when its weight is above 1, the same
-// notation the row itself already shows.
-function faceHoverText(face) {
+// Nat faces (MOD_DESCRIPTION / NAT_DESCRIPTION above); blank faces return
+// null on purpose. Appends the face's own ×N when its weight is above 1,
+// the same notation the row itself already shows.
+// BUILD 139 (enemy readability): the enemy's own poison/Nat faces
+// (enemy_buff_poison/ENEMY_NAT_TWENTY/ENEMY_NAT_ONE — real behaviour since
+// BUILD 097/098, not stubs) now resolve too, via buffPoisonStacks — that
+// act's own scaled poison amount (gameState.enemy.buffPoisonStacks in a
+// live fight, or the map preview's own slot.enemy.buffPoisonStacks),
+// passed in by renderDieList() rather than read here, so this function
+// still never reaches into gameState/act numbers itself.
+function faceHoverText(face, buffPoisonStacks) {
   let text = null;
   if (face.modId === 'NAT_TWENTY' || face.modId === 'NAT_ONE') {
     text = NAT_DESCRIPTION[face.modId] || null;
+  } else if (face.modId === 'ENEMY_NAT_TWENTY') {
+    text = 'fires every loaded poison face this turn, ascending face order, each applying ' + buffPoisonStacks + ' stacks of poison to you';
+  } else if (face.modId === 'ENEMY_NAT_ONE') {
+    text = 'cancels the enemy’s attack this turn (once per fight), applies ' + GAME_CONFIG.ENEMY_NAT_ONE_SELF_POISON + ' stacks of poison to itself';
+  } else if (face.modId === 'enemy_buff_poison') {
+    text = 'applies ' + buffPoisonStacks + ' stacks of poison to you';
   } else if (face.modId && MOD_DESCRIPTION[face.modId]) {
     text = MOD_DESCRIPTION[face.modId];
   }
@@ -323,7 +348,12 @@ const lastSeenHoppedFacesByContainer = {};
 // face picker, replacing the old separate face-button screens. Every other
 // caller passes nothing and gets the exact unchanged render this function
 // already produced.
-function renderDieList(containerId, faces, forceRollFn, pickConfig) {
+// BUILD 139: optional 5th arg, buffPoisonStacks — the enemy's own act-scaled
+// poison amount, passed straight through to faceHoverText() so an enemy
+// die's poison/Nat faces can name the real number for the current act.
+// Callers rendering the player's own die pass nothing; harmless, since no
+// player face ever carries an enemy modId.
+function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonStacks) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const title = container.querySelector('.panel-title');
@@ -643,7 +673,7 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig) {
 
     // BUILD 071: same .hover-tip component BUILD 070 built for the card
     // reward panel — only added when there's real text to show.
-    const hoverText = faceHoverText(face);
+    const hoverText = faceHoverText(face, buffPoisonStacks);
     // BUILD 079: during the Strengthen picker, an eligible row's hover also
     // shows what the face becomes — same faceHoverText() function, same
     // weight+1 arithmetic dieActionPickStrengthenFace() itself applies, so
@@ -651,7 +681,7 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig) {
     // and hover already show, never new copy.
     let becomesText = null;
     if (pickConfig && pickConfig.showBecomes && pickEligible) {
-      becomesText = faceHoverText(Object.assign({}, face, { weight: face.weight + 1 }));
+      becomesText = faceHoverText(Object.assign({}, face, { weight: face.weight + 1 }), buffPoisonStacks);
     }
     if (hoverText || becomesText) {
       const tip = document.createElement('span');
@@ -832,8 +862,11 @@ const NAT_DESCRIPTION = {
   // new 3-turn rule — this string is the player-facing hover for face 1 and
   // would otherwise state a duration the game no longer has.
   NAT_ONE: 'Penitence: lose 1 soul at the start of every turn for the next 3 turns'
-  // ENEMY_NAT_ONE/ENEMY_NAT_TWENTY deliberately absent — both are still
-  // stub log lines ("not yet implemented"), no real behaviour to describe.
+  // ENEMY_NAT_ONE/ENEMY_NAT_TWENTY intentionally absent from this table —
+  // both are real behaviour (BUILD 097/098), not stubs, but their text
+  // needs the current act's own buffPoisonStacks number, which this static
+  // table has no way to hold; faceHoverText() (BUILD 139) builds their
+  // hover text inline instead of reading it from here.
 };
 
 const CARD_FX_TYPE = {
@@ -1830,6 +1863,9 @@ function renderMapScreen() {
   // the staleness risk the moment two different slot types can carry
   // different dice.
   renderDieList('mapPlayerDieList', gameState.die.faces, null);
-  renderDieList('eliteDiePreviewList', eliteEnemy.die.faces, null);
-  renderDieList('bossDiePreviewList', bossEnemy.die.faces, null);
+  // BUILD 139: same hover buffPoisonStacks arg the live enemy die passes —
+  // each slot's own act-scaled amount (buildAct(), fixed at build time),
+  // so the map preview's poison/Nat hover text names the real number too.
+  renderDieList('eliteDiePreviewList', eliteEnemy.die.faces, null, null, eliteEnemy.buffPoisonStacks);
+  renderDieList('bossDiePreviewList', bossEnemy.die.faces, null, null, bossEnemy.buffPoisonStacks);
 }
