@@ -1730,7 +1730,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   // just declared.
   // ---------------------------------------------------------------
 
-  await runTest('BUILD 131: Tenet — 6 damage +3 per run-scoped trigger on the rolled face, capped at 24', async () => {
+  await runTest('BUILD 139: Tenet — 6 damage +1 per run-scoped trigger on the rolled face, no cap', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
@@ -1738,14 +1738,36 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
     await page.evaluate(() => {
       const newFaces = gameState.die.faces.slice();
-      newFaces[2] = Object.assign({}, newFaces[2], { modData: { triggerCount: 7 } }); // 6 + 3*7 = 27, caps at 24
+      newFaces[2] = Object.assign({}, newFaces[2], { modData: { triggerCount: 47 } }); // 6 + 47 = 53
       updateDie({ faces: newFaces });
       updatePlayer({ hand: ['tenet'], soul: 5 });
     });
     const before = await page.evaluate(() => gameState.enemy.hp);
     await page.evaluate(() => { playCard(0); });
     const after = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(before - after, 24, 'expected damage capped at 24 despite 27 raw (6 + 3x7 triggers)');
+    assert.strictEqual(before - after, 53, 'expected 53 damage (6 + 47 triggers), no cap');
+    await liveBrowser.close();
+  });
+
+  await runTest('BUILD 139: Tenet — a Nat 1 face rolled 3 times deals 9', async () => {
+    const liveBrowser = await chromium.launch();
+    const page = await freshPage(liveBrowser);
+    await enterOpeningFight(page);
+    await page.evaluate(() => { forcePlayerRoll(1); });
+    await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
+    await advanceUntilPhase(page, 'ROLL_PHASE');
+    await page.evaluate(() => { forcePlayerRoll(1); });
+    await page.evaluate(() => { nextPhase(); });
+    await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
+    await advanceUntilPhase(page, 'ROLL_PHASE');
+    await page.evaluate(() => { forcePlayerRoll(1); });
+    await page.evaluate(() => { nextPhase(); });
+    await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
+    await page.evaluate(() => { updatePlayer({ hand: ['tenet'], soul: 5 }); });
+    const before = await page.evaluate(() => gameState.enemy.hp);
+    await page.evaluate(() => { playCard(0); });
+    const after = await page.evaluate(() => gameState.enemy.hp);
+    assert.strictEqual(before - after, 9, 'expected 9 damage (6 + 3 rolls of face 1)');
     await liveBrowser.close();
   });
 
@@ -1763,13 +1785,13 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 131: Gradual — 3 damage +3 per weight of the heaviest loaded face, capped at 12', async () => {
+  await runTest('BUILD 139: Gradual — 3 damage +1 per weight of the heaviest loaded face, no cap', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
     await page.evaluate(() => {
       const newFaces = gameState.die.faces.slice();
-      newFaces[4] = Object.assign({}, newFaces[4], { modId: 'smite', weight: 4 }); // face 5, weight 4: 3 + 3*4 = 15, caps at 12
+      newFaces[4] = Object.assign({}, newFaces[4], { modId: 'smite', weight: 18 }); // face 5, weight 18: 3 + 18 = 21
       updateDie({ faces: newFaces });
     });
     await page.evaluate(() => { forcePlayerRoll(3); });
@@ -1778,7 +1800,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     const before = await page.evaluate(() => gameState.enemy.hp);
     await page.evaluate(() => { playCard(0); });
     const after = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(before - after, 12, 'expected damage capped at 12 despite 15 raw (3 + 3x4 heaviest loaded weight)');
+    assert.strictEqual(before - after, 21, 'expected 21 damage (3 + 18 heaviest loaded weight), no cap');
     await liveBrowser.close();
   });
 
@@ -2622,6 +2644,44 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     }));
     assert.strictEqual(afterNewRun.face20, undefined, 'a brand new run must wipe face 20\'s roll count, same as every other face\'s modData');
     assert.strictEqual(afterNewRun.face1, undefined, 'a brand new run must wipe face 1\'s roll count, same as every other face\'s modData');
+    await liveBrowser.close();
+  });
+
+  await runTest('BUILD 139: reworded on-screen text matches word for word', async () => {
+    const liveBrowser = await chromium.launch();
+    const page = await freshPage(liveBrowser);
+    const texts = await page.evaluate(() => ({
+      tenet: CARD_EFFECT_TEXT['tenet'],
+      gradual: CARD_EFFECT_TEXT['gradual'],
+      magnificat: MOD_DESCRIPTION['magnificat'],
+      threnody: CARD_EFFECT_TEXT['threnody'],
+      reverberation: CARD_EFFECT_TEXT['reverberation'],
+      canticle: CARD_EFFECT_TEXT['canticle'],
+      herald: MOD_DESCRIPTION['herald'],
+      congregation: MOD_DESCRIPTION['congregation'],
+      lauds: CARD_EFFECT_TEXT['lauds'],
+      reliquary: CARD_EFFECT_TEXT['reliquary'],
+      vindication: CARD_EFFECT_TEXT['vindication'],
+      exequy: CARD_EFFECT_TEXT['exequy'],
+      oblation: CARD_EFFECT_TEXT['oblation'],
+      tithe: MOD_DESCRIPTION['tithe'],
+      anathema: MOD_DESCRIPTION['anathema']
+    }));
+    assert.strictEqual(texts.tenet, '6 damage, +1 for each time the rolled face has triggered this run');
+    assert.strictEqual(texts.gradual, '3 damage, +1 per weight of your heaviest face');
+    assert.strictEqual(texts.magnificat, 'Triggers your heaviest other face');
+    assert.strictEqual(texts.threnody, 'Triggers your lowest-numbered loaded face');
+    assert.strictEqual(texts.reverberation, 'The face you rolled triggers again. On a 1 or 20: 6 block instead');
+    assert.strictEqual(texts.canticle, '6 block. The face you rolled gains Bound for this fight');
+    assert.strictEqual(texts.herald, '6 damage. One other random loaded face gains Bound for this fight. Bound');
+    assert.strictEqual(texts.congregation, '8 damage. 16 if another mod on your die has Growth. Growth');
+    assert.strictEqual(texts.lauds, '4 damage, +3 per Growth mod on your die, max 13');
+    assert.strictEqual(texts.reliquary, '6 block. If you already had 10+ block, also 5 damage');
+    assert.strictEqual(texts.vindication, 'Deal damage equal to twice your block, max 24');
+    assert.strictEqual(texts.exequy, "Deal damage equal to the enemy's stacks of poison, max 12");
+    assert.strictEqual(texts.oblation, 'Spend all your soul. 7 damage per soul spent, max 42');
+    assert.strictEqual(texts.tithe, 'End of round: 5 damage per soul you have left, max 20');
+    assert.strictEqual(texts.anathema, 'End of round: deal damage equal to your block, max 16');
     await liveBrowser.close();
   });
 

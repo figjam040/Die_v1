@@ -367,42 +367,34 @@ function init() {
   // face's own modData.triggerCount (BUILD 108, run-scoped, not
   // fight-scoped) — a blank roll's face carries no modData, so the read
   // falls through to 0 exactly as a non-triggering face already does for
-  // Zeal/Cope's own accumulatedBonus/copeBonus reads.
+  // Zeal/Cope's own accumulatedBonus/copeBonus reads. BUILD 139: no cap —
+  // +1 per trigger instead of +3, for slower, uncapped growth. Faces 1 and
+  // 20 carry this same triggerCount field (BUILD 138), so a Nat roll reads
+  // that face's own count exactly like any other face.
   gameState.config.cards['tenet'] = {
     id: 'tenet', name: 'Tenet', soulCost: 2, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['growth', 'mass'],
     effect: function(gameState) {
       const faceNumber = gameState.turn.rolledFaceNumber;
       const face = faceNumber ? gameState.die.faces[faceNumber - 1] : null;
       const triggers = (face && face.modData && face.modData.triggerCount) || 0;
-      const raw = 6 + (3 * triggers);
-      const capped = raw > 24;
-      const damage = dealDamage('enemy', capped ? 24 : raw, 'attack', 'tenet');
-      if (capped) {
-        log('[CARD] tenet: ' + damage + ' damage (capped, face triggered ' + triggers + ' times)');
-      } else {
-        log('[CARD] tenet: ' + damage + ' damage (face triggered ' + triggers + ' times)');
-      }
+      const damage = dealDamage('enemy', 6 + triggers, 'attack', 'tenet');
+      log('[CARD] tenet: ' + damage + ' damage (face triggered ' + triggers + ' times)');
     }
   };
 
   // Gradual — tier uncommon, cost 1, tags Mass. Scans every loaded face
   // (modId !== null) for the highest weight, same face.weight field
   // Covenant/Tabernacle read off a single rolled face, just maxed across
-  // the whole die here instead.
+  // the whole die here instead. BUILD 139: no cap — +1 per weight instead
+  // of +3, for slower, uncapped growth.
   gameState.config.cards['gradual'] = {
     id: 'gradual', name: 'Gradual', soulCost: 1, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['mass'],
     effect: function(gameState) {
       const heaviest = gameState.die.faces.reduce(function(max, f) {
         return (f.modId !== null && f.weight > max) ? f.weight : max;
       }, 0);
-      const raw = 3 + (3 * heaviest);
-      const capped = raw > 12;
-      const damage = dealDamage('enemy', capped ? 12 : raw, 'attack', 'gradual');
-      if (capped) {
-        log('[CARD] gradual: ' + damage + ' damage (capped, heaviest loaded face weight ' + heaviest + ')');
-      } else {
-        log('[CARD] gradual: ' + damage + ' damage (heaviest loaded face weight ' + heaviest + ')');
-      }
+      const damage = dealDamage('enemy', 3 + heaviest, 'attack', 'gradual');
+      log('[CARD] gradual: ' + damage + ' damage (heaviest loaded face weight ' + heaviest + ')');
     }
   };
 

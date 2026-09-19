@@ -777,27 +777,27 @@ const CARD_EFFECT_TEXT = {
   // entry above, no wording invented beyond what each card's own effect
   // does (see CARD_EFFECT_TEXT's own header note and each card's log()
   // line in cards-mods.js).
-  tenet: '6 damage, +3 per time the rolled face has triggered this run, max 24',
-  gradual: '3 damage, +3 per weight of your heaviest face, max 12',
+  tenet: '6 damage, +1 for each time the rolled face has triggered this run',
+  gradual: '3 damage, +1 per weight of your heaviest face',
   vacancy: '1 damage per blank face, max 16',
-  lauds: '4 damage, +3 per loaded Growth mod, max 13',
+  lauds: '4 damage, +3 per Growth mod on your die, max 13',
   chastise: '7 damage',
   cloister: '7 block',
   psalm: 'draw 1',
-  reliquary: '6 block, +5 damage if you had 10+ block',
-  vindication: 'damage equal to twice your block, max 24',
+  reliquary: '6 block. If you already had 10+ block, also 5 damage',
+  vindication: 'Deal damage equal to twice your block, max 24',
   myrrh: '6 block, +1 per stack of poison on the enemy, max 12',
-  exequy: "damage equal to the enemy's stacks of poison, max 12",
+  exequy: "Deal damage equal to the enemy's stacks of poison, max 12",
   hosanna: '6 damage, 11 if you have 3+ soul left after paying',
   gloria: '30 damage',
-  oblation: 'spend all soul: 7 damage per soul, max 42',
+  oblation: 'Spend all your soul. 7 damage per soul spent, max 42',
   tabernacle: '3 block, +3 per weight of the rolled face, max 12',
   jubilee: '4 damage, +2 per weight added to the die this run, max 24',
-  threnody: 'your lowest loaded face triggers',
-  reverberation: 'the rolled face triggers again; on a 1 or 20, 6 block',
+  threnody: 'Triggers your lowest-numbered loaded face',
+  reverberation: 'The face you rolled triggers again. On a 1 or 20: 6 block instead',
   kyrie: '5 damage, 10 if the rolled face has Bound',
   novena: 'every Bound face triggers',
-  canticle: '6 block; the rolled face gains Bound this fight'
+  canticle: '6 block. The face you rolled gains Bound for this fight'
 };
 
 // BUILD 071: hover text for mods and Nat faces, derived from each mod's
@@ -840,20 +840,20 @@ const MOD_DESCRIPTION = {
   // turn-scoped clear) — "this turn" was a real meaning mismatch with the
   // effect, fixed here.
   largesse: '+2 soul, 4 block',
-  tithe: 'end of round: 5 damage per soul remaining, capped 20',
-  congregation: '8 damage, 16 if another loaded mod has Growth. Growth',
+  tithe: 'End of round: 5 damage per soul you have left, max 20',
+  congregation: '8 damage. 16 if another mod on your die has Growth. Growth',
   cope: '8 block, permanently gains +2 block per trigger. Growth',
-  anathema: 'end of round: damage equal to your block, capped 16',
+  anathema: 'End of round: deal damage equal to your block, max 16',
   thurible: '8 damage, applied 3 stacks of poison',
   // Checkpoint 3, prompt D — trigger a face outside a roll.
-  magnificat: 'the heaviest other loaded face triggers (ties to the lowest-numbered face)',
+  magnificat: 'Triggers your heaviest other face',
   // Checkpoint 3, Bound engine — three plain Bound mods.
   unison: '6 damage. Bound',
   accord: '10 block. Bound',
   kinship: 'applied 4 stacks of poison. Bound',
   // Checkpoint 3, the remaining Bound pieces (Concord, Herald).
   concord: '+1 soul, 3 block. Bound',
-  herald: '6 damage, one other random loaded face without Bound gains Bound for the fight. Bound'
+  herald: '6 damage. One other random loaded face gains Bound for this fight. Bound'
 };
 
 const NAT_DESCRIPTION = {

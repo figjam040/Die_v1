@@ -44,7 +44,7 @@ const GAME_CONFIG = {
   // test then fails if it doesn't match the newest CONFIRMED WORKING entry
   // in CLAUDE.md, so a forgotten bump is caught by the test suite instead
   // of being noticed cold several builds later (the KI-18 failure mode).
-  BUILD: 139,
+  BUILD: 140,
 
   // F01 — player HP. Was state.js's gameState.player.hp/maxHp literal (70).
   PLAYER_MAX_HP: 70,
