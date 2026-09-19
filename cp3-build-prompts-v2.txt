@@ -1,0 +1,142 @@
+CHECKPOINT 3 BUILD PROMPTS, VERSION 2
+Written 18 Sep 2026 by Fable, prompt F corrected 19 Sep 2026 after BUILD 129; test-run rule tightened after prompt C; CLAUDE.md's own standing build steps allowed after prompt D. Replaces cp3-build-prompts.txt. The map (old prompt 1) is already built as BUILD 128, verified on disk.
+Six prompts, A to F. Paste one at a time, in order, into Claude Code. Play a run between them. If one stops on a failure, do not paste the next: bring the report to a planning chat.
+End state after F: 25 mods (24 offerable plus Consecrate), 36 reward cards, tiers mods 12/8/4 and cards 18/12/6.
+
+
+CP3 PROMPT A
+
+The project is at C:/Users/figja/Die_v1. Read CLAUDE.md there.
+BUILD: checkpoint 3 tiers. Every offerable mod and card gets a tier, and card rewards and Load offers roll a tier per choice. Needs: BUILD 128 (the eight-slot map).
+Rules for this session: never run tests/autoplay.js or any bot. Start no background task, and that includes the test files: run each test file as its own command, in the foreground, with a 10 minute timeout, never chained with another command. Do not poll, sleep or wait on a process. If a command is moved to the background anyway, stop it and run it again in the foreground with the longer timeout. Your shell resets to System32 after every command, so start every command with cd /c/Users/figja/Die_v1 &&. Do only the numbered steps, plus any standing build step CLAUDE.md itself requires of every build (such as re-running tests/screenshots.js): those count as listed, run in the foreground, and never include the bot. Stop at the first failure and report.
+1. Back up the project the way CLAUDE.md says. If it names no way, copy the whole project folder to C:/Users/figja/Die_v1_backup_YYYY-MM-DD_tiers. Confirm the backup exists.
+2. Run node tests/mods.test.js and node tests/facts.test.js. If either fails, stop and report.
+3. Find and report, before changing anything: where mod and card definitions live, where card reward choices and Load offers are built, the random number source they use, and the rule that hides Load when fewer than 3 unloaded mods remain (D-54).
+4. Add a tier field to every mod and card definition. Mods: common Smite, Sanctuary, Penance, Blight, Offering, Anthem; uncommon Vigil, Ordain, Zeal, Elevation; rare Virulence, Fervour. Consecrate has no tier and is never offered. Cards: common Rebuke, Censure, Vestment, Litany, Scripture, Interdict, Orison, Censer, Purge; uncommon Judgement, Reckoning, Communion, Rapture, Covenant, Retribution. Strike, Ward and Rite have no tier and are never offered.
+5. Offer split per choice, common/uncommon/rare: fights and rites 65/30/5; elites 40/40/20; bosses 0/70/30. It applies to card rewards and to Load offers, using the slot the reward came from.
+6. Each of the three choices rolls its own tier with the existing random source. No piece repeats within one offer. If the rolled tier has nothing left to offer, try the next tier down; if nothing is left below, try the tiers above.
+7. Load shows whenever a blank face exists among faces 2 to 19. The D-54 rule hiding Load when fewer than 3 unloaded mods remain stays only as a last guard.
+8. Add assertions: the tier of every piece listed in step 4; Consecrate, Strike, Ward and Rite are never offered; a seeded sample of 10,000 fight choices lands within 2 points of 65/30/5, counting fallbacks separately; an offer never repeats a piece.
+9. Run both test files again. Stop at the first failure and report.
+10. Record the build in CLAUDE.md the way CLAUDE.md says builds are recorded. If the facts test checks the build number against CLAUDE.md, run node tests/facts.test.js once more after recording and report that count too.
+11. Paste back: backup path, test counts before and after, what step 3 found, the CONFIRMED WORKING line. Then tell Fergus: nothing new to see yet. Win a fight and check the three card choices still appear and can be picked.
+
+
+CP3 PROMPT B
+
+The project is at C:/Users/figja/Die_v1. Read CLAUDE.md there.
+BUILD: checkpoint 3 tag field, then the six new mods that need no other new engine code. Needs: prompt A (tiers).
+Rules for this session: never run tests/autoplay.js or any bot. Start no background task, and that includes the test files: run each test file as its own command, in the foreground, with a 10 minute timeout, never chained with another command. Do not poll, sleep or wait on a process. If a command is moved to the background anyway, stop it and run it again in the foreground with the longer timeout. Your shell resets to System32 after every command, so start every command with cd /c/Users/figja/Die_v1 &&. Do only the numbered steps, plus any standing build step CLAUDE.md itself requires of every build (such as re-running tests/screenshots.js): those count as listed, run in the foreground, and never include the bot. Stop at the first failure and report.
+1. Back up the project the way CLAUDE.md says. If it names no way, copy the whole project folder to C:/Users/figja/Die_v1_backup_YYYY-MM-DD_tagsmods. Confirm the backup exists.
+2. Run node tests/mods.test.js and node tests/facts.test.js. If either fails, stop and report.
+3. Find and report, before changing anything: whether any tag or synergy field already exists; how Vigil registers its end-of-round effect; whether the enemy attacks before or after end-of-round effects; how Zeal stores its permanent growth in modData; and whether tests/autoplay.js keeps its own list of mods.
+4. Add a tags field (a list of words) to every mod and card definition. Poison: Blight, Virulence, Censer, Purge, Reckoning. Mass: Fervour, Elevation, Zeal, Ordain, Anthem, Covenant. Growth: Zeal, Elevation, Ordain. Soul: Consecrate, Offering, Communion, Rapture. Bastion: Sanctuary, Penance, Vigil, Retribution. A piece can hold several tags. Everything else gets an empty list.
+5. Add mod Largesse, tier common, tags Soul: +2 soul, 4 block.
+6. Add mod Tithe, tier uncommon, tags Soul: at end of round, 5 damage per soul you have left, cap 20. Register it on the same end-of-round hook Vigil uses; damage goes through calculateDamage().
+7. Add mod Congregation, tier uncommon, tags Growth: 8 damage; 16 if another loaded mod has the Growth tag. It never counts itself.
+8. Add mod Cope, tier common, tags Growth and Bastion: 8 block, +2 permanently per trigger. Store its growth in modData the way Zeal stores its +4.
+9. Add mod Anathema, tier uncommon, tags Bastion: at end of round, deal damage equal to your block, cap 16. Use Vigil's end-of-round hook. Block is read, not spent; damage goes through calculateDamage().
+10. Add mod Thurible, tier common, tags Poison: 8 damage, apply 3 stacks of poison. Its log line says stacks of poison, never bare poison.
+11. Add all six mods to the Load offer pool. If tests/autoplay.js keeps its own mod list, append them at the end. Do not run it.
+12. The mod count goes from 13 to 19. Find the fact that records the mod count in GAME_CONFIG's header comment and in CLAUDE.md's FACTS, update it, and update its assertion in tests/facts.test.js. Name it by what it records; do not trust a fact number quoted anywhere else.
+13. Add one test assertion per new mod, each checking its numbers and cap. Also assert every tag listed in step 4 and the tags of the six new mods. Per-face state stays in modData (ARCH-CF2); face weight changes only through strengthenFace() (ARCH-CF6).
+14. Run both test files again. Stop at the first failure and report.
+15. Record the build in CLAUDE.md the way CLAUDE.md says builds are recorded. If the facts test checks the build number against CLAUDE.md, run node tests/facts.test.js once more after recording and report that count too.
+16. Paste back: backup path, test counts before and after, what step 3 found, the CONFIRMED WORKING line. Then tell Fergus: take Load rewards and look for Largesse, Tithe, Congregation, Cope, Anathema and Thurible among the offers.
+
+
+CP3 PROMPT C
+
+The project is at C:/Users/figja/Die_v1. Read CLAUDE.md there.
+BUILD: checkpoint 3, the sixteen new cards that need no new engine code. Needs: prompt A (tiers) and prompt B (tag field).
+Rules for this session: never run tests/autoplay.js or any bot. Start no background task, and that includes the test files: run each test file as its own command, in the foreground, with a 10 minute timeout, never chained with another command. Do not poll, sleep or wait on a process. If a command is moved to the background anyway, stop it and run it again in the foreground with the longer timeout. Your shell resets to System32 after every command, so start every command with cd /c/Users/figja/Die_v1 &&. Do only the numbered steps, plus any standing build step CLAUDE.md itself requires of every build (such as re-running tests/screenshots.js): those count as listed, run in the foreground, and never include the bot. Stop at the first failure and report.
+1. Back up the project the way CLAUDE.md says. If it names no way, copy the whole project folder to C:/Users/figja/Die_v1_backup_YYYY-MM-DD_cards. Confirm the backup exists.
+2. Run node tests/mods.test.js and node tests/facts.test.js. If either fails, stop and report.
+3. Find and report, before changing anything: how Rebuke and Scripture are defined; how Covenant reads the rolled face's weight and where face weights are stored; where the run-scoped trigger count lives in modData (BUILD 108); how Retribution reads current block; how Reckoning reads the enemy's stacks of poison; where soul is paid and read; and how unaffordable cards are dimmed.
+4. Add these cards exactly as written. Every cap is a hard cap.
+Tenet, tier uncommon, cost 2, tags Growth and Mass: 6 damage +3 per time the rolled face has triggered this run, cap 24. It reads the rolled face's run-scoped trigger count; a blank roll counts 0.
+Gradual, tier uncommon, cost 1, tags Mass: 3 damage +3 per weight of your heaviest loaded face, cap 12.
+Vacancy, tier common, cost 2, tags Mass: 1 damage per blank face among faces 2 to 19, cap 16.
+Lauds, tier common, cost 1, tags Growth: 4 damage +3 per loaded mod with the Growth tag, cap 13. Two mods on one face count as two.
+Chastise, tier common, cost 1, no tags: 7 damage.
+Cloister, tier common, cost 1, no tags: 7 block.
+Psalm, tier common, cost 0, no tags: draw 1.
+Reliquary, tier common, cost 1, tags Bastion: 6 block; also 5 damage if you had 10 or more block before playing it.
+Vindication, tier rare, cost 2, tags Bastion: damage equal to twice your block, cap 24. Block is read, not spent.
+Myrrh, tier uncommon, cost 1, tags Poison: 6 block +1 per stack of poison on the enemy, cap 12.
+Exequy, tier rare, cost 0, tags Poison: damage equal to the enemy's stacks of poison, cap 12. Stacks are not removed.
+Hosanna, tier common, cost 1, tags Soul: 6 damage; 11 if you still have 3 or more soul after paying for it.
+Gloria, tier uncommon, cost 4, tags Soul: 30 damage. It is unaffordable on base soul 3 and dims like any unaffordable card.
+Oblation, tier rare, cost 0, tags Soul: spend all your soul: 7 damage per soul spent, cap 42. Your soul becomes 0; with 0 soul it deals 0.
+Tabernacle, tier common, cost 1, tags Mass: 3 block +3 per weight of the rolled face, cap 12.
+Jubilee, tier rare, cost 2, tags Growth and Mass: 4 damage +2 per weight added to the die this run, cap 24. Weight added means the total weight of all 20 faces minus 20.
+5. Add all sixteen to the card reward pool.
+6. The reward card count goes from 15 to 31. Find the fact that records it (F25 on 18 Sep 2026) in GAME_CONFIG's header comment and in CLAUDE.md's FACTS, update it, and update its assertion in tests/facts.test.js.
+7. Add one test assertion per new card, each checking its numbers, its condition and its cap. Log lines say stacks of poison, never bare poison.
+8. Run both test files again. Stop at the first failure and report.
+9. Record the build in CLAUDE.md the way CLAUDE.md says builds are recorded. If the facts test checks the build number against CLAUDE.md, run node tests/facts.test.js once more after recording and report that count too.
+10. Paste back: backup path, test counts before and after, what step 3 found, the CONFIRMED WORKING line. Then tell Fergus: card rewards now draw from 31 cards. Look for new names after fight wins, and for rares after elites and bosses.
+
+
+CP3 PROMPT D
+
+The project is at C:/Users/figja/Die_v1. Read CLAUDE.md there.
+BUILD: checkpoint 3, trigger a face outside a roll. One shared function, then the three pieces that use it: Threnody, Reverberation, Magnificat. Needs: prompt A (tiers) and prompt B (tag field).
+Rules for this session: never run tests/autoplay.js or any bot. Start no background task, and that includes the test files: run each test file as its own command, in the foreground, with a 10 minute timeout, never chained with another command. Do not poll, sleep or wait on a process. If a command is moved to the background anyway, stop it and run it again in the foreground with the longer timeout. Your shell resets to System32 after every command, so start every command with cd /c/Users/figja/Die_v1 &&. Do only the numbered steps, plus any standing build step CLAUDE.md itself requires of every build (such as re-running tests/screenshots.js): those count as listed, run in the foreground, and never include the bot. Stop at the first failure and report.
+1. Back up the project the way CLAUDE.md says. If it names no way, copy the whole project folder to C:/Users/figja/Die_v1_backup_YYYY-MM-DD_outsidetrigger. Confirm the backup exists.
+2. Run node tests/mods.test.js and node tests/facts.test.js. If either fails, stop and report.
+3. Find and report, before changing anything: how a rolled face triggers its mods (both slots, load order), how the blank roll gives 2 block, how trigger counts are incremented, whether a per-round trigger cap of 10 (D-51) exists in code, and whether tests/autoplay.js keeps its own list of mods.
+4. Add one function that triggers a face outside a roll, used by every piece that does so. Rules: never face 1 or face 20 (do nothing); each face at most once a round this way (a round-scoped record, cleared at START_OF_TURN); it counts toward the 10-triggers-a-round cap, and only the Nat 20 sweep is exempt. If no cap exists in code, add a round-scoped counter capped at 10 and say so. A loaded face triggers its mods in load order and counts triggers exactly as a roll does, including permanent growth (Zeal, Ordain, Elevation, Cope gain what they gain on a roll). A blank face gives the blank effect, 2 block. It does not change which face was rolled this round.
+5. Add card Threnody, tier uncommon, cost 2, tags Growth: the lowest-numbered loaded face triggers.
+6. Add card Reverberation, tier rare, cost 2, tags Mass: the face you rolled this round triggers again; a blank face gives its 2 block again; on a 1 or a 20, 6 block instead.
+7. Add mod Magnificat, tier rare, tags Mass: the heaviest other loaded face triggers, through the outside-roll function. Ties go to the lowest-numbered face. Its own face never counts.
+8. Add both cards to the card reward pool and Magnificat to the Load offer pool. If tests/autoplay.js keeps its own mod list, append Magnificat at the end. Do not run it.
+9. The mod count goes from 19 to 20 and the reward card count from 31 to 33. Update the facts that record them in GAME_CONFIG's header comment and CLAUDE.md's FACTS, and their assertions.
+10. Add one test assertion per new piece. Also assert that the function refuses faces 1 and 20, refuses a second outside trigger of the same face in one round, and stops at the cap. Per-face state stays in modData (ARCH-CF2); face weight changes only through strengthenFace() (ARCH-CF6).
+11. Run both test files again. Stop at the first failure and report.
+12. Record the build in CLAUDE.md the way CLAUDE.md says builds are recorded. If the facts test checks the build number against CLAUDE.md, run node tests/facts.test.js once more after recording and report that count too.
+13. Paste back: backup path, test counts before and after, what step 3 found, the CONFIRMED WORKING line. Then tell Fergus: with Dev Tools, load a mod on a low face and play Threnody. That face should fire without being rolled, once a round.
+
+
+CP3 PROMPT E
+
+The project is at C:/Users/figja/Die_v1. Read CLAUDE.md there.
+BUILD: checkpoint 3 Bound engine. The die-wide Bound scan, a fight-scoped Bound setter, a fast sweep, then the three plain Bound mods: Unison, Accord, Kinship. Needs: prompt D (the outside-roll trigger function).
+Rules for this session: never run tests/autoplay.js or any bot. Start no background task, and that includes the test files: run each test file as its own command, in the foreground, with a 10 minute timeout, never chained with another command. Do not poll, sleep or wait on a process. If a command is moved to the background anyway, stop it and run it again in the foreground with the longer timeout. Your shell resets to System32 after every command, so start every command with cd /c/Users/figja/Die_v1 &&. Do only the numbered steps, plus any standing build step CLAUDE.md itself requires of every build (such as re-running tests/screenshots.js): those count as listed, run in the foreground, and never include the bot. Stop at the first failure and report.
+1. Back up the project the way CLAUDE.md says. If it names no way, copy the whole project folder to C:/Users/figja/Die_v1_backup_YYYY-MM-DD_bound. Confirm the backup exists.
+2. Run node tests/mods.test.js and node tests/facts.test.js. If either fails, stop and report.
+3. Find and report, before changing anything: the outside-roll trigger function, where the Nat 20 sweep sets its per-trigger delay, where fight-scoped state is cleared at fight end, and whether tests/autoplay.js keeps its own list of mods.
+4. A face is Bound if a mod on it has Bound printed (permanent) or the face was granted Bound (lasts the fight). Store the grant in modData. Add one setter that grants Bound to a face for the fight; it refuses faces 1 and 20 and blank faces. Clear grants at fight end.
+5. Bound scan: when the rolled face is Bound, after it triggers, every other loaded Bound face triggers through the outside-roll function, in ascending face order, any position on the die. Faces triggered this way do not start a further scan. The scan does not run during a Nat 20 sweep.
+6. Fast sweep, timing only: in any one round, after the third trigger, every further trigger plays at a quarter of the normal delay. This covers Nat 20 sweeps and Bound scans. No layout change.
+7. Add mod Unison, tier common, tags Bound: Bound. 6 damage.
+8. Add mod Accord, tier common, tags Bound: Bound. 10 block.
+9. Add mod Kinship, tier common, tags Bound and Poison: Bound. Apply 4 stacks of poison.
+10. Add the three mods to the Load offer pool. If tests/autoplay.js keeps its own mod list, append them at the end. Do not run it.
+11. The mod count goes from 20 to 23. Update the fact that records it in GAME_CONFIG's header comment and CLAUDE.md's FACTS, and its assertion.
+12. Add one test assertion per new mod. Also assert that two Bound faces fire together from one roll, that the scan does not run during a Nat 20 sweep, that the setter refuses faces 1 and 20 and blank faces, and that grants clear at fight end. Per-face state stays in modData (ARCH-CF2); face weight changes only through strengthenFace() (ARCH-CF6).
+13. Run both test files again. Stop at the first failure and report.
+14. Record the build in CLAUDE.md the way CLAUDE.md says builds are recorded. If the facts test checks the build number against CLAUDE.md, run node tests/facts.test.js once more after recording and report that count too.
+15. Paste back: backup path, test counts before and after, what step 3 found, the CONFIRMED WORKING line. Then tell Fergus: with Dev Tools, load Unison and Accord on two faces and roll either one. Both should fire. A Nat 20 with many loaded faces should now play faster after the third trigger.
+
+
+CP3 PROMPT F
+
+The project is at C:/Users/figja/Die_v1. Read CLAUDE.md there.
+BUILD: checkpoint 3, the remaining Bound pieces: Kyrie, Novena, Concord, Canticle, and Herald with its random target pick. This is the last checkpoint 3 build. Needs: prompt E (the Bound engine).
+Rules for this session: never run tests/autoplay.js or any bot. Start no background task, and that includes the test files: run each test file as its own command, in the foreground, with a 10 minute timeout, never chained with another command. Do not poll, sleep or wait on a process. If a command is moved to the background anyway, stop it and run it again in the foreground with the longer timeout. Your shell resets to System32 after every command, so start every command with cd /c/Users/figja/Die_v1 &&. Do only the numbered steps, plus any standing build step CLAUDE.md itself requires of every build (such as re-running tests/screenshots.js): those count as listed, run in the foreground, and never include the bot. Stop at the first failure and report.
+1. Back up the project the way CLAUDE.md says. If it names no way, copy the whole project folder to C:/Users/figja/Die_v1_backup_YYYY-MM-DD_boundpieces. Confirm the backup exists.
+2. Run node tests/mods.test.js and node tests/facts.test.js. If either fails, stop and report.
+3. Find and report, before changing anything: how Unison prints Bound, the fight-scoped Bound setter, the outside-roll trigger function, the game's random source (on BUILD 129 it was Math.random(), used through shuffle() in js/state.js), and whether tests/autoplay.js keeps its own list of mods.
+4. Add one function that picks a random item from a list using the same random source shuffle() uses, returning nothing for an empty list.
+5. Add card Kyrie, tier common, cost 1, tags Bound: 5 damage; 10 if the rolled face has Bound.
+6. Add card Novena, tier rare, cost 2, tags Bound: every loaded Bound face triggers, each through the outside-roll function.
+7. Add card Canticle, tier uncommon, cost 1, tags Bound: 6 block; if the rolled face is loaded, it gains Bound for this fight, through the Bound setter. Never face 1 or 20.
+8. Add mod Concord, tier uncommon, tags Bound and Soul: Bound. +1 soul, 3 block.
+9. Add mod Herald, tier rare, tags Bound: Bound. 6 damage; one other random loaded face without Bound gains Bound for this fight, through the Bound setter and the random pick. If no such face exists, only the damage happens.
+10. Add the cards to the card reward pool and the mods to the Load offer pool. If tests/autoplay.js keeps its own mod list, append Concord and Herald at the end. Do not run it.
+11. The mod count goes from 23 to 25 (24 offerable plus Consecrate) and the reward card count from 33 to 36. Update the facts that record them in GAME_CONFIG's header comment and CLAUDE.md's FACTS, and their assertions. Also assert the tier totals: offerable mods 12 common, 8 uncommon, 4 rare; reward cards 18 common, 12 uncommon, 6 rare.
+12. Add one test assertion per new piece. For Herald: with Math.random replaced by a fixed sequence inside the test, its grant lands on a loaded face other than itself and lasts only the fight. Per-face state stays in modData (ARCH-CF2); face weight changes only through strengthenFace() (ARCH-CF6).
+13. Run both test files again. Stop at the first failure and report.
+14. Record the build in CLAUDE.md the way CLAUDE.md says builds are recorded. If the facts test checks the build number against CLAUDE.md, run node tests/facts.test.js once more after recording and report that count too.
+15. Paste back: backup path, test counts before and after, what step 3 found, the CONFIRMED WORKING line. Then tell Fergus: checkpoint 3 is fully built. Play a whole run. With Dev Tools, load Herald next to another mod and roll Herald: the other face should gain Bound until the fight ends.

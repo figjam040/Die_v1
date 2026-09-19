@@ -1,0 +1,1773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Die V1</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --panel-bg: #000000;
+    --line: #1a1a1a;
+    --text: #c8c8c8;
+    --muted: #5a5a5a;
+    --white: #f4f4f4;
+
+    --nat: #fbbf24;
+    --player-mod: #60a5fa;
+    --enemy-mod: #f87171;
+    --blank: #9c8a63;
+
+    --phase-color: #a88a5a;
+
+    --enemy-panel-bg: #241111;
+    --player-panel-bg: #11152b;
+    --enemy-border: #5a2424;
+    --player-border: #26315a;
+
+    --game-font: 'Bahnschrift', 'Arial Narrow', 'Segoe UI Semibold', 'Franklin Gothic Medium', Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Consolas', 'Courier New', monospace;
+    margin: 0;
+    padding: 0;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ---------- BUILD STAMP ---------- */
+
+  #buildStamp {
+    flex-shrink: 0;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 10px;
+    line-height: 13px;
+    color: #9c8a63;
+    padding: 2px 4px;
+  }
+
+  /* ---------- LEFT COLUMN ---------- */
+
+  .left-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    overflow-y: auto;
+    border-right: 1px solid var(--line);
+    height: 100%;
+  }
+
+  /* BUILD 068: #fightScreen wraps the enemy/mid-strip/player/hand-row group
+     that used to be direct .left-col flex children. Mirrors .left-col's own
+     display/flex-direction/gap exactly so every child's existing flex
+     sizing (flex:1, min-height:0, etc. — the BUILD 040/041 fixes) sees the
+     identical flex-item context it always has, just one level deeper.
+     BUILD 069: min-height:0 was the regression — it let this wrapper
+     itself shrink below what its children's own min-heights (.combat-panel's
+     436px each) actually need, since a flex item's default flex-shrink:1
+     otherwise applies. The children then overflowed past this wrapper's
+     shrunk box (no overflow:hidden here), and .controls-row — a later
+     sibling positioned relative to that same shrunk box — painted directly
+     over the overflowed hand row. flex-shrink:0 restores the BUILD 041
+     contract instead: this wrapper always takes its content's natural
+     height, and .left-col's own overflow-y:auto scrolls for any excess,
+     exactly as every panel already behaves. */
+  #fightScreen {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  /* BUILD 068/069: map screen, shown between slots (gameState.run.screen
+     === 'map'). Reuses .panel/.panel-title for the outer shell and the
+     same .die-action-title/.die-action-row visual language the die action
+     and card reward panels already use — presentation only, no new colour
+     palette: every node/connector state below reuses --nat, --blank,
+     --muted, --line, the same vocabulary the rest of the app already
+     speaks, kept quiet and legible rather than decorative.
+
+     Structure is: [START] [fork] [lanes: 2 rows of node-connector-node-
+     connector-node] [merge] [BOSS], centred as one flex row, with the
+     fork/merge each a fixed-width column holding one vertical line that
+     stretches (align-self:stretch) to match .map-lanes' own height, so the
+     two lane rows visibly share one origin and one destination without
+     any per-viewport pixel math — the vertical line's height is simply
+     "however tall .map-lanes is," recomputed by the browser every layout,
+     not by this code. */
+  /* BUILD 069: centres the whole map (composition + boss preview row) as
+     one block within the panel — display:flex/flex-direction set here,
+     display:none↔flex toggled by refreshInspector() per gameState.run.screen. */
+  #mapScreen {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #mapScreen .panel-title {
+    align-self: flex-start;
+  }
+
+  .map-composition {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0;
+    margin: 18px 0;
+  }
+
+  .map-start-node,
+  .map-node-opening,
+  .map-node-boss {
+    align-self: center;
+  }
+
+  /* BUILD 073: the shared opening fight sits between Start and the fork.
+     Start now connects to it via an explicit .map-connector (matching the
+     idiom every other node-to-node link already uses) instead of a blank
+     margin gap; the margin that used to create the Start→fork gap moves
+     to the opening node, so it still creates the same gap before the fork
+     — same visual rhythm, one more stop in the trunk. */
+  .map-node-opening { margin-right: 20px; }
+  .map-node-boss { margin-left: 20px; }
+
+  .map-fork, .map-merge {
+    position: relative;
+    width: 20px;
+    flex-shrink: 0;
+  }
+
+  /* The shared vertical line itself stays neutral (--line) always — it is
+     structurally shared by both lanes regardless of which is chosen. Which
+     lane is committed/abandoned is instead carried by the stubs
+     (.map-lane::before/::after) and inter-node connectors below, which are
+     each unambiguously one lane's own. */
+  .map-fork::before, .map-merge::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--line);
+    transform: translateX(-50%);
+  }
+
+  .map-lanes {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 26px;
+  }
+
+  .map-lane {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* Stubs connecting this row to the shared fork (left) / merge (right)
+     vertical line. Sit exactly in the zero-gap space .map-composition
+     leaves between .map-fork/.map-merge and .map-lanes. */
+  .map-lane::before,
+  .map-lane::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 20px;
+    height: 2px;
+    background: var(--line);
+    transform: translateY(-50%);
+  }
+  .map-lane::before { left: -20px; }
+  .map-lane::after { right: -20px; }
+
+  /* Committed = the lane the player picked; reads the same colour the
+     currently-clickable node uses (--nat), tying the whole taken route
+     together at a glance. Abandoned = the other lane, once locked out. */
+  .map-lane-committed::before,
+  .map-lane-committed::after { background: var(--nat); }
+
+  .map-lane-abandoned::before,
+  .map-lane-abandoned::after { background: var(--muted); opacity: 0.6; }
+
+  .map-connector {
+    width: 20px;
+    height: 2px;
+    background: var(--line);
+    flex-shrink: 0;
+  }
+  .map-connector-committed { background: var(--nat); }
+  .map-connector-abandoned { background: var(--muted); opacity: 0.6; }
+
+  .map-node {
+    font-family: var(--game-font);
+    font-size: 13px;
+    height: 44px;
+    padding: 0 16px;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    background: var(--panel-bg);
+    min-width: 74px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Completed — done, no longer needs attention. Same --blank tone the
+     rest of the UI already uses for "present but inactive" (blank die
+     faces, stat labels). */
+  .map-node-completed {
+    color: var(--blank);
+    border-color: var(--blank);
+  }
+  .map-node-completed::before { content: '✓ '; }
+
+  /* Current — the single next slot on the lane you've already committed
+     to. Solid --nat border, the project's one existing "pay attention"
+     colour (die-action buttons, force-roll hover, NAT faces). */
+  .map-node-current {
+    color: var(--nat);
+    border: 2px solid var(--nat);
+    cursor: pointer;
+  }
+  .map-node-current:hover {
+    background: var(--nat);
+    color: #1a1500;
+  }
+
+  /* Available to choose — the fork's two options, before a lane is
+     picked. Same --nat colour as current (both are genuinely clickable
+     right now) but a dashed border distinguishes "pick one" from "this is
+     the one you're on." */
+  .map-node-choice {
+    color: var(--nat);
+    border: 1px dashed var(--nat);
+    cursor: pointer;
+  }
+  .map-node-choice:hover {
+    background: var(--nat);
+    color: #1a1500;
+  }
+
+  /* Unreachable — the abandoned lane, and any not-yet-unlocked slot.
+     Dim, quiet, clearly not an option right now; the label stays fully
+     readable, only the frame recedes. */
+  .map-node-inert {
+    color: var(--muted);
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  /* BUILD 076: dev-only jump target — every node the run hasn't actually
+     reached yet (or has already left behind) is clickable for testing, but
+     must never read like a real choice. Deliberately NOT the --nat gold
+     used for current/choice (that colour means "pick me" to a player);
+     --muted with a dotted border keeps it in the same quiet family as
+     .map-node-inert (which it visually replaces) while still being
+     distinguishable from it (dotted vs solid border, higher opacity, a
+     pointer cursor) since inert nodes are genuinely inert and these are
+     not. No new palette — same --muted this map already uses for
+     "present but not a real option." */
+  .map-node-dev-jump {
+    color: var(--muted);
+    border: 1px dotted var(--muted);
+    opacity: 0.75;
+    cursor: pointer;
+  }
+  .map-node-dev-jump:hover {
+    background: var(--muted);
+    color: #0a0a0f;
+  }
+
+  /* BUILD 072: was .map-boss-preview-row (boss only); now holds both dice
+     side by side — "the distribution being built against the distribution
+     ahead" — so the class name was generalised to match. Same centred,
+     quiet row BUILD 069 already established, just wider. */
+  .map-die-preview-row {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 28px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  /* BUILD 098: elitePreview joins the same rule — identical text styling
+     to the player/boss preview blocks either side of it. */
+  #bossPreview, #mapPlayerPreview, #elitePreview {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.8;
+  }
+
+  /* BUILD 098: eliteDiePreviewList joins the same max-width cap the
+     player/boss die columns already use, so all three previews stay the
+     same size regardless of how many rows each die needs. */
+  #bossDiePreviewList, #mapPlayerDieList, #eliteDiePreviewList {
+    max-width: 260px;
+  }
+
+  /* A single hairline divider between the two die groups, echoing the row's
+     own top border — visually separates "yours" from "theirs" without any
+     new colour. */
+  .map-die-preview-divider {
+    align-self: stretch;
+    width: 1px;
+    background: var(--line);
+  }
+
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    padding: 8px;
+  }
+
+  .combat-panel {
+    padding: 14px;
+    flex: 1;
+    /* Was min-height: 0, which let the outer flex distribution in .left-col
+       compress this panel below what its own content (die-col's 20 rows,
+       stats-col's hero-stats + stat rows) actually needs, since only
+       .die-col's rows have their own min-height: 0 to shrink further —
+       stats-col's content cannot compress, so it overflowed past this
+       panel's too-short outer box into #handRow below (fixed in BUILD 041
+       at 512px). BUILD 043 tightened padding/row-spacing on hero-stats,
+       stat-line, and the die-face lists (row width/font, not the hero
+       numbers) to shave vertical footprint so the dev-tool rows below fit
+       above the fold — 436px is the re-measured natural content height
+       under that tightened spacing (die-col and stats-col's real content,
+       the taller of the two, plus this rule's own 14px top/bottom padding
+       and border) at 1400x900 and 1600x1080, measured the same way as
+       BUILD 041: a real browser with the panel's height temporarily
+       unconstrained, plus a small buffer. .die-col itself is untouched —
+       it can still shrink below this via its own min-height: 0 if a
+       viewport is ever smaller than this, but this panel is no longer
+       compressed by default. */
+    min-height: 436px;
+  }
+
+  #enemyPanel { background: var(--enemy-panel-bg); border-color: var(--enemy-border); }
+  #playerPanel { background: var(--player-panel-bg); border-color: var(--player-border); }
+
+  .panel-title {
+    color: var(--white);
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    font-size: 15px;
+    font-family: var(--game-font);
+  }
+
+  /* Combat panels — die list left, stats right */
+
+  /* align-items: flex-start (default is stretch) so .stats-col sizes to its
+     own content (hero-stats + stat rows) instead of being force-stretched to
+     match .die-col's compressed height — .die-col's rows can shrink to
+     near-zero via their own min-height: 0, but .stats-col's content cannot,
+     which was causing it to render past its own box into #handRow below. */
+  .combat-panel { display: flex; align-items: flex-start; gap: 28px; }
+  .combat-panel .die-col { flex: 1.1; min-width: 0; display: flex; flex-direction: column; }
+  .combat-panel .stats-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  /* BUILD 075: a dieless enemy's die-col is display:none (set in
+     refreshInspector()), which would otherwise leave .stats-col's flex:1
+     stretching to fill the entire panel width on its own — noticeably
+     wider and more sparse than every other stats-col, reading as a hole
+     rather than a choice. Centring the panel and capping .stats-col's own
+     width instead keeps it the same visual weight as a normal stats
+     column, just alone in the panel. */
+  .combat-panel.combat-panel-no-die { justify-content: center; }
+  .combat-panel.combat-panel-no-die .stats-col { flex: 0 1 320px; }
+
+  /* Die face lists */
+
+  .die-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-height: 0;
+    padding: 0;
+    /* BUILD 071: anchor for this row's .hover-tip (see .die-row .hover-tip
+       below) — position:relative only, no size/flow effect. */
+    position: relative;
+  }
+
+  .face-btn {
+    align-self: stretch;
+    width: 34px;
+    min-width: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    background: #000;
+    color: var(--blank);
+    font-family: var(--game-font);
+    font-weight: bold;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    /* BUILD 116: anchor + clip for .face-weight-fill below — size/position
+       of the button itself is otherwise untouched, so this changes no
+       row's width or height. */
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* DEV ONLY — hover state signalling the force-roll click target. Remove before any real release. */
+  .face-btn:hover {
+    border-color: var(--white);
+    color: var(--white);
+    background: #1a1a1a;
+  }
+
+  /* BUILD 116: weight made visible on the face itself — the thesis
+     mechanic (the distribution the player has built) was previously only
+     legible via the small ×N text badge beside the mod name, unreadable
+     at a glance across twenty rows. A bottom-anchored fill inside the
+     face's own button, height set per-element in JS (renderDieList(),
+     rendering.js — 25% per point of weight above 1, capped at weight 5).
+     `background: currentColor` deliberately reuses whichever identity
+     colour already governs this row (--blank/--nat/--player-mod/
+     --enemy-mod, all set on .face-btn itself by the existing .die-row.*
+     selectors below) — no new colour is introduced; only opacity makes it
+     read as emphasis. Absolutely positioned inside face-btn's own existing
+     box (clipped by the overflow:hidden above), so no row grows and no
+     column widens. z-index:0 keeps it behind .face-num so the digit stays
+     legible against the tinted fill at every weight. */
+  .face-weight-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: currentColor;
+    /* BUILD 117: 0.32 -> 0.5 — weight 2 was measurably indistinguishable
+       from weight 1 in real play at the old opacity/fill-percentage
+       combination. Raised here rather than at every individual fillPct
+       value so the whole weight range reads more strongly, on top of the
+       weight-2 floor raised in rendering.js. */
+    opacity: 0.5;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .face-num {
+    position: relative;
+    z-index: 1;
+  }
+
+  .die-mod {
+    font-family: var(--game-font);
+    font-weight: bold;
+    font-size: 16px;
+    color: var(--blank);
+  }
+
+  .die-mod-wrap {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  /* BUILD 117: a face holding two mods shows both names side by side on
+     the row's one line — replaces BUILD 115's .die-mod-stack, which
+     stacked the second mod on its own line and measured ~28px tall
+     against every other row's 19px, breaking the twenty-row column.
+     MEASURED BUG FOUND AND FIXED while building this: shrinking the font
+     below .die-mod's own base 16px inside this wrapper (tried 13px, tried
+     matching line-height/display every way) reproducibly shrank this ONE
+     row to 17px against every other row's 19px — the die column's total
+     height in real layout turns out to be summed from each row's own
+     content (not a fixed total flex-grow just divides evenly, which is
+     what BUILD 116's own line-height fix assumed), so a smaller font on
+     just this row measurably shrinks it. Fix: keep the SAME 16px .die-mod
+     already uses everywhere else (no font-size override here at all —
+     this selector only adds layout, not typography).
+     BUILD 137: max-width + ellipsis truncation replaced with an exact
+     6-character JS truncation (TWO_MOD_NAME_CHARS, rendering.js) — a
+     readable name start ("Herald"/"Sanctu") instead of an illegible
+     "Her…"/"San…". max-width widened from 44px to 56px, just over the
+     worst-case 6-letter width measured via Playwright canvas measureText
+     (Congregation's "Congre" ~51px against the row's real computed font);
+     overflow:hidden kept as a safety net only (JS truncation means this
+     should never actually clip), text-overflow:ellipsis removed since a
+     clipped six-letter name should never show a trailing "…". The full
+     name is still always available, now via a native title tooltip on the
+     name span itself (renderDieList(), rendering.js) rather than the row's
+     own hover-tip, so truncating the visible label here removes no
+     information, only shortens its on-row display. */
+  .die-mod-pair {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .die-mod-pair .die-mod {
+    display: inline-block;
+    vertical-align: middle;
+    max-width: 56px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  /* The second mod's name, specifically — a dedicated class set in JS
+     (renderDieList(), rendering.js), not a structural CSS selector.
+     :nth-of-type(2) was tried first and doesn't work here: it counts by
+     tag name (every child of .die-mod-pair is a <span>), not class, so
+     whenever the first mod already had a trigger count sitting between
+     the two names, ":nth-of-type(2)" landed on that count span instead of
+     the second mod's name, and the gap silently vanished — caught by this
+     build's own Playwright screenshot, not assumed. */
+  .die-mod-pair .die-mod-second {
+    margin-left: 7px;
+  }
+
+  /* Each mod's own trigger count, inline immediately after its own name —
+     never the shared far-right badge a two-mod face used to get, which
+     gave no visual link between a count and the mod it belonged to. Same
+     "don't shrink the font on this row" fix as .die-mod-pair .die-mod
+     above — matches .die-trigger-count's own working 14px rather than
+     introducing a new smaller size. */
+  .die-trigger-count-inline {
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 14px;
+    margin-left: 2px;
+  }
+
+  .die-weight {
+    font-family: var(--game-font);
+    font-weight: bold;
+    font-size: 14px;
+    color: var(--blank);
+    flex-shrink: 0;
+  }
+
+  /* BUILD 103: the per-face trigger-count badge, originally byte-identical
+     box/font to .die-weight, per D-28's no-new-palette rule. A separate
+     class rather than reusing .die-weight outright so the two remain
+     independent values that can both render on the same face (e.g. Ordain,
+     which gains weight AND has a trigger count) without one clobbering the
+     other's content via a shared className assignment.
+     BUILD 116: font-size bumped 14px -> 17px (bigger than .die-weight's
+     14px, on par with .die-mod's own 16px — this badge is meant to read as
+     the row's second-most-prominent number, not an afterthought) and the
+     rendered text itself changed from a bare '↻N' glyph to '#N' (rendering.js)
+     — '↻' reads as a reload/refresh icon to most players, not "count of";
+     '#' is unambiguous and doesn't collide with .die-weight's own '×N'
+     notation sitting right next to it in the same row. letter-spacing added
+     so the '#' doesn't visually fuse with the digit that follows it at the
+     larger size. Confirmed via Playwright (BUILD 116 verification) that
+     this still fits every row's existing width budget — see CURRENT
+     SUBSTAGE — so no column width or row height changed to accommodate it. */
+  .die-trigger-count {
+    font-family: var(--game-font);
+    font-weight: bold;
+    font-size: 17px;
+    /* Measured via Playwright: without an explicit line-height, this font's
+       default line box at 17px (~20.4px) is taller than the die row's
+       fixed 19px allocation, and pushes that one row a pixel taller than
+       every other row — exactly what the prompt says to stop and report
+       on. line-height:1 keeps the box at 17px, safely under the row
+       height, with no visible change to how the number itself renders. */
+    line-height: 1;
+    letter-spacing: 0.3px;
+    color: var(--blank);
+    flex-shrink: 0;
+  }
+
+  .die-row.nat-one .face-btn,
+  .die-row.nat-twenty .face-btn,
+  .die-row.nat-one .die-mod,
+  .die-row.nat-twenty .die-mod,
+  .die-row.nat-one .die-weight,
+  .die-row.nat-twenty .die-weight,
+  .die-row.nat-one .die-trigger-count,
+  .die-row.nat-twenty .die-trigger-count {
+    color: var(--nat);
+    border-color: var(--nat);
+  }
+
+  .die-col.player-die .die-row.loaded .face-btn,
+  .die-col.player-die .die-row.loaded .die-mod,
+  .die-col.player-die .die-row.loaded .die-weight,
+  .die-col.player-die .die-row.loaded .die-trigger-count {
+    color: var(--player-mod);
+    border-color: var(--player-mod);
+  }
+
+  .die-col.enemy-die .die-row.loaded .face-btn,
+  .die-col.enemy-die .die-row.loaded .die-mod,
+  .die-col.enemy-die .die-row.loaded .die-weight,
+  .die-col.enemy-die .die-row.loaded .die-trigger-count {
+    color: var(--enemy-mod);
+    border-color: var(--enemy-mod);
+  }
+
+  /* Stat blocks */
+
+  .stat-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    font-size: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .stat-line:last-child { border-bottom: none; }
+
+  .stat-label { color: var(--blank); font-family: var(--game-font); font-weight: bold; }
+  .stat-value { color: var(--text); font-weight: bold; font-family: var(--game-font); }
+
+  /* Hero stats — HP, Block, Soul, Intent: large at-a-glance readouts */
+
+  .hero-stats {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .stat-hero {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .stat-hero:last-child { border-bottom: none; }
+
+  .stat-icon {
+    font-size: 50px;
+    width: 58px;
+    text-align: center;
+    flex-shrink: 0;
+    line-height: 1;
+    color: var(--muted);
+  }
+
+  .stat-hero-main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stat-hero-value {
+    display: inline-block;
+    font-size: 50px;
+    font-weight: bold;
+    font-family: var(--game-font);
+    color: var(--white);
+    line-height: 1;
+  }
+
+  .stat-hero-sublabel {
+    font-size: 13px;
+    font-family: var(--game-font);
+    letter-spacing: 0.5px;
+    color: var(--blank);
+    margin-top: 6px;
+  }
+
+  /* Middle strip — centrepiece roll result */
+
+  .mid-strip {
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    padding: 11px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .mid-strip-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .round-chip {
+    font-family: var(--game-font);
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: var(--blank);
+  }
+
+  .round-chip span { color: var(--text); font-weight: bold; }
+
+  .roll-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 0 1px;
+  }
+
+  .roll-hero-number {
+    font-family: var(--game-font);
+    font-weight: bold;
+    font-size: 72px;
+    line-height: 1;
+    color: var(--white);
+  }
+
+  .roll-hero-number.roll-hero-nat { color: var(--nat); }
+
+  .roll-hero-label {
+    font-family: var(--game-font);
+    font-size: 16px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .roll-hero.roll-hero-empty .roll-hero-number,
+  .roll-hero.roll-hero-empty .roll-hero-label {
+    color: var(--line);
+  }
+
+  @keyframes rollPulse {
+    from { transform: scale(1.18); opacity: 0.55; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .roll-hero.roll-pulse .roll-hero-number {
+    animation: rollPulse 180ms ease-out;
+  }
+
+  .phase-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: bold;
+    font-family: var(--game-font);
+    letter-spacing: 0.5px;
+    border: 1px solid currentColor;
+  }
+
+  .phase-badge.phase-start_of_turn,
+  .phase-badge.phase-check_win_loss {
+    color: #a88a5a;
+    background: #1a1500;
+  }
+
+  .phase-badge.phase-roll_phase {
+    color: #60a5fa;
+    background: #1e2a3a;
+  }
+
+  .phase-badge.phase-card_phase {
+    color: #a78bfa;
+    background: #1a1f3a;
+  }
+
+  .phase-badge.phase-enemy_roll_phase,
+  .phase-badge.phase-enemy_act_phase {
+    color: #f87171;
+    background: #2a1010;
+  }
+
+  .phase-badge.phase-end_player_turn {
+    color: #7a6040;
+    background: #111108;
+  }
+
+  .result-banner {
+    display: inline-block;
+    font-family: var(--game-font);
+    font-weight: bold;
+    letter-spacing: 2px;
+    font-size: 13px;
+  }
+
+  .result-banner.result-win { color: #fbbf24; }
+  .result-banner.result-loss { color: #dc2626; }
+
+  /* Hand row — cards, not buttons */
+
+  .hand-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+    padding: 16px 4px;
+    flex-shrink: 0;
+  }
+
+  .hand-card-el {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    color: var(--player-mod);
+    font-family: var(--game-font);
+    padding: 16px 8px;
+    min-height: 100px;
+    cursor: pointer;
+    transition: transform 150ms ease, border-color 150ms ease;
+  }
+
+  .hand-card-el:hover:not(:disabled) {
+    border-color: var(--player-mod);
+    transform: translateY(-3px);
+  }
+
+  .hand-card-el:disabled {
+    cursor: not-allowed;
+  }
+
+  .hand-card-el.unaffordable {
+    opacity: 0.4;
+  }
+
+  .hand-card-cost {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--line);
+    color: var(--white);
+    font-size: 12px;
+    font-weight: bold;
+  }
+
+  .hand-card-name {
+    font-size: 17px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    text-align: center;
+  }
+
+  .hand-card-effect {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  /* Card-play / HP feedback — all under 400ms, no input blocking */
+
+  @keyframes fxShake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); }
+    75% { transform: translateX(-3px); }
+    100% { transform: translateX(0); }
+  }
+
+  #enemyPanel.fx-shake { animation: fxShake 300ms ease-in-out; }
+
+  @keyframes fxPulseBlue {
+    0% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.55); }
+    100% { box-shadow: 0 0 0 12px rgba(96, 165, 250, 0); }
+  }
+
+  #playerPanel.fx-pulse-blue { animation: fxPulseBlue 350ms ease-out; }
+
+  @keyframes fxPopRed {
+    0% { transform: scale(1.3); color: #f87171; }
+    100% { transform: scale(1); color: var(--white); }
+  }
+
+  .fx-pop-red { animation: fxPopRed 300ms ease-out; }
+
+  @keyframes fxPopBlue {
+    0% { transform: scale(1.3); color: #60a5fa; }
+    100% { transform: scale(1); color: var(--white); }
+  }
+
+  .fx-pop-blue { animation: fxPopBlue 300ms ease-out; }
+
+  /* Player-facing post-fight die action screen (Load / Strengthen / Skip) */
+
+  #dieActionPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    border-color: var(--nat);
+  }
+
+  /* Stage 1.11 card reward screen — same place and style as the die action
+     panel above (identical properties, deliberately kept as a separate
+     rule/element rather than editing #dieActionPanel's own rule). */
+  #cardRewardPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    border-color: var(--nat);
+  }
+
+  .die-action-title {
+    font-family: var(--game-font);
+    font-size: 17px;
+    font-weight: bold;
+    color: var(--white);
+    text-align: center;
+  }
+
+  .die-action-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .die-action-row button {
+    position: relative;
+    font-family: var(--game-font);
+    font-size: 14px;
+    padding: 10px 18px;
+    border: 1px solid var(--nat);
+    color: var(--nat);
+    background: var(--panel-bg);
+  }
+
+  .die-action-row button:hover {
+    background: var(--nat);
+    color: #1a1500;
+  }
+
+  /* BUILD 088: the rite's card-removal picker disables the Ordained's
+     unique class card (Rite) per ruling 7 — visibly, not just inertly. */
+  .die-action-row button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .die-action-row button:disabled:hover {
+    background: var(--panel-bg);
+    color: var(--nat);
+  }
+
+  .die-action-empty {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  /* BUILD 072: the die action screen's own reference view of the current
+     die, shown above the choice row while picking a mod to load or a face
+     to strengthen. Centred, capped width so 20 rows don't stretch the
+     panel — same treatment .map-die-preview-row's die columns already
+     get. */
+  .die-action-die-preview {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+
+  /* BUILD 081: min-width added — measured via a real headless render
+     (Playwright/Chromium, canvas measureText against the row's own
+     computed font, 16px Consolas) rather than guessed. Longest name in
+     the pool, Consecrate, renders at ~88px; the widest realistic ×N badge
+     (two digits, e.g. ×20) at ~26px; .die-mod-wrap's own existing 8px gap
+     sits between them. 88 + 8 + 26 = ~122px needed inside .die-mod-wrap
+     just to stop clipping — before this fix #dieActionDieList measured
+     only ~134px total (face-btn 34 + row gap 12 + a bare ~88px mod-wrap,
+     confirmed by the same measurement), i.e. it was shrink-wrapping to
+     its own content with zero room for a badge at all, which is why
+     "Consecrate" sat flush against the row's own right edge with nothing
+     left over. width:100%/max-width alone couldn't fix this: the ceiling
+     was never being reached because an ancestor flex context (.die-
+     action-die-preview / #dieActionPanel, both auto-sized to content) was
+     pulling the actual used width down to shrink-to-fit; min-width is an
+     absolute floor flex layout has to honour regardless, which is what
+     actually forces the extra room open. 220px covers the 122px content
+     need plus visible clear space, confirmed by the same measurement
+     script re-run against this value: mod name and badge both fully
+     inside the row with margin to spare, all twenty rows still one
+     uniform width. */
+  #dieActionDieList {
+    max-width: 260px;
+    width: 100%;
+    min-width: 220px;
+  }
+
+  /* BUILD 070: hover description for card reward / die-action choices.
+     position:absolute so it never participates in .die-action-row's own
+     flex flow — appearing/disappearing cannot shift any button's position.
+     Anchored below its own button (not the row), sized to that button's
+     own width plus a little, so it can't stray over a neighbour in a row
+     this narrow (3-4 buttons). pointer-events:none keeps it from ever
+     intercepting the click it's describing. Same panel/border/text
+     colours the rest of the app already uses — no new palette. */
+  .hover-tip {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 6px;
+    min-width: 100%;
+    max-width: 220px;
+    width: max-content;
+    padding: 6px 10px;
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: normal;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.4;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.12s;
+    z-index: 5;
+  }
+
+  .die-action-row button:hover .hover-tip {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* BUILD 071: same .hover-tip box (same background/border/text/font —
+     "the same box the card reward hover uses"), reused on the die rows —
+     only its position changes. The reward/die-action buttons pop their tip
+     downward because there's nothing important directly below them; a die
+     row has another die row immediately below it, so popping down would
+     cover it (explicitly ruled out). Instead it pops out to the row's
+     right, vertically centred on the row itself — .die-col sits next to
+     .stats-col with plenty of room, and this never touches document flow
+     (position:absolute), so no row can shift when a tip appears. */
+  .die-row .hover-tip {
+    top: 50%;
+    left: 100%;
+    right: auto;
+    bottom: auto;
+    transform: translateY(-50%);
+    margin-top: 0;
+    margin-left: 8px;
+    text-align: left;
+  }
+
+  .die-row:hover .hover-tip {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* BUILD 079: the die action screen's own die rows doubling as the
+     Load/Strengthen face picker. BUILD 080 — measured before replacing
+     (the BUILD 040/041 habit): outline-width 1px + outline-offset 2px
+     painted up to 3px OUTSIDE each row's own border box on every edge.
+     Stacked flush with zero gap between rows, two adjacent eligible rows'
+     outlines never touched or merged — each sat apart from the shared
+     boundary by its own offset, reading as the "broken grid of doubled
+     lines" reported; that same overhang was also liable to get clipped by
+     an ancestor's overflow on the right edge, which is what made eligible
+     rows measure differently from inert/loaded/nat-twenty rows that never
+     painted outside their box at all. box-shadow, unlike outline, is never
+     drawn outside the box it's set on regardless of offset — an inset
+     shadow reads as one continuous frame between adjacent eligible rows
+     and can't be clipped short of a neighbour — and like outline it never
+     changes the row's own box (box-sizing: border-box, set globally), so
+     every one of the twenty rows, pickable or not, stays exactly the width
+     it already was on the fight screen's own die list. */
+  .die-row-pickable {
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px var(--nat);
+  }
+  /* BUILD 080: the old hover recoloured .die-mod/.face-btn/.die-weight to
+     #1a1500 against a solid --nat fill, but .loaded and .nat-twenty rows
+     each carry their own higher-specificity colour rule (e.g. .die-col
+     .player-die .die-row.loaded .die-mod, .die-row.nat-twenty .die-mod)
+     that painted straight back over it — on face 20 specifically that's
+     --nat text on a --nat fill, which is how "the mod name disappears
+     into it" happened. Hover no longer touches text colour at all, so a
+     row's own text stays exactly as readable hovered as at rest regardless
+     of which colour family it belongs to; instead it uses a translucent
+     wash of --nat (same rgba-of-a-css-variable technique the existing
+     fx-pulse-blue keyframes already use for --player-mod, just at low
+     alpha instead of animated) plus a slightly heavier inset frame — both
+     still fully inside the box, so the ×N badge is never crowded toward
+     the edge. No new palette. */
+  .die-row-pickable:hover {
+    background: rgba(251, 191, 36, 0.22);
+    box-shadow: inset 0 0 0 2px var(--nat);
+  }
+  /* Unchanged from BUILD 079 — same .map-node-inert opacity figure. */
+  .die-row-pick-inert {
+    opacity: 0.45;
+  }
+
+  /* BUILD 090: rolled-face highlight, fight-screen die list plus the
+     post-win Load/Strengthen picker (see renderDieList()). No outline
+     anywhere — BUILD 080 traced doubled borders/clipping/inconsistent row
+     widths to outline's own outside-the-box painting, so this uses only
+     transform (indent) and background (the same rgba-of-a-css-variable
+     wash .die-row-pickable:hover already uses), neither of which touches
+     the row's box model or its width. No color property anywhere in
+     either rule — the existing .loaded/.nat-one/.nat-twenty text-colour
+     rules keep winning exactly as before; this only ever adds background,
+     indent and motion on top. The two states use different classes
+     (never both on the same row for the same roll) and different
+     properties from .die-row-pickable's own box-shadow, so a pickable row
+     that also happens to be the last-rolled face keeps its gold pick frame
+     AND gains this wash/indent — neither is lost. */
+  /* BUILD 093: split into a sustained (no-animation) class and a
+     flash (animated) class. Re-rendering the die list — which happens on
+     every state change, including one that has nothing to do with rolling,
+     like loading a mod mid-turn via the dev tools — rebuilds every row
+     from scratch (innerHTML = '' + createElement), so a class carrying a
+     CSS animation restarts that animation from 0% every time it's
+     re-added to the brand-new element, even though nothing about the roll
+     itself changed. renderDieList() now only adds -flash on the render
+     immediately following an actual new roll (tracked in JS — see
+     lastSeenRollSignatureByContainer below); every later re-render of that
+     same roll gets the plain .die-row-rolled instead, which carries the
+     identical sustained look with no @keyframes reference at all, so
+     reapplying it to a new element is visually inert. Indent, wash width,
+     colours and timing are all byte-for-byte unchanged from BUILD 090 —
+     only the animation-vs-sustained split is new. */
+  @keyframes dieRowRolledFlash {
+    0% { background: rgba(251, 191, 36, 0.45); }
+    100% { background: rgba(251, 191, 36, 0.14); }
+  }
+
+  .die-row-rolled {
+    transform: translateX(6px);
+    background: rgba(251, 191, 36, 0.14);
+  }
+
+  .die-row-rolled-flash {
+    transform: translateX(6px);
+    background: rgba(251, 191, 36, 0.14);
+    animation: dieRowRolledFlash 500ms ease-out;
+  }
+
+  /* Blanks are ~70% of rolls and must not read as an event: a quiet dim
+     pulse in the existing blank em-dash colour (--blank, #9c8a63) that
+     decays to nothing — no indent, no --nat gold, and nothing left once
+     the animation ends. BUILD 093: blanks have no sustained class at all
+     (unlike the non-blank .die-row-rolled above) — once the fade has
+     played, a re-render of the same roll adds no class here whatsoever, so
+     the row goes back to fully plain instead of restarting the pulse. */
+  @keyframes dieRowRolledBlankPulse {
+    0% { background: rgba(156, 138, 99, 0.28); }
+    100% { background: rgba(156, 138, 99, 0); }
+  }
+
+  .die-row-rolled-blank-flash {
+    animation: dieRowRolledBlankPulse 500ms ease-out;
+  }
+
+  /* Controls */
+
+  .controls-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .controls-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    padding: 6px 0;
+  }
+
+  button {
+    background: var(--panel-bg);
+    color: var(--text);
+    border: 1px solid var(--line);
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  button:hover { color: var(--white); border-color: var(--muted); }
+
+  #endTurnBtn {
+    font-family: var(--game-font);
+    font-size: 17px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    padding: 16px 40px;
+  }
+
+  #endTurnBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* BUILD 087: New Run lives in the top-bar now, far from End Turn, and is
+     deliberately small/muted/red-bordered rather than sharing End Turn's
+     big primary-action look — it's a destructive, rarely-clicked action,
+     not the thing a player should reach for every turn. */
+  #startGameBtn {
+    font-family: inherit;
+    font-size: 11px;
+    padding: 4px 10px;
+    color: #dc2626;
+    border-color: #dc2626;
+  }
+
+  #startGameBtn:hover {
+    color: var(--white);
+    background: #dc2626;
+    border-color: #dc2626;
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 8px;
+  }
+
+  /* BUILD 109: groups the build stamp and the new Copy Run Record button
+     on the left side of .top-bar, so #startGameBtn (New Run) stays the
+     sole occupant of the right side exactly as BUILD 087 placed it. */
+  .top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #inspector {
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    padding: 5px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  #inspectorContent {
+    white-space: pre-wrap;
+    font-size: 10px;
+    display: none;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+
+  #inspectorContent.expanded { display: block; }
+
+  /* BUILD 112 (KI-3/REG-E2) — the listener registry inspector: same hidden-
+     block/.expanded-toggle shape as #inspector/#inspectorContent above, one
+     new content container instead of reusing #inspectorContent (that one is
+     a raw JSON dump of the whole gameState; this one is grouped/formatted,
+     read-only, gameState.registry.listeners only). Remove before any real
+     release, alongside every other DEV ONLY block in this file. */
+  #registryInspector {
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    padding: 5px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  #registryInspectorContent {
+    white-space: pre-wrap;
+    font-size: 11px;
+    display: none;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+
+  #registryInspectorContent.expanded { display: block; }
+
+  .registry-hook-group { margin-bottom: 8px; }
+  .registry-hook-name { color: var(--text); font-weight: bold; }
+  .registry-clear-group { margin-left: 12px; }
+  .registry-listener-id { margin-left: 24px; }
+  .registry-empty { color: var(--muted); font-style: italic; }
+
+  /* DEV ONLY — BUILD 083: the master dev-chrome toggle and the container it
+     opens. Same pattern as #inspectorContent above — a hidden block, an
+     .expanded class that shows it, one button that toggles the class —
+     deliberately not a second mechanism. #devChrome is flex-column with the
+     same 8px gap .controls-row itself uses, so every bar inside it sits
+     exactly where it sat when it was a direct child of .controls-row.
+     Remove before any real release. */
+  #devChromeToggleBtn {
+    align-self: flex-start;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  #devChrome {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  #devChrome.expanded { display: flex; }
+
+  /* DEV ONLY — BUILD 083: the "pause before first roll" bar. Same bar shape
+     as #devStepControl/#devModLoader/#devPoisonApplier below. Remove before
+     any real release. */
+  #devPauseControl {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line);
+    font-size: 12px;
+  }
+
+  #devPauseControl label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+  }
+
+  /* DEV ONLY — step control and mod loader. Remove before any real release. */
+  #devStepControl {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line);
+    font-size: 12px;
+  }
+
+  #devStepControl button {
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+
+  #devModLoader {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line);
+    font-size: 12px;
+  }
+
+  .dev-mod-loader-label {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+
+  #devModLoader select,
+  #devModLoader input,
+  #devModLoader button {
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+
+  #devFaceInput {
+    width: 52px;
+  }
+
+  #devPoisonApplier {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line);
+    font-size: 12px;
+  }
+
+  #devPoisonApplier select,
+  #devPoisonApplier input,
+  #devPoisonApplier button {
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+
+  #devPoisonInput {
+    width: 52px;
+  }
+
+  /* ---------- RIGHT COLUMN — LOG ---------- */
+
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  #log {
+    background: var(--panel-bg);
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 10px;
+    white-space: pre-wrap;
+    font-size: 11px;
+    line-height: 15px;
+  }
+
+  #log div {
+    padding: 0;
+  }
+
+  .log-phase { color: #a88a5a; font-weight: bold; margin-top: 6px; }
+  .log-roll { color: #e2e8f0; }
+  .log-mod { color: #a78bfa; }
+  .log-card { color: #60a5fa; }
+  .log-draw { color: #8a7050; }
+  .log-start { color: #7a6040; }
+  .log-end { color: #7a6040; }
+  .log-listener { color: #4a3f2a; }
+  .log-state { color: #4a3f2a; }
+  .log-init { color: #a88a5a; }
+  .log-init-complete { color: #a88a5a; }
+  .log-enemy { color: #f87171; }
+  .log-poison { color: #4ade80; }
+  .log-win { color: #fbbf24; }
+  .log-loss { color: #dc2626; }
+  .log-click { color: #4a3f2a; }
+  .log-dev { color: #22d3ee; font-weight: bold; }
+  .log-default { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="top-bar-left">
+    <div id="buildStamp">DIE V1 — STAGE 2.65<br>BUILD <span id="buildStampNumber"></span></div>
+    <!-- BUILD 109: run record — player-facing, not dev chrome. Sits beside
+         the build stamp rather than in .controls-buttons/near End Turn,
+         same reasoning BUILD 087 gave New Run for staying out of the way
+         of frequently-clicked controls, just without New Run's destructive
+         styling — copying is always safe to click. -->
+    <button id="copyRunRecordBtn">Copy Run Record</button>
+  </div>
+  <!-- BUILD 087: New Run moved out of .controls-buttons (where it sat
+       flush against End Turn, one misclick from permanently discarding a
+       live run) and into its own corner with its own danger styling, per
+       Fergus's playtest report. Nothing about what it calls changed here —
+       only where it sits and how it looks; the confirm-before-reset logic
+       lives entirely in its click handler below. -->
+  <button id="startGameBtn">New Run</button>
+</div>
+
+<div class="app">
+
+  <div class="left-col">
+
+    <!-- BUILD 068: the run's map screen, shown between slots. Sibling of
+         #fightScreen below; refreshInspector() toggles which one is
+         visible based on gameState.run.screen. Built fresh by
+         renderMapScreen() on every refresh, same pattern as
+         #dieActionPanel/#cardRewardPanel. -->
+    <div class="panel" id="mapScreen" style="display:none;"></div>
+
+    <div id="fightScreen">
+    <!-- BUILD 125 (F31, checkpoint 2): act number on the fight screen,
+         mirroring the map screen's own "ACT N MAP" title. Text set by
+         refreshInspector() (rendering.js) from gameState.run.actNumber;
+         reuses .panel-title, no new palette. -->
+    <div class="panel-title" id="actStamp"></div>
+
+    <div class="panel combat-panel" id="enemyPanel">
+      <div class="die-col enemy-die" id="enemyDieList">
+        <div class="panel-title">ENEMY DIE</div>
+        <div class="die-row nat-one"><button class="face-btn">1</button><span class="die-mod">NAT 1</span></div>
+        <div class="die-row"><button class="face-btn">2</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">3</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">4</button><span class="die-mod">—</span></div>
+        <div class="die-row loaded"><button class="face-btn">5</button><span class="die-mod">POISON</span></div>
+        <div class="die-row"><button class="face-btn">6</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">7</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">8</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">9</button><span class="die-mod">—</span></div>
+        <div class="die-row loaded"><button class="face-btn">10</button><span class="die-mod">POISON</span></div>
+        <div class="die-row"><button class="face-btn">11</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">12</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">13</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">14</button><span class="die-mod">—</span></div>
+        <div class="die-row loaded"><button class="face-btn">15</button><span class="die-mod">POISON</span></div>
+        <div class="die-row"><button class="face-btn">16</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">17</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">18</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">19</button><span class="die-mod">—</span></div>
+        <div class="die-row nat-twenty"><button class="face-btn">20</button><span class="die-mod">NAT 20</span></div>
+      </div>
+      <div class="stats-col enemy-stats">
+        <div class="panel-title">ENEMY</div>
+        <div class="hero-stats">
+          <div class="stat-hero"><span class="stat-icon">♥</span><span class="stat-hero-value" id="enemyHpValue">— / —</span></div>
+          <div class="stat-hero">
+            <span class="stat-icon">⚔</span>
+            <div class="stat-hero-main">
+              <span class="stat-hero-value" id="enemyIntentValue">—</span>
+              <span class="stat-hero-sublabel" id="enemyIntentLabel">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="stat-line"><span class="stat-label">Poison Stacks</span><span class="stat-value" id="enemyPoisonValue">—</span></div>
+        <div class="stat-line"><span class="stat-label">Loaded buffs</span><span class="stat-value" id="enemyBuffsValue">—</span></div>
+        <div class="stat-line"><span class="stat-label">Active this turn</span><span class="stat-value" id="enemyActiveValue">—</span></div>
+      </div>
+    </div>
+
+    <div class="mid-strip">
+      <div class="mid-strip-top">
+        <span class="round-chip">ROUND <span id="roundValue">1</span></span>
+        <span class="phase-badge phase-start_of_turn" id="phaseBadge">START_OF_TURN</span>
+        <span id="resultBanner" class="result-banner" style="display:none;"></span>
+      </div>
+      <div class="roll-hero roll-hero-empty" id="rollHero">
+        <div class="roll-hero-number" id="rollResultNumber">—</div>
+        <div class="roll-hero-label" id="rollResultLabel">AWAITING ROLL</div>
+      </div>
+    </div>
+
+    <div class="panel combat-panel" id="playerPanel">
+      <div class="die-col player-die" id="playerDieList">
+        <div class="panel-title">PLAYER DIE</div>
+        <div class="die-row nat-one"><button class="face-btn">1</button><span class="die-mod">NAT 1</span></div>
+        <div class="die-row"><button class="face-btn">2</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">3</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">4</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">5</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">6</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">7</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">8</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">9</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">10</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">11</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">12</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">13</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">14</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">15</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">16</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">17</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">18</button><span class="die-mod">—</span></div>
+        <div class="die-row"><button class="face-btn">19</button><span class="die-mod">—</span></div>
+        <div class="die-row nat-twenty"><button class="face-btn">20</button><span class="die-mod">NAT 20</span></div>
+      </div>
+      <div class="stats-col player-stats">
+        <div class="panel-title">PLAYER</div>
+        <div class="hero-stats">
+          <div class="stat-hero"><span class="stat-icon">♥</span><span class="stat-hero-value" id="playerHpValue">— / —</span></div>
+          <div class="stat-hero"><span class="stat-icon">🛡</span><span class="stat-hero-value" id="playerBlockValue">—</span></div>
+          <div class="stat-hero"><span class="stat-icon">💧</span><span class="stat-hero-value" id="playerSoulValue">— / —</span></div>
+        </div>
+        <div class="stat-line"><span class="stat-label">Active debuffs</span><span class="stat-value" id="playerDebuffsValue">—</span></div>
+        <div class="stat-line"><span class="stat-label">Deck</span><span class="stat-value" id="playerDeckValue">—</span></div>
+        <div class="stat-line"><span class="stat-label">Discard</span><span class="stat-value" id="playerDiscardValue">—</span></div>
+      </div>
+    </div>
+
+    <div class="hand-row" id="handRow"></div>
+
+    </div><!-- /#fightScreen -->
+
+    <!-- Player-facing post-fight die action screen (Load / Strengthen / Skip), and BUILD 068's rite die-action choice — same panel, unchanged rendering, just a second entry point. Sibling of #fightScreen/#mapScreen so it renders correctly reached from either. Hidden except when a choice is in progress. -->
+    <div class="panel" id="dieActionPanel" style="display:none;"></div>
+
+    <!-- Player-facing post-fight card reward screen. Appears after the die action panel above is resolved (fight-win path only, never the rite path). Hidden except when a choice is in progress. -->
+    <div class="panel" id="cardRewardPanel" style="display:none;"></div>
+
+    <!-- BUILD 068: rite slot choice — heal 20 HP or take a die action. Same shape/CSS reuse as dieActionPanel/cardRewardPanel above. Hidden except when a choice is in progress. -->
+    <div class="panel" id="riteScreenPanel" style="display:none;"></div>
+
+    <div class="controls-row">
+      <div class="controls-buttons">
+        <button id="endTurnBtn">End Turn</button>
+      </div>
+      <!-- DEV ONLY — BUILD 083: the one master toggle for every piece of dev
+           chrome. Closed on every page load; closed means the State
+           Inspector, the DEV STEP row, the DEV LOAD MOD bar and the DEV
+           POISON bar are not rendered and cannot be clicked, and the two dev
+           inputs that live outside this container (die-face force rolls in
+           ROLL_PHASE, and the BUILD 076 map dev-jump nodes) are inert too.
+           Sits directly above the State Inspector toggle and reuses that
+           toggle's own pattern — see #devChrome in the stylesheet. Remove
+           before any real release. -->
+      <button id="devChromeToggleBtn">Dev Tools ▸</button>
+
+      <div id="devChrome">
+
+      <div id="inspector">
+        <button id="inspectorToggleBtn">State Inspector ▸</button>
+        <pre id="inspectorContent"></pre>
+      </div>
+
+      <!-- DEV ONLY — BUILD 112 (KI-3/REG-E2): the listener registry
+           inspector. Read-only, rendered straight from
+           gameState.registry.listeners (KI-3's own premise: the registry
+           already lives on gameState, nothing to expose that isn't already
+           there) — every listener grouped by hook, then by clearOn
+           ('permanent' | 'turn'). No forcing/editing controls: this shows
+           what's registered, it never registers or clears anything itself.
+           Remove before any real release. -->
+      <div id="registryInspector">
+        <button id="registryInspectorToggleBtn">Listener Registry ▸</button>
+        <div id="registryInspectorContent"></div>
+      </div>
+
+      <!-- DEV ONLY — BUILD 083: makes the BUILD 036/037 setup pause optional.
+           Unchecked (the default) every fight entry point runs START_OF_TURN
+           and then proceeds straight into ROLL_PHASE with no click, via the
+           same autoAdvance() every later round already uses. Checked
+           restores the exact BUILD 037 behaviour: stop after START_OF_TURN
+           and wait for Begin Roll. One shared entry path either way — see
+           startFreshTurnPaused(). Remove before any real release. -->
+      <div id="devPauseControl">
+        <span class="dev-mod-loader-label">DEV SETUP</span>
+        <label for="devPauseBeforeRollCheckbox"><input type="checkbox" id="devPauseBeforeRollCheckbox"> Pause before first roll</label>
+        <!-- BUILD 093: mute toggle for the synthesised roll sounds (js/audio.js).
+             Default unmuted (unchecked), per the prompt. Reuses this same bar
+             rather than a new one — one dev-facing checkbox does not need its
+             own row. Remove before any real release. -->
+        <label for="devMuteAudioCheckbox"><input type="checkbox" id="devMuteAudioCheckbox"> Mute sound</label>
+      </div>
+
+      <!-- DEV ONLY — single-step phase control for debugging. Remove before any real release. -->
+      <div id="devStepControl">
+        <span class="dev-mod-loader-label">DEV STEP</span>
+        <button id="devNextPhaseBtn">Next Phase</button>
+        <button id="devBeginRollBtn">Begin Roll</button>
+        <button id="devSkipToDieActionBtn">Skip to Die Action</button>
+        <button id="devSkipToCardRewardBtn">Skip to Card Reward</button>
+        <!-- BUILD 068: was the player-facing "Restart Fight" button in
+             controls-row; that button is now the player-facing "New Run"
+             (whole-run reset). This dev-only twin keeps the old
+             single-fight-reset behaviour (full HP heal included) for
+             testing the current fight in isolation — never a player-facing
+             way to undo a loss. -->
+        <button id="devRestartFightBtn">Restart Fight</button>
+      </div>
+
+      <!-- DEV ONLY — load/clear mods on a player die face at runtime. Remove before any real release. -->
+      <div id="devModLoader">
+        <span class="dev-mod-loader-label">DEV LOAD MOD</span>
+        <select id="devModSelect"></select>
+        <span class="dev-mod-loader-label">FACE</span>
+        <input type="number" id="devFaceInput" min="2" max="19" value="2">
+        <button id="devLoadModBtn">Load</button>
+        <button id="devClearFaceBtn">Clear</button>
+        <!-- BUILD 118: fills every available slot on the player die with
+             whichever mod #devModSelect currently has selected — a dev-only
+             stress tool for building the "same mod on many faces" die
+             shape the KI-19 fix (run-and-map.js's collectTriggerCountsByMod())
+             needs to be tested against. Never touches face 1/20, never
+             touches gameState.runRecord — see devLoadAll() (dev-tools.js). -->
+        <button id="devLoadAllBtn">Load All</button>
+      </div>
+
+      <!-- DEV ONLY — apply poison stacks to either combatant at runtime, for testing the tick before any mod applies it. Remove before any real release. -->
+      <div id="devPoisonApplier">
+        <span class="dev-mod-loader-label">DEV POISON</span>
+        <!-- DEV ONLY -->
+        <select id="devPoisonTargetSelect">
+          <option value="enemy" selected>Enemy</option>
+          <option value="player">Player</option>
+        </select>
+        <!-- DEV ONLY -->
+        <input type="number" id="devPoisonInput" min="1" value="6">
+        <!-- DEV ONLY -->
+        <button id="devApplyPoisonBtn">Apply</button>
+      </div>
+
+      </div><!-- /#devChrome — BUILD 083 -->
+    </div>
+
+  </div>
+
+  <div class="right-col">
+    <div id="log"></div>
+  </div>
+
+</div>
+
+<!-- BUILD 090: the JavaScript that used to live in one inline <script> block
+     here is now files in /js/, loaded in this explicit dependency order
+     via ordinary <script src> tags — no type="module", no import/export
+     anywhere. This is a hard constraint, not a preference: the game is
+     opened directly from disk (file:///...index.html), module scripts are
+     fetched with CORS checks, and file:// origins are null, so every
+     import would be blocked and the page would not load at all.
+
+     Every classic <script src> tag on this page shares one global lexical
+     scope (the same way top-level function/const/let declarations in one
+     big inline script always have) — a later file can reference an
+     earlier file's globals, and, less obviously but just as reliably, an
+     earlier file's function BODIES can reference a later file's globals
+     too, as long as nothing actually calls that function before every
+     file below has finished loading. That second guarantee is what makes
+     this split safe: the sole kickoff in the entire codebase is
+     bootstrap.js's `window.addEventListener('DOMContentLoaded', init)` —
+     nothing anywhere calls a game function eagerly at parse time — so by
+     the time anything actually runs, every file is already loaded
+     regardless of their relative order. The order below is still chosen
+     deliberately, dependency-first, for readability:
+
+       state.js            gameState schema + the five mutation helpers + shuffle()
+       listener-registry.js  registerListener/callListeners/clearListeners
+       audio.js            BUILD 093 — one AudioContext + an event-to-sound
+                            table, same shape as the listener registry
+       pipeline.js         damage/block/heal math (Law 1) + the roll system
+       cards-mods.js       card lookup/draw/play + init() (all cards, mods, classes)
+       run-and-map.js      die/act builders, run start, slot dispatch, dev-jump
+       phase-machine.js    PHASE_ORDER, runPhase(), nextPhase(), auto-advance
+       rendering.js        log(), refreshInspector(), every render*, the
+                            die-action/card-reward/rite screen-flow state,
+                            and the map renderer
+       dev-tools.js         force-roll, dev mod loader, dev poison applier
+       bootstrap.js         every addEventListener wiring + DOMContentLoaded->init
+
+     rendering.js and run-and-map.js call each other (screens open/advance
+     slots; slot dispatch opens screens) — a genuine circularity in the
+     existing design that this split did not introduce and could not fully
+     linearize either way; see each file's own header comment. -->
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/listener-registry.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/pipeline.js"></script>
+<script src="js/cards-mods.js"></script>
+<script src="js/run-and-map.js"></script>
+<script src="js/phase-machine.js"></script>
+<script src="js/rendering.js"></script>
+<script src="js/dev-tools.js"></script>
+<script src="js/bootstrap.js"></script>
+
+</body>
+</html>

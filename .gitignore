@@ -1,0 +1,11 @@
+node_modules/
+backups/
+Archive/
+test-results/
+verify/
+verify_prev/
+register_backup.json
+run_record_master.csv
+tests/autoplay_results.csv
+*.log
+.DS_Store
