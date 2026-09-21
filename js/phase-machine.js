@@ -1,19 +1,11 @@
-// ============================================================
-// PHASE-MACHINE.JS — BUILD 090 file split
 // Phase sequencing: PHASE_ORDER, runPhase(), nextPhase(), the roll-pause
 // auto-advance chain, and the two roll-resolved flags both this file and
-// dev-tools.js's force-roll functions read/write. Depends on state.js,
-// listener-registry.js, pipeline.js, cards-mods.js, and run-and-map.js
-// (all loaded first) — calls drawCards(), dealDamage(), rollDie(),
-// resolvePlayerRoll()/resolveEnemyRoll(), all already defined by this
-// point. Forward-references rendering.js's openDieActionScreen()
-// (win branch) and dieActionsRemaining — safe per state.js's header note.
-// ============================================================
+// dev-tools.js's force-roll functions read/write. Forward-references
+// rendering.js's openDieActionScreen()/dieActionsRemaining — safe per
+// state.js's header note.
 
-// Tracks whether this turn's roll has already resolved — naturally or
-// forced — for each die. Set false on entering the relevant roll phase,
-// set true the moment either path resolves a roll, so exactly one roll
-// ever happens per phase visit regardless of which path fires it.
+// Whether this turn's roll has already resolved (naturally or forced),
+// per die — ensures exactly one roll per phase visit.
 let playerRollResolved = false;
 let enemyRollResolved = false;
 
@@ -29,15 +21,8 @@ const PHASE_ORDER = [
   'CHECK_WIN_LOSS'
 ];
 
-// BUILD 135: shared "did that just kill the enemy" check, called from any
-// player-side dispatch that can deal damage outside a phase transition — a
-// rolled mod trigger, a Nat 20 sweep's or Bound scan's completion, a card
-// (cards-mods.js's playCard()). Re-enters runPhase() with the CURRENT phase,
-// firing the exact same top-of-function guard below (the BUILD 053 pattern
-// cards-mods.js's own card-kill check already used, generalised here to
-// every other kill path) — gated on run.status === 'active', so calling this
-// after the fight has already ended (or been won by an earlier call this
-// same tick) is a no-op.
+// Shared "did that just kill the enemy" check, called from any player-side
+// dispatch that can deal damage outside a phase transition.
 function checkWinNow() {
   if (gameState.run.status === 'active' && gameState.enemy.hp <= 0) {
     runPhase(gameState.turn.phase);
@@ -49,37 +34,10 @@ function runPhase(phase) {
     if (gameState.enemy.hp <= 0) {
       updateRun({ status: 'win' });
       log('[WIN] enemy defeated');
-      // BUILD 109: run record — this fight has just ended, so its round
-      // count (gameState.turn.round, not yet reset — that only happens at
-      // the next START_OF_TURN) is captured now, for both branches below
-      // (a normal fight win and the run-ending boss win alike).
       recordFightRoundEnd(gameState.enemy.id);
-      // BUILD 094/095: fires exactly once per fight — this whole branch
-      // only ever runs once, since run.status stops being 'active' the
-      // instant updateRun() above sets it to 'win', and every other path
-      // that might re-enter runPhase() for the same fight (the BUILD
-      // 053/063 "no second win path" re-entry guard this function's own
-      // top-level if is built around) is gated on that same status check.
-      // BUILD 095: boss_defeated is now its own distinct, bigger sound —
-      // branched here rather than played unconditionally before the if,
-      // so the boss case gets boss_defeated instead of (not in addition
-      // to) the ordinary fight_won every other fight still gets.
-      // BUILD 068: beating the boss ends the whole run in victory — no
-      // reward flow (there's no next fight to reward for), just the win
-      // banner (existing renderResultBanner(), unchanged, already keys off
-      // run.status === 'win') plus the run-level outcome. Any other fight
-      // win proceeds through the existing die action + card reward flow
-      // exactly as before, which now returns to the map when it resolves
-      // (see closeCardRewardScreen()/advanceRun()).
+      // A boss win only ends the run (VICTORY, D-22) on the FINAL act.
+      // Every earlier act's boss grants the usual reward flow first.
       if (gameState.run.currentSlot === 'boss') {
-        // BUILD 125 (F32, checkpoint 2): a boss win only ends the whole run
-        // in VICTORY on the FINAL act (D-22, unchanged there — no reward,
-        // just the win banner). Every earlier act's boss grants the same
-        // reward flow (one die reward — 'Boss' isn't 'Elite', so
-        // GAME_CONFIG.DIE_REWARDS.SINGLE, never the two-action ELITE grant
-        // — plus a card reward, exactly like any other fight win) before
-        // advanceRun() (run-and-map.js) starts the next act once that flow
-        // closes. boss_defeated plays either way — it is still a boss kill.
         playAudioEvent('boss_defeated');
         if (gameState.run.actNumber >= GAME_CONFIG.ACTS) {
           updateRun({ outcome: 'won' });
@@ -92,12 +50,6 @@ function runPhase(phase) {
         openDieActionScreen();
       } else {
         playAudioEvent('fight_won');
-        // BUILD 082: the elite grants two die actions instead of one,
-        // resolved one after the other through the same panel
-        // (closeDieActionScreen() loops it — see dieActionsRemaining
-        // above). currentSlot is 'opening' or {lane,index} here (the
-        // 'boss' case already returned above), never null — a fight can
-        // only be won from inside an actual fight slot.
         const cs = gameState.run.currentSlot;
         const wonSlot = cs === 'opening' ? gameState.run.act.opening : gameState.run.act[cs.lane][cs.index];
         dieActionsRemaining = (wonSlot.label === 'Elite') ? GAME_CONFIG.DIE_REWARDS.ELITE : GAME_CONFIG.DIE_REWARDS.SINGLE;
@@ -106,19 +58,10 @@ function runPhase(phase) {
       return;
     }
     if (gameState.player.hp <= 0) {
-      // BUILD 068: player death ends the whole run — no continue, no
-      // retry. outcome:'lost' is the new run-level flag; status:'loss'
-      // (unchanged) still drives the existing per-fight DEFEAT banner.
       updateRun({ status: 'loss', outcome: 'lost' });
       log('[LOSS] player defeated');
       log('[RUN] run over');
-      // BUILD 094: same once-only guarantee as fight_won above — this
-      // branch only runs once per fight, since status stops being 'active'
-      // the instant updateRun() sets it to 'loss'.
       playAudioEvent('fight_lost');
-      // BUILD 109: run record — player death ends the run outright, same
-      // "capture this fight's round count, then flush" shape as the boss
-      // win above.
       recordFightRoundEnd(gameState.enemy.id);
       flushRunRecord('lost');
       return;
@@ -133,31 +76,13 @@ function runPhase(phase) {
   if (phase === 'START_OF_TURN') {
     updateTurn({ round: gameState.turn.round + 1 });
 
-    // BUILD 095: both rising sound chains (cards played, mods triggered)
-    // reset to zero at the start of the player's turn — this is that one
-    // place. Not a sound itself, so called directly rather than through
-    // playAudioEvent().
     resetSoundChains();
 
-    // BUILD 141 (item B, F34): was a flat uniform roll over gameState.enemy.
-    // intentMin/intentMax (BUILD 068). Enemies now act from a repeating
-    // pattern of 1-4 intents (Attack/Charge/Afflict) — see
-    // advanceEnemyIntentForRound() (pipeline.js), which handles the Attack
-    // roll, the charge windup->release transition and its break check, and
-    // the dev's one-shot forcedNextIntent override, all in one place. Every
-    // enemy built by buildAct() today still carries a single-entry
-    // [{kind:'attack', min, max}] pattern using that exact same intentMin/
-    // intentMax, so this call reproduces the old roll byte-for-byte until
-    // BUILD 142 adds real multi-intent patterns.
+    // Enemies act from a repeating pattern of 1-4 intents — see
+    // advanceEnemyIntentForRound() (pipeline.js).
     advanceEnemyIntentForRound();
 
-    // BUILD 142 (item S) — fixes a BUILD 141 bug: sealedFaces was only ever
-    // concatenated onto, never replaced, so a face sealed for one round
-    // stayed sealed forever. A Seal lasts exactly one round: the active
-    // list is REPLACED by a copy of this round's queue every START_OF_TURN,
-    // even when that queue is empty (so last round's seals actually wear
-    // off), before ROLL_PHASE ever runs, so a newly queued face already
-    // counts as blank for this round's own roll.
+    // A Seal lasts one round: REPLACED (not appended) every START_OF_TURN, even when empty.
     gameState.player.sealNextRound.forEach(function(faceNumber) {
       log('[ENEMY] Face ' + faceNumber + ' is sealed and counts as blank.');
     });
@@ -165,10 +90,6 @@ function runPhase(phase) {
     updatePlayer({ sealNextRound: [] });
 
     if (gameState.player.poisonStacks > 0) {
-      // Mirrors the enemy poison tick exactly: damage through calculateDamage()
-      // per Law 1, decremented stack computed alongside it and written back in
-      // the same state-helper call (updatePlayer here, updateEnemy there) so
-      // the tick actually decays instead of dealing full damage forever.
       const poisonDamage = calculateDamage(gameState.player.poisonStacks, 'poison');
       const newStacks = gameState.player.poisonStacks - 1;
       const hpBefore = gameState.player.hp;
@@ -177,37 +98,21 @@ function runPhase(phase) {
       log('[POISON] player takes ' + poisonDamage + ' damage: HP ' + hpBefore + ' to ' + hpAfter);
     }
 
-    // BUILD 063: the player poison tick above can drop hp to 0 or below, but
-    // no phase transition happens mid-body, so without this the rest of
-    // START_OF_TURN (enemy tick, block clear, soul reset, listener clear,
-    // draw) would still run for a dead player before the top-of-runPhase()
-    // guard ever saw it. Re-entering runPhase(phase) fires that exact same
-    // guard (the BUILD 053 pattern: no second loss path) — it checks
-    // run.status === 'active' and hp <= 0, sets status, logs [LOSS], and
-    // returns. Checked before the enemy tick per spec: a dead player must
-    // not run the enemy tick.
+    // Re-enters runPhase() so the top guard fires before the enemy tick
+    // runs for a player the poison tick above just killed.
     if (gameState.player.hp <= 0) {
       runPhase(phase);
       return;
     }
 
     if (gameState.enemy.poisonStacks > 0) {
-      // Poison damage bypasses block by construction — it is applied here via
-      // calculateDamage() straight to enemy.hp, never routed through the
-      // intent-minus-block subtraction ENEMY_ACT_PHASE uses. The enemy has no
-      // block concept yet; this stays true once it does, since nothing here
-      // reads any enemy block value.
+      // Bypasses block by construction — straight to enemy.hp.
       const poisonDamage = calculateDamage(gameState.enemy.poisonStacks, 'poison');
       const newStacks = gameState.enemy.poisonStacks - 1;
       updateEnemy({ hp: gameState.enemy.hp - poisonDamage, poisonStacks: newStacks });
       log('[POISON] ' + poisonDamage + ' damage, ' + newStacks + ' stacks of poison remaining');
     }
 
-    // BUILD 063: same shape as the player check above, for the enemy tick —
-    // without this, a fight-ending poison tick would still run block clear,
-    // soul reset, and drawCards(5) for a fight the player already won.
-    // Re-enters runPhase(phase) to fire the same top-of-function guard
-    // (BUILD 053 pattern: no second win path).
     if (gameState.enemy.hp <= 0) {
       runPhase(phase);
       return;
@@ -217,27 +122,12 @@ function runPhase(phase) {
     updatePlayer({ block: 0 });
     log('[START] block cleared: ' + blockBefore + ' to 0');
 
-    // BUILD 141 (item C) — Drain: the soul reset comes in drainNextRound
-    // under maxSoul, floored at 0, then the queue is consumed. 0 when no
-    // Drain is queued, reproducing the plain maxSoul reset byte-for-byte.
     const soulAfterDrain = Math.max(0, gameState.player.maxSoul - gameState.player.drainNextRound);
     updatePlayer({ soul: soulAfterDrain, drainNextRound: 0 });
     log('[START] soul reset to ' + soulAfterDrain);
 
-    // BUILD 067: Penitence's per-turn soul loss, after the reset above so
-    // a Penitence turn begins at maxSoul - 1 (e.g. 2), never negative.
-    //
-    // BUILD 084: the loss now runs for exactly PENITENCE_TURNS turns from
-    // onset instead of the rest of the fight. The deduction itself is
-    // untouched — same 1 soul, same Math.max(0, ...) floor, same position
-    // immediately after the soul reset; only the counter and the expiry
-    // check below it are new, and both sit inside the existing branch so no
-    // other turn does extra work. This is the only place the counter moves.
-    //
-    // Onset happens in ROLL_PHASE, after this turn's tick has already run,
-    // so the three ticks land on the three START_OF_TURNs following onset.
-    // The third one deducts and then clears the flag, which is why the
-    // fourth START_OF_TURN never enters this branch at all.
+    // Onset happens in ROLL_PHASE, so the three ticks land on the three
+    // START_OF_TURNs following onset; the third deducts and clears the flag.
     if (gameState.player.penitenceActive) {
       const soulAfterPenitence = Math.max(0, gameState.player.soul - 1);
       updatePlayer({ soul: soulAfterPenitence });
@@ -254,30 +144,7 @@ function runPhase(phase) {
     clearListeners('turn');
     log('[START] turn listeners cleared');
 
-    // BUILD 056: clear last turn's roll-result exposure alongside the
-    // turn listener sweep so a card played this turn never reads a
-    // previous turn's rollOutcome/rolledFaceWeight. BUILD 066: same for
-    // modTriggeredThisTurn (see the mod_dispatch listener), so a Nat 20
-    // with loaded faces can't leave Rapture reading free on the next turn.
-    // BUILD 090: same for rolledFaceNumber — this is the one place a new
-    // turn's START_OF_TURN runs before that turn's own roll, so it's also
-    // what clears the previous roll's die-row highlight on fight start and
-    // Restart Fight (both funnel through here via startFreshTurnPaused()),
-    // not just turn-to-turn.
-    // BUILD 097: same clear for enemyAttackCancelledThisTurn — set by the
-    // enemy's own Nat 1 during ENEMY_ROLL_PHASE, read once by ENEMY_ACT_PHASE
-    // the same turn, and must not leak into the following turn.
-    // BUILD 132: outsideTriggeredFaces/roundTriggerCount (D-51) reset here
-    // too — the same round-scoped clear every other per-round roll flag
-    // above already gets, so a face triggered outside a roll last round (or
-    // last round's trigger tally) never carries into this one.
-    // BUILD 133: roundSweepPlays (fast sweep timing, pipeline.js's
-    // playSweep()) cleared the same way, same reason.
-    // BUILD 137: roundTriggerCapLogged cleared the same way, same reason —
-    // the cap-reached log line is allowed to print again next round.
-    // BUILD 138: hoppedFaces cleared the same way — a face that hopped last
-    // round loses that look the instant the new round starts, same as the
-    // rolled face's own highlight clearing.
+    // Clears every per-turn/per-round roll flag so none leaks forward.
     updateTurn({ rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, enemyRollOutcome: null, enemyRolledFaceNumber: null, modTriggeredThisTurn: false, enemyAttackCancelledThisTurn: false, outsideTriggeredFaces: [], roundTriggerCount: 0, roundSweepPlays: 0, roundTriggerCapLogged: false, hoppedFaces: [] });
 
     drawCards(GAME_CONFIG.DRAW_COUNT);
@@ -298,21 +165,8 @@ function runPhase(phase) {
   }
 
   if (phase === 'ENEMY_ACT_PHASE') {
-    // BUILD 097: the enemy's own Nat 1 cancels this turn's attack entirely
-    // — no damage, no intent resolution, per the prompt exactly. Checked
-    // first and returns before intent/block are even read, so nothing
-    // below this (the block-absorb/damage sounds, dealDamage(), the two
-    // per-outcome log lines) runs at all this turn. enemyAttackCancelledThisTurn
-    // is set by boss_nat_one_passive (cards-mods.js) during ENEMY_ROLL_PHASE,
-    // earlier the same turn, and cleared for good at the next START_OF_TURN.
-    // BUILD 141 (item B): the enemy's own Nat 1 cancels THIS ROUND's intent,
-    // whatever kind it is — a charge's wind-up round is cancelled outright,
-    // skipping the release entirely (advanceEnemyPattern() moves the
-    // pattern pointer past the whole charge, exactly like a normal
-    // attack/afflict round completing); a charge's release round or a plain
-    // attack/afflict round completing under cancellation still advances
-    // normally, just with no effect this round. Every case above reduces to
-    // the same call: advance the pattern, no damage, no poison applied.
+    // The enemy's own Nat 1 cancels this round's intent entirely — every
+    // case reduces to: advance the pattern, no effect.
     if (gameState.turn.enemyAttackCancelledThisTurn) {
       log('[ENEMY] attack cancelled by its own Nat 1');
       advanceEnemyPattern();
@@ -323,13 +177,7 @@ function runPhase(phase) {
     const block = gameState.player.block;
     const enemyName = gameState.enemy.name;
 
-    // BUILD 142 (item C, Pontifex's own Nat 20) — "an Attack this round
-    // resolves twice; a wind-up, a release and an Afflict resolve once."
-    // Consumed here, once, regardless of which kind this round's entry
-    // actually is (a wind-up round coinciding with the flag still just
-    // clears it with no extra effect) — the local pontifexDouble captures
-    // whether it was set before clearing it, so the attack branch below can
-    // still act on it.
+    // Pontifex's own Nat 20: an Attack this round resolves twice.
     const pontifexDouble = gameState.enemy.pontifexDoubleAttackThisRound;
     if (pontifexDouble) {
       updateEnemy({ pontifexDoubleAttackThisRound: false });
@@ -337,12 +185,8 @@ function runPhase(phase) {
 
     if (entry && entry.kind === 'charge') {
       if (gameState.enemy.chargeStage === 'windup') {
-        // No damage this round — the wind-up itself was already announced
-        // (and logged) at START_OF_TURN. Pattern does not advance: the
-        // release is next round, same patternIndex.
         log('[ENEMY] ' + enemyName + ' winds up.');
       } else {
-        // Release round.
         if (gameState.enemy.chargeBroken) {
           log('[ENEMY] ' + enemyName + '\'s release is lost.');
         } else {
@@ -361,36 +205,13 @@ function runPhase(phase) {
       log('[ENEMY] ' + enemyName + ' afflicts: ' + stacks + ' stacks of poison.');
       advanceEnemyPattern();
     } else {
-      // Attack (or, defensively, no pattern at all — treated as a zero
-      // intent so nothing throws).
       const intent = entry ? entry.rolledValue : 0;
       const rawDamage = Math.max(0, intent - block);
-      // BUILD 094: block-absorb sound, announced before dealDamage() below
-      // so it lands first — this is the one place the intent-vs-block
-      // subtraction already happens, so it's the only correct spot to know
-      // "block actually absorbed some of this hit" (as opposed to just
-      // "the player currently has some block," which dealBlock() itself
-      // would not know for an enemy attack it isn't even involved in).
-      // Math.min(intent, block) is the actual amount of the hit block ate,
-      // gated on >0 so a hit that arrives against zero block never plays
-      // the absorb thud. The damage_player sound (fired inside dealDamage()
-      // below, independently, gated on damage>0) follows immediately after
-      // for whatever gets through — a fully-blocked hit fires this sound
-      // alone, an unblocked hit fires only damage_player, and a partially
-      // blocked hit fires both exactly once each, in that order.
       const blockedAmount = Math.min(intent, block);
       if (blockedAmount > 0) {
         playAudioEvent('block_absorb');
       }
-      // BUILD 064: explicit source tag closes the one previously-untagged
-      // calculateDamage() call the audit found. 'enemy_attack' is
-      // deliberately not 'attack' so it stays outside Fervour's
-      // sourceType === 'attack' check — enemy damage to the player must
-      // never be doubled by a buff meant for the player's own outgoing
-      // attacks. Routed through dealDamage(target: 'player', ...) like
-      // every other damage site, but with fireListener false: this site
-      // never fired ON_DAMAGE_DEALT before this build (no listener is
-      // registered for it) and must not gain one now.
+      // 'enemy_attack', not 'attack', so Fervour never doubles it.
       const damage = dealDamage('player', rawDamage, 'enemy_attack', null, false);
       if (pontifexDouble) {
         const damage2 = dealDamage('player', rawDamage, 'enemy_attack', null, false);
@@ -412,9 +233,6 @@ function runPhase(phase) {
 function nextPhase() {
   const currentPhase = gameState.turn.phase;
 
-  // If a roll phase is ending and nothing (forced or natural) has resolved
-  // its roll yet, resolve it naturally now. If a forced roll already
-  // resolved it this visit, this is skipped — exactly one roll per phase.
   if (currentPhase === 'ROLL_PHASE' && !playerRollResolved) {
     playerRollResolved = true;
     const face = rollDie(gameState.die.faces);
@@ -423,23 +241,13 @@ function nextPhase() {
   if (currentPhase === 'ENEMY_ROLL_PHASE') {
     if (!enemyRollResolved) {
       enemyRollResolved = true;
-      // BUILD 075: the phase itself is unchanged and always runs (the
-      // fight loop's shape is untouched) — for a dieless enemy there is
-      // simply nothing to roll, so neither rollDie() nor resolveEnemyRoll()
-      // (and none of their log lines) run at all.
       if (gameState.enemy.hasDie) {
         const enemyFace = rollDie(gameState.enemy.die.faces);
         resolveEnemyRoll(enemyFace);
       }
     }
-    // BUILD 142 (items B/C) — a few designed enemies (Lector, Hierophant,
-    // Pontifex) also react to the PLAYER's own roll this round, independent
-    // of the enemy's own die — applyEnemyReads() (pipeline.js). Called
-    // unconditionally here (not nested inside the !enemyRollResolved guard
-    // above) so it still runs exactly once per round even when the enemy's
-    // own roll was forced earlier via the dev drawer (forceEnemyRoll(),
-    // dev-tools.js, which sets enemyRollResolved itself and never calls
-    // this function).
+    // A few designed enemies also react to the PLAYER's own roll. Called
+    // unconditionally so it still runs once per round when forced.
     applyEnemyReads();
   }
 
@@ -448,36 +256,14 @@ function nextPhase() {
   runPhase(PHASE_ORDER[nextIndex]);
 }
 
-// How long auto-advance pauses on ROLL_PHASE before resolving the natural
-// roll. A human cannot reliably pick out and click one specific face among
-// twenty within a couple hundred milliseconds, so this is a deliberate
-// ~1.5-2s wait a player can act inside, not a short race window — 300ms
-// (tried previously) was consistently too fast to land a real click.
+// Long enough for a human to click one specific face among twenty.
 const ROLL_PHASE_PAUSE_MS = 1800;
 
-// Auto-advances through every phase that needs no player input, stopping at
-// CARD_PHASE (the only phase that waits for the player) or halting early if
-// runPhase()'s win/loss guard flips run.status away from 'active' mid-chain.
-// Always takes at least one step, so calling this while already sitting in
-// CARD_PHASE correctly runs a full turn (END_PLAYER_TURN through the next
-// ROLL_PHASE) rather than doing nothing.
-//
-// While sitting in ROLL_PHASE with no roll resolved yet, the chain pauses
-// for ROLL_PHASE_PAUSE_MS via setTimeout instead of calling nextPhase()
-// immediately — synchronous code can never leave a window for a click to
-// land, so this pause is what actually lets forcePlayerRoll() run before
-// the natural roll does. Nothing but a face click (forcePlayerRoll, via the
-// existing gating on gameState.turn.phase) or the dev tools can interrupt
-// this wait — End Turn and every other control are already disabled outside
-// CARD_PHASE (see refreshInspector()'s endTurnBtn.disabled line), so this
-// needed no new gating of its own. When the pause elapses, nextPhase() is
-// the same function used everywhere else: if a forced roll already resolved
-// playerRollResolved during the pause, its own existing guard skips the
-// natural roll and just advances the phase — so exactly one roll ever
-// resolves, forced or natural, never both. This pause only applies to the
-// player's ROLL_PHASE inside the auto-advance chain — ENEMY_ROLL_PHASE and
-// every other phase transition in autoAdvanceStep()/continueAutoAdvance()
-// below are untouched and still advance immediately.
+// Auto-advances through every phase needing no player input, stopping at
+// CARD_PHASE. While sitting in ROLL_PHASE unresolved, pauses via
+// setTimeout (synchronous code can't leave a window for a click to land)
+// — if a forced roll resolves first, nextPhase()'s own guard skips the
+// natural roll, so exactly one roll ever happens.
 function autoAdvance() {
   autoAdvanceStep();
 }
@@ -485,9 +271,6 @@ function autoAdvance() {
 function autoAdvanceStep() {
   if (gameState.turn.phase === 'ROLL_PHASE' && !playerRollResolved) {
     setTimeout(function() {
-      // Abandon this continuation if something else already moved the game
-      // out of ROLL_PHASE during the pause (e.g. Restart Fight clicked
-      // mid-wait) — that path started its own autoAdvance chain already.
       if (gameState.turn.phase !== 'ROLL_PHASE') return;
       nextPhase();
       continueAutoAdvance();

@@ -912,3 +912,27 @@ Item C (F35, BASE for BUILD 142): an enemy can carry a die of any GAME_CONFIG.DI
 Verification: facts 111/111, mods 40/40 (both unchanged pass counts, no assertion weakened), new tests/build141.test.js 22/22 (5 item A + 9 item B + 8 item C), including a seeded byte-identical replay against a genuine pre-BUILD-141 baseline captured from the backup copy. Screenshot diff (node tests/screenshots.js --compare, vs the true BUILD 140 set): map 3.27%, fight 0.15%, die_action 1.54%, card_reward 0.46%, dev_drawer 4.18% — all accounted for by the log panel's larger per-face JSON dump, the rewritten intent label, and the new dev-drawer control rows; no other visual change found.
 
 Limitation: Notion was not updated with F33/F34/F35 (no Notion MCP access this session) — config.js/CLAUDE.md are up to date; the Notion page still needs the same three lines pasted in.
+
+---
+
+# CURRENT SUBSTAGE
+
+Stage 2.69 (BUILD 142) — seven items, all kept.
+
+Item S: gameState.turn.sealedFaces was only ever concatenated onto at START_OF_TURN, never replaced — a Seal never actually wore off. Fixed to REPLACE the list every START_OF_TURN (even when empty) and explicitly clear it at every fight-start reset. See LOADED-FACE RULE / SEAL.
+
+Items A/B/C (F36/F37, closes checkpoint 5's enemy design): GAME_CONFIG.ENEMIES now holds fifteen named, designed enemies (five per act) with literal patterns and, mostly, real dice — DIE_SIZE.ELITE lowered to 12, DIE_SIZE.NORMAL (6) now used by every act 2/3 normal fight, act 1's five lane positions get their own fixed HP (ACT1_LANE_FIGHT_HP). Cardinal and Pontifex each replace the default boss Nat behaviour entirely; Lector/Hierophant/Pontifex each read the player's own roll once a round (applyEnemyReads(), pipeline.js). Full write-up in ENEMY DIE PER TYPE, rewritten this build.
+
+Item D (KI-22, answered): enemy_nat_20/enemy_nat_1 (audio.js, ≤200ms each) plus a three-pulse row highlight (`.die-row-enemy-nat-pulse`, --nat colour) and NAT 20/CANCELLED — NAT 1 intent text on a genuine enemy Nat.
+
+Item E: Hosanna reworked — 6 damage, 12 if the enemy's intent this round is not an Attack (was soul-remaining-based).
+
+Item F (F38): Threnody reworked — always triggers gameState.run.threnodyFace, a whole number from 2 to 19 fixed once per run, instead of the lowest-numbered loaded face; every copy shares the number; card text is now live via getCardEffectText() (rendering.js), the one new indirection every card-text draw site (hand, card reward, rite removal) goes through instead of reading CARD_EFFECT_TEXT directly.
+
+Verification: facts 111/111, mods 40/40, build141 22/22 (two of its own tests updated under the test rule — Item B-i's baseline replay, since Verger's opening pattern changed on purpose, and Item C-h's elite-die layout, since DIE_SIZE.ELITE changed on purpose), new tests/build142.test.js 22/22 (3 item S + 1 item A + 5 item B + 6 item C + 2 item D + 2 item E + 3 item F). Three existing facts.test.js tests also updated under the same rule: F17/F18 (act 1 HP-by-position + literal patterns replace the old flat intent band), F20 (Lector's own 12-sided die replaces the old flat elite die), F31 (same act-1 HP change, boss intentMin/intentMax assertions dropped), plus the "no lane repeats a normal enemy" test (keys off enemy name now, not the retired normalTypeIndex), plus Hosanna's and Threnody's own behaviour/text tests (both cards deliberately reworked).
+
+Screenshot diff (node tests/screenshots.js --compare, vs the true BUILD 141 set): differences confined to enemy names/intents, enemy die columns, HP, the map's elite/boss lines, Hosanna/Threnody card text, and the enemy Nat cue — see paste-back for exact per-screen numbers.
+
+Full write-ups for earlier builds: HISTORY.md.
+
+BUILD 143 removed the build story from code comments, index.html comments and CLAUDE.md's standing sections. The full earlier text is in git at commit f4a5c30.

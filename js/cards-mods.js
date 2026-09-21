@@ -1,29 +1,13 @@
-// ============================================================
-// CARDS-MODS.JS — BUILD 090 file split
 // Card lookup/draw/play, and init() — every card, mod, and class
-// definition, plus the Ordained's passive registrations. Cards and mods
-// are not actually separable files in this codebase: they are all built
-// inline inside one init() function, intermixed with class registration
-// and the one-time dev-chrome reset. init() is kept intact and unsplit
-// here rather than decomposed into buildCards()/buildMods()/buildClasses()
-// helpers — that would be a real refactor of working code, not a file
-// split, and this build's whole point is zero behaviour change.
-// init() itself is never called until window's DOMContentLoaded fires
-// (see bootstrap.js) — by then every other file, including rendering.js's
-// renderDevModOptions() (called at init()'s own end) and run-and-map.js's
-// startNewRun() (called at init()'s very end), has already executed and
-// defined its globals in the one shared script scope. Depends on state.js,
-// listener-registry.js, and pipeline.js (all three already loaded first).
-// ============================================================
+// definition, plus the Ordained's passive registrations, all built inline
+// inside one init() function.
 
 // ---------- CARD LOOKUP ----------
 
 function getCard(id) { return gameState.config.cards[id]; }
 
-// BUILD 058: a handful of cards (starting with Rapture) have a cost that
-// depends on live gameState at play time rather than a fixed soulCost.
-// Such cards carry an optional card.getCost(gameState) function; every
-// other card keeps using its static soulCost unchanged.
+// A card carries an optional card.getCost(gameState) function when its
+// cost depends on live gameState rather than a fixed soulCost.
 function getCardCost(card) {
   return card.getCost ? card.getCost(gameState) : card.soulCost;
 }
@@ -53,10 +37,6 @@ function drawCards(n) {
 // ---------- CARD PLAY ----------
 
 function playCard(handIndex) {
-  // BUILD 112 (KI-2): a card must never resolve once the run has stopped
-  // being active — the same guard callListeners() (listener-registry.js)
-  // already applies to every hook dispatch, extended here to the one
-  // direct state-mutating entry point that doesn't go through a listener.
   if (gameState.run.status !== 'active') { log('[CARD] cannot play — run is not active'); return; }
 
   const cardId = gameState.player.hand[handIndex];
@@ -76,20 +56,9 @@ function playCard(handIndex) {
 
   updatePlayer({ soul: gameState.player.soul - cost });
 
-  // BUILD 094: card-play sound, announced before the card's own effect()
-  // resolves — a card is "played" here, the one place playCard() commits
-  // to it (soul already spent), so this is the natural announce point,
-  // ahead of whatever damage/block sound that effect() goes on to trigger
-  // a moment later (e.g. an attack card's click, then dealDamage()'s own
-  // damage_enemy landing sound). Classification: card.type already
-  // distinguishes attack/block/utility for every card in the pool; rite
-  // and litany are the only two whose effect() calls both dealDamage() and
-  // dealBlock() (grep-confirmed against every card's effect body), so
-  // they're checked by id rather than adding a fourth card.type value
-  // nothing else needs. Utility cards (draw/soul/poison — no damage or
-  // block at all) get no card-play sound: the prompt names only attack/
-  // block/hybrid, and utility fits none of them, the same "silence is
-  // deliberate" the prompt states outright for draw.
+  // Rite and Litany are the only cards whose effect() deals both damage
+  // and block, so they're checked by id rather than a fourth card.type.
+  // Utility cards get no card-play sound — silence is deliberate.
   const cardSoundEvent = (cardId === 'rite' || cardId === 'litany') ? 'card_hybrid'
     : card.type === 'attack' ? 'card_attack'
     : card.type === 'block' ? 'card_block'
@@ -105,24 +74,8 @@ function playCard(handIndex) {
 
   log('[CARD] played ' + card.name + ' (cost ' + cost + ')');
 
-  // BUILD 053: a card can kill the enemy mid-CARD_PHASE, but no phase
-  // transition happens while cards are being played, so the existing
-  // win/loss guard at the top of runPhase() never gets a chance to see
-  // it until End Turn is clicked. Calling runPhase() with the CURRENT
-  // phase re-enters that exact same guard immediately: it checks
-  // enemy.hp <= 0 before anything else, sets run.status to 'win', logs
-  // [WIN], opens the die action screen via openDieActionScreen() (the
-  // identical victory path CHECK_WIN_LOSS already calls), and returns
-  // without touching turn.phase or re-running any phase logic — so
-  // nothing else about CARD_PHASE re-fires. The guard is itself gated
-  // on run.status === 'active', so if this has already fired (or the
-  // fight was already won/lost some other way), this call is a no-op
-  // and the guard cannot run the victory path a second time.
-  // BUILD 135: was its own inline run.status/enemy.hp check calling
-  // runPhase() directly; now the same one-line call to phase-machine.js's
-  // checkWinNow() every other player-side kill path uses (rolled mod
-  // trigger, Nat 20 sweep, Bound scan) — identical guard, no behaviour
-  // change, one fewer copy of it.
+  // A card can kill the enemy mid-CARD_PHASE, with no phase transition to
+  // trigger runPhase()'s own win/loss guard — checkWinNow() re-enters it.
   checkWinNow();
 }
 
@@ -153,15 +106,6 @@ function init() {
     }
   };
 
-  // Stage 1.11 substage 2 — real card pool, tier 1: the eight cards that
-  // are just numbers on existing verbs and need no new engine capability.
-  // Names are placeholders and will change. The seven conditional/die-
-  // reading cards come in later substages. Registered in config.cards
-  // exactly like strike/ward/rite (so getCard()/drawCards()/playCard()
-  // work on them unchanged once added to a deck), then also referenced
-  // (same object, not a copy) from config.cardPool, which is what the
-  // reward screen actually draws its 3 offered options from. TEST_A/B/C
-  // (BUILD 050) are deleted entirely — replaced, not kept alongside these.
   gameState.config.cards['rebuke'] = {
     id: 'rebuke', name: 'Rebuke', soulCost: 0, type: 'attack', classRestriction: null, tier: 'common', tags: [],
     effect: function(gameState) {
@@ -207,10 +151,6 @@ function init() {
     }
   };
 
-  // Grants soul through the exact same updatePlayer({ soul: ... }) call
-  // the Offering mod already uses — no new helper.
-  // BUILD 052: cost dropped from 1 to 0 (was a net +1 soul for a card
-  // slot, below the 6-8 per soul band). Effect unchanged — still grants 2.
   gameState.config.cards['communion'] = {
     id: 'communion', name: 'Communion', soulCost: 0, type: 'utility', classRestriction: null, tier: 'uncommon', tags: ['soul'],
     effect: function(gameState) {
@@ -218,9 +158,6 @@ function init() {
     }
   };
 
-  // Applies poison through the exact same gameState.enemy.poisonStacks
-  // field the Blight/Virulence mods and the dev poison applier already
-  // write to — no new phase logic, no changes to the decay tick.
   gameState.config.cards['censer'] = {
     id: 'censer', name: 'Censer', soulCost: 1, type: 'utility', classRestriction: null, tier: 'common', tags: ['poison'],
     effect: function(gameState) {
@@ -228,8 +165,6 @@ function init() {
     }
   };
 
-  // BUILD 052: tier 3, state-read conditionals — each reads live gameState
-  // at play time (poison stacks or enemy intent) rather than a fixed number.
   gameState.config.cards['purge'] = {
     id: 'purge', name: 'Purge', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['poison'],
     effect: function(gameState) {
@@ -245,12 +180,8 @@ function init() {
 
   gameState.config.cards['interdict'] = {
     id: 'interdict', name: 'Interdict', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: [],
-    // BUILD 141 (item B): reads getIncomingIntentDamage() (pipeline.js)
-    // instead of the old flat gameState.enemy.intent >= 12 comparison — a
-    // wind-up or a broken release deals 0 real damage this round, so this
-    // now correctly reads 5 block there instead of 10, even though the
-    // enemy's pattern entry for a charge still names a much bigger release
-    // number.
+    // Reads getIncomingIntentDamage(), not the raw intent — a wind-up or
+    // broken release deals 0 real damage this round even with a big pattern number.
     effect: function(gameState) {
       const heavyIntent = getIncomingIntentDamage() >= 12;
       const block = dealBlock(heavyIntent ? 10 : 5, 'interdict');
@@ -271,12 +202,8 @@ function init() {
     }
   };
 
-  // BUILD 055: tier 4 — Retribution, the anti-passivity hybrid. Reads
-  // gameState.player.block live at play time, exactly like Purge and
-  // Reckoning already read poison stacks. Capped at 12 (taste call, see
-  // CLAUDE.md CONFIRMED WORKING): uncapped, a Consecrate turn reaches the
-  // mid-20s to mid-30s off one 1-soul card, trivialising the current test
-  // enemy while staying irrelevant against later, larger enemy HP pools.
+  // Capped at 12 — uncapped, a Consecrate turn reaches the mid-20s to
+  // mid-30s off one 1-soul card.
   gameState.config.cards['retribution'] = {
     id: 'retribution', name: 'Retribution', soulCost: 1, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['bastion'],
     effect: function(gameState) {
@@ -292,11 +219,8 @@ function init() {
     }
   };
 
-  // BUILD 057: tier 5 — Covenant, the first card to consume BUILD 056's
-  // roll exposure. Reads gameState.turn.rolledFaceWeight directly (never
-  // re-derives weight from gameState.die.faces) so it rewards Strengthen
-  // concentration on whatever face actually came up this turn, regardless
-  // of whether that face resolved as blank or a mod trigger.
+  // Reads gameState.turn.rolledFaceWeight directly — rewards Strengthen
+  // concentration on whatever face came up, blank or mod trigger alike.
   gameState.config.cards['covenant'] = {
     id: 'covenant', name: 'Covenant', soulCost: 1, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['mass'],
     effect: function(gameState) {
@@ -306,27 +230,11 @@ function init() {
     }
   };
 
-  // BUILD 058: tier 5 — Rapture, the last card in the pool. getCost() is
-  // read by both playCard()'s soul-affordability gate and
-  // renderCardButtons()'s hand-card badge via the shared getCardCost()
-  // helper, so the badge itself reflects the reduced cost on a mod turn,
-  // not just the play logic. Damage always routes through
-  // calculateDamage() tagged 'attack', unaffected by which cost branch
-  // applied.
-  //
-  // BUILD 066: switched from reading gameState.turn.rollOutcome === 'mod'
-  // to gameState.turn.modTriggeredThisTurn. rollOutcome alone can't carry
-  // this condition on a Nat 20 turn — it reads 'nat_twenty' there, never
-  // 'mod', regardless of how many loaded faces just triggered — so Rapture
-  // needs a flag set at the actual trigger site rather than re-derived
-  // from the roll result. modTriggeredThisTurn is set by the shared
-  // mod_dispatch MOD_TRIGGER listener (see init()), the one dispatch path
-  // both a normal single-face mod roll and Nat 20's onNatTwenty loop both
-  // call through, so this stays true to "reuse the same dispatch path" —
-  // no parallel state field duplicating what a mod trigger already means,
-  // just the one flag that was previously implicit in rollOutcome === 'mod'
-  // made explicit so it survives a Nat 20 turn too. Reset to false every
-  // START_OF_TURN alongside rollOutcome/rolledFaceWeight.
+  // getCost() is read by both playCard()'s affordability gate and the
+  // hand-card badge via getCardCost(). Reads modTriggeredThisTurn, not
+  // rollOutcome === 'mod' — rollOutcome reads 'nat_twenty' on a Nat 20
+  // turn regardless of how many faces triggered, so Rapture needs a flag
+  // set at the actual trigger site (mod_dispatch) to survive that case.
   gameState.config.cards['rapture'] = {
     id: 'rapture', name: 'Rapture', soulCost: 2, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['soul'],
     getCost: function(gameState) {
@@ -343,12 +251,8 @@ function init() {
     }
   };
 
-  // BUILD 059: tier 5 — Orison, the last card in the pool. Reads
-  // gameState.turn.rollOutcome directly (never re-derives blankness from
-  // the die, the face, or the blank passive listener) — this is what
-  // correctly excludes NAT_ONE/NAT_TWENTY, which carry no loaded mod but
-  // are not 'blank' in rollOutcome terms, from the 9-damage branch.
-  // Damage always routes through calculateDamage() tagged 'attack'.
+  // Reads rollOutcome directly — excludes NAT_ONE/NAT_TWENTY, which carry
+  // no loaded mod but aren't 'blank' either, from the 9-damage branch.
   gameState.config.cards['orison'] = {
     id: 'orison', name: 'Orison', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: [],
     effect: function(gameState) {
@@ -362,21 +266,9 @@ function init() {
     }
   };
 
-  // ---------- BUILD 131: checkpoint 3, sixteen new cards, no new engine
-  // code — every one reads state a card already reads elsewhere (rolled
-  // face weight/trigger count, block, poison stacks, soul) through the
-  // exact same fields/helpers the existing pool already uses. Same
-  // capped/uncapped two-branch log style Retribution/Tithe/Anathema
-  // already use for every capped card below.
-
-  // Tenet — tier uncommon, cost 2, tags Growth+Mass. Reads the rolled
-  // face's own modData.triggerCount (BUILD 108, run-scoped, not
-  // fight-scoped) — a blank roll's face carries no modData, so the read
-  // falls through to 0 exactly as a non-triggering face already does for
-  // Zeal/Cope's own accumulatedBonus/copeBonus reads. BUILD 139: no cap —
-  // +1 per trigger instead of +3, for slower, uncapped growth. Faces 1 and
-  // 20 carry this same triggerCount field (BUILD 138), so a Nat roll reads
-  // that face's own count exactly like any other face.
+  // Reads the rolled face's own modData.triggerCount — a blank roll's
+  // face carries no modData, so the read falls through to 0. Faces 1/20
+  // carry this same field, so a Nat roll reads its own count too.
   gameState.config.cards['tenet'] = {
     id: 'tenet', name: 'Tenet', soulCost: 2, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['growth', 'mass'],
     effect: function(gameState) {
@@ -388,11 +280,7 @@ function init() {
     }
   };
 
-  // Gradual — tier uncommon, cost 1, tags Mass. Scans every loaded face
-  // (modId !== null) for the highest weight, same face.weight field
-  // Covenant/Tabernacle read off a single rolled face, just maxed across
-  // the whole die here instead. BUILD 139: no cap — +1 per weight instead
-  // of +3, for slower, uncapped growth.
+  // Scans every loaded face for the highest weight.
   gameState.config.cards['gradual'] = {
     id: 'gradual', name: 'Gradual', soulCost: 1, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['mass'],
     effect: function(gameState) {
@@ -404,7 +292,7 @@ function init() {
     }
   };
 
-  // Vacancy — tier common, cost 2, tags Mass. Counts blank (modId null)
+  // Counts blank (modId null)
   // faces among faces 2-19 (index 1-18), excluding the two Nat faces.
   gameState.config.cards['vacancy'] = {
     id: 'vacancy', name: 'Vacancy', soulCost: 2, type: 'attack', classRestriction: null, tier: 'common', tags: ['mass'],
@@ -423,7 +311,7 @@ function init() {
     }
   };
 
-  // Lauds — tier common, cost 1, tags Growth. Counts loaded mods (both
+  // Counts loaded mods (both
   // slots) carrying the Growth tag across the whole die — a two-mod face
   // counts twice, same modId/modId2 scan Congregation already uses, just
   // tallied instead of booleaned.
@@ -450,7 +338,7 @@ function init() {
     }
   };
 
-  // Chastise — tier common, cost 1, no tags. Flat damage, same shape as Rebuke.
+  // Flat damage, same shape as Rebuke.
   gameState.config.cards['chastise'] = {
     id: 'chastise', name: 'Chastise', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: [],
     effect: function(gameState) {
@@ -458,7 +346,7 @@ function init() {
     }
   };
 
-  // Cloister — tier common, cost 1, no tags. Flat block, same shape as Ward.
+  // Flat block, same shape as Ward.
   gameState.config.cards['cloister'] = {
     id: 'cloister', name: 'Cloister', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: [],
     effect: function(gameState) {
@@ -466,8 +354,7 @@ function init() {
     }
   };
 
-  // Psalm — tier common, cost 0, no tags. Draws through the same
-  // drawCards() path Scripture already uses.
+  // Draws through the same drawCards() path Scripture already uses.
   gameState.config.cards['psalm'] = {
     id: 'psalm', name: 'Psalm', soulCost: 0, type: 'utility', classRestriction: null, tier: 'common', tags: [],
     effect: function(gameState) {
@@ -475,9 +362,7 @@ function init() {
     }
   };
 
-  // Reliquary — tier common, cost 1, tags Bastion. Reads block BEFORE its
-  // own dealBlock() call adds to it, same "read live state before the
-  // card's own effect changes it" shape as every other conditional card.
+  // Reads block BEFORE its own dealBlock() call adds to it.
   gameState.config.cards['reliquary'] = {
     id: 'reliquary', name: 'Reliquary', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: ['bastion'],
     effect: function(gameState) {
@@ -492,9 +377,7 @@ function init() {
     }
   };
 
-  // Vindication — tier rare, cost 2, tags Bastion. Block is read only,
-  // never spent — same read-not-spend shape Retribution/Anathema already
-  // use, just doubled and capped higher.
+  // Block is read only, never spent, doubled and capped higher.
   gameState.config.cards['vindication'] = {
     id: 'vindication', name: 'Vindication', soulCost: 2, type: 'attack', classRestriction: null, tier: 'rare', tags: ['bastion'],
     effect: function(gameState) {
@@ -510,8 +393,7 @@ function init() {
     }
   };
 
-  // Myrrh — tier uncommon, cost 1, tags Poison. Reads gameState.enemy.
-  // poisonStacks, the same field Reckoning/Censer already read/write.
+  // Reads gameState.enemy.poisonStacks.
   gameState.config.cards['myrrh'] = {
     id: 'myrrh', name: 'Myrrh', soulCost: 1, type: 'block', classRestriction: null, tier: 'uncommon', tags: ['poison'],
     effect: function(gameState) {
@@ -527,8 +409,7 @@ function init() {
     }
   };
 
-  // Exequy — tier rare, cost 0, tags Poison. Reads enemy poison stacks
-  // without removing them, same read-only shape as Reckoning's own read.
+  // Reads enemy poison stacks without removing them.
   gameState.config.cards['exequy'] = {
     id: 'exequy', name: 'Exequy', soulCost: 0, type: 'attack', classRestriction: null, tier: 'rare', tags: ['poison'],
     effect: function(gameState) {
@@ -543,12 +424,10 @@ function init() {
     }
   };
 
-  // Hosanna — tier common, cost 1, tags none. BUILD 142 (item E) reworks
-  // this card entirely: reads the enemy's own intent this round
-  // (gameState.enemy.currentEntry — set by advanceEnemyIntentForRound(),
-  // pipeline.js) instead of the player's remaining soul. A wind-up, a
-  // release and an Afflict all count as "not an Attack" — only a literal
-  // {kind:'attack'} entry gets the base 6.
+  // Reads the enemy's own intent this round (gameState.enemy.currentEntry)
+  // instead of the player's remaining soul. A wind-up, a release and an
+  // Afflict all count as "not an Attack" — only a literal {kind:'attack'}
+  // entry gets the base 6.
   gameState.config.cards['hosanna'] = {
     id: 'hosanna', name: 'Hosanna', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: [],
     effect: function(gameState) {
@@ -563,7 +442,7 @@ function init() {
     }
   };
 
-  // Gloria — tier uncommon, cost 4, tags Soul. Flat damage, no special
+  // Flat damage, no special
   // affordability code — renderCardButtons()'s existing soul >= cost check
   // already dims it on base soul 3, same as any other card.
   gameState.config.cards['gloria'] = {
@@ -573,7 +452,7 @@ function init() {
     }
   };
 
-  // Oblation — tier rare, cost 0, tags Soul. Spends whatever soul is left
+  // Spends whatever soul is left
   // (cost is 0, so gameState.player.soul here is the pre-play amount,
   // untouched by playCard()'s cost deduction) and zeroes it via the same
   // updatePlayer({ soul: ... }) path Communion/Largesse already use.
@@ -593,7 +472,7 @@ function init() {
     }
   };
 
-  // Tabernacle — tier common, cost 1, tags Mass. Reads gameState.turn.
+  // Reads gameState.turn.
   // rolledFaceWeight, the exact field Covenant already reads.
   gameState.config.cards['tabernacle'] = {
     id: 'tabernacle', name: 'Tabernacle', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: ['mass'],
@@ -610,7 +489,7 @@ function init() {
     }
   };
 
-  // Jubilee — tier rare, cost 2, tags Growth+Mass. Weight added means the
+  // Weight added means the
   // total weight of all 20 faces minus 20 (every face starts at weight 1,
   // per DIE FACE OBJECT STRUCTURE, so the sum starts at exactly 20).
   gameState.config.cards['jubilee'] = {
@@ -629,19 +508,15 @@ function init() {
     }
   };
 
-  // ---------- BUILD 132: checkpoint 3, trigger a face outside a roll
-  // (prompt D) — Threnody and Reverberation both go through
-  // triggerFaceOutsideRoll() (pipeline.js), the one shared function every
-  // outside-roll piece uses; Magnificat (a mod) is defined further down
-  // among the mods.
+  // ---------- OUTSIDE-ROLL TRIGGER ----------
+  // Threnody and Reverberation both go through triggerFaceOutsideRoll()
+  // (pipeline.js), the one shared function every outside-roll piece uses;
+  // Magnificat (a mod) is defined further down among the mods.
 
-  // Threnody — tier uncommon, cost 2, tags Growth. BUILD 142 (item F)
-  // reworks this card entirely: instead of always hitting the lowest-
-  // numbered loaded face, it now always triggers the SAME face all run —
-  // gameState.run.threnodyFace, a whole number from 2 to 19 rolled once at
-  // run creation (startNewRun(), run-and-map.js) — through
-  // triggerFaceOutsideRoll() (pipeline.js), which already treats a blank
-  // OR Sealed face as blank (the 2-block roll), exactly like Reverberation.
+  // Always triggers the SAME face all run — gameState.run.threnodyFace, a
+  // whole number from 2 to 19 rolled once at run creation — through
+  // triggerFaceOutsideRoll(), which treats a blank OR Sealed face as
+  // blank (the 2-block roll), like Reverberation.
   gameState.config.cards['threnody'] = {
     id: 'threnody', name: 'Threnody', soulCost: 2, type: 'utility', classRestriction: null, tier: 'uncommon', tags: ['growth'],
     effect: function(gameState) {
@@ -661,7 +536,7 @@ function init() {
     }
   };
 
-  // Reverberation — tier rare, cost 2, tags Mass. Re-triggers the face
+  // Re-triggers the face
   // rolled this round (gameState.turn.rolledFaceNumber, the same field
   // Covenant/Tabernacle already read): a loaded face triggers again through
   // triggerFaceOutsideRoll(), a blank face gives its 2 block again the same
@@ -685,17 +560,13 @@ function init() {
     }
   };
 
-  // ---------- BUILD 134: checkpoint 3, the remaining Bound pieces —
-  // Kyrie, Novena, Canticle (cards); Concord, Herald (mods, defined further
-  // down among the mods). Kyrie/Canticle read isBoundFace()/call
+  // ---------- BOUND PIECES ----------
+  // Kyrie, Novena, Canticle (cards); Concord, Herald (mods, defined
+  // further down). Kyrie/Canticle read isBoundFace()/call
   // grantBoundToFace(), Novena calls triggerFaceOutsideRoll() once per
-  // loaded Bound face — all three functions from the Bound engine
-  // (pipeline.js, BUILD 133), no second copy of any of them here.
+  // loaded Bound face — all three from the Bound engine (pipeline.js).
 
-  // Kyrie — tier common, cost 1, tags Bound. 5 damage, 10 if the rolled
-  // face is itself Bound (isBoundFace(), pipeline.js) — checked off
-  // gameState.turn.rolledFaceNumber, the same field Reverberation/Covenant/
-  // Tabernacle already read.
+  // 10 damage if the rolled face is itself Bound (isBoundFace()).
   gameState.config.cards['kyrie'] = {
     id: 'kyrie', name: 'Kyrie', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['bound'],
     effect: function(gameState) {
@@ -707,12 +578,8 @@ function init() {
     }
   };
 
-  // Novena — tier rare, cost 2, tags Bound. Every loaded Bound face on the
-  // die triggers, each through triggerFaceOutsideRoll() (pipeline.js) — the
-  // same fast-sweep pacing runBoundScan() uses (playSweep()), since this is
-  // structurally the same "many Bound faces fire together" shape, just
-  // card-triggered instead of roll-triggered. No loaded Bound face at all
-  // is a no-op, logged rather than thrown.
+  // Every loaded Bound face triggers through triggerFaceOutsideRoll(),
+  // paced by the same playSweep() runBoundScan() uses.
   gameState.config.cards['novena'] = {
     id: 'novena', name: 'Novena', soulCost: 2, type: 'utility', classRestriction: null, tier: 'rare', tags: ['bound'],
     effect: function(gameState) {
@@ -724,20 +591,15 @@ function init() {
         return;
       }
       log('[CARD] novena: ' + boundFaces.length + ' loaded Bound face' + (boundFaces.length === 1 ? '' : 's') + ' trigger' + (boundFaces.length === 1 ? 's' : ''));
-      // BUILD 135: playCard()'s own post-effect() checkWinNow() call fires
-      // before this sweep's dispatches do (they're staggered via setTimeout,
-      // effect() returns immediately) — checkWinNow() as onComplete here is
-      // what actually catches a kill from one of Novena's own triggers.
+      // checkWinNow() as onComplete catches a kill from one of these
+      // staggered triggers, since playCard()'s own call fires too early.
       playSweep(boundFaces.map(function(f) { return f.number; }), function(faceNumber) {
         triggerFaceOutsideRoll(faceNumber);
       }, checkWinNow);
     }
   };
 
-  // Canticle — tier uncommon, cost 1, tags Bound. 6 block; if the rolled
-  // face is loaded (a real mod, not a Nat stub), it gains Bound for this
-  // fight via grantBoundToFace() (pipeline.js) — which itself refuses face
-  // 1/face 20/a blank face, so this can never grant Bound to a Nat face.
+  // If the rolled face is loaded, it gains Bound for the fight via grantBoundToFace().
   gameState.config.cards['canticle'] = {
     id: 'canticle', name: 'Canticle', soulCost: 1, type: 'block', classRestriction: null, tier: 'uncommon', tags: ['bound'],
     effect: function(gameState) {
@@ -798,49 +660,23 @@ function init() {
     id: 'ordained',
     name: 'The Ordained',
     anchorModId: 'consecrate',
-    // BUILD 066: Nat 20 — every loaded face on the player die triggers
-    // this turn, ascending face number order. gameState.die.faces is
-    // already stored in ascending-number order (face.number === index+1,
-    // per DIE FACE OBJECT STRUCTURE), so filtering preserves that order
-    // with no extra sort needed. Face 1 and face 20 are excluded by the
-    // modId check (NAT_ONE/NAT_TWENTY are stub ids, not real mods) — face
-    // 20 is the cause of this trigger, not a participant in it. Each
-    // qualifying face fires through callListeners('MOD_TRIGGER', ...),
-    // the exact same dispatch call a single rolled mod face already
-    // makes in resolvePlayerRoll — no second copy of the trigger logic.
+    // Every loaded face on the player die triggers, ascending face order.
     onNatTwenty: function() {
-      // BUILD 141 (item C): a Sealed face is excluded from the sweep — it
+      // A Sealed face is excluded from the sweep — it
       // counts as blank this round, for every rule, Nat 20 included.
       const loadedFaces = gameState.die.faces.filter(function(f) {
         return f.modId !== null && f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && !isFaceSealed(f.number);
       });
       log('[ROLL] Nat 20: ' + loadedFaces.length + ' loaded face' + (loadedFaces.length === 1 ? '' : 's') + ' trigger' + (loadedFaces.length === 1 ? 's' : ''));
-      // BUILD 115: a two-mod face triggers both mods, in load order,
-      // within that face's own turn in the ascending sequence — both
-      // dispatches happen inside this same forEach iteration, before the
-      // loop moves on to the next face.
-      // BUILD 132: tagged natTwentySweep so mod_dispatch's own D-51 round-
-      // trigger-cap counter (config.js's GAME_CONFIG.ROUND_TRIGGER_CAP)
-      // skips these calls — the Nat 20 sweep is the one exemption the
-      // prompt names, since it can trigger far more than ten faces in one
-      // pass.
-      // BUILD 133 (checkpoint 3, Bound engine) — fast sweep timing
-      // (pipeline.js's playSweep()): each qualifying face's own dispatch
-      // still fires both its slots together, in the same order, the instant
-      // its own turn in the sweep plays — only WHEN it plays is staggered,
-      // paced by the round's own trigger tally. Faces are looked up fresh
-      // off gameState.die.faces at dispatch time (not the loadedFaces
-      // snapshot above), in case an earlier trigger in this same sweep
-      // wrote to another face (Ordain/Elevation's weight writes) before a
-      // later one plays.
-      // BUILD 135: checkWinNow() (phase-machine.js) as onComplete — a kill
-      // partway through the sweep still lets every remaining loaded face in
-      // it trigger (permanent growth included) before the fight is declared
-      // won.
+      // Tagged natTwentySweep so mod_dispatch's D-51 counter skips these
+      // calls — the one exemption, since this can trigger far more than
+      // ten faces in one pass. Faces are looked up fresh at dispatch time
+      // (not the loadedFaces snapshot) in case an earlier trigger in this
+      // sweep wrote to another face. checkWinNow() as onComplete lets every
+      // remaining face trigger before the fight is declared won.
       playSweep(loadedFaces.map(function(f) { return f.number; }), function(faceNumber) {
-        // BUILD 138: this is the one sweep path that dispatches directly
-        // (callListeners) rather than through triggerFaceOutsideRoll(), so
-        // it needs its own hop mark, at the same moment its dispatch fires.
+        // This sweep path dispatches directly rather than through
+        // triggerFaceOutsideRoll(), so it needs its own hop mark.
         markFaceHopped(faceNumber);
         const f = gameState.die.faces[faceNumber - 1];
         callListeners('MOD_TRIGGER', { modId: f.modId, faceNumber: f.number, natTwentySweep: true });
@@ -849,28 +685,13 @@ function init() {
         }
       }, checkWinNow);
     },
-    // BUILD 067: Nat 1 — Penitence. Fight-scoped (gameState.player.penitenceActive,
-    // not turn-scoped). The actual 1-soul loss happens once per turn at
-    // START_OF_TURN (after the soul reset), not here — this only arms the
-    // effect and logs its onset.
-    //
-    // BUILD 084: Nat 1 now fires once per fight. BUILD 082's played run
-    // rolled two Nat 1s in one boss fight and the second was a dead roll —
-    // a log line and nothing else. It is no longer dead: after the first
-    // one, face 1 resolves as a blank for the rest of the fight.
-    //
-    // The guard reads natOneFiredThisFight, NOT penitenceActive. That
-    // distinction is the whole point now that Penitence expires after
-    // PENITENCE_TURNS turns: a face 1 rolled after the expiry must still
-    // come out a blank, and checking penitenceActive would instead re-arm
-    // Penitence from scratch — precisely the stacking the ruling removes.
+    // Nat 1 — Penitence, fight-scoped. The 1-soul loss happens once per
+    // turn at START_OF_TURN; this only arms the effect and logs onset.
+    // Guard reads natOneFiredThisFight, NOT penitenceActive — a face 1
+    // rolled after Penitence expires must still come out a blank, not
+    // re-arm Penitence from scratch.
     onNatOne: function() {
       if (gameState.player.natOneFiredThisFight) {
-        // The real blank passive, dispatched exactly the way
-        // resolvePlayerRoll() dispatches a genuinely blank face: same
-        // BLANK_ROLL hook, same listeners, same 2 block, same [BLANK] line.
-        // No distinguishing tag — in the log this reads as an ordinary
-        // blank roll, which is what it is.
         callListeners('BLANK_ROLL', {});
         return;
       }
@@ -888,35 +709,15 @@ function init() {
     startingDeck: GAME_CONFIG.STARTING_DECK.slice()
   };
 
-  // Register the Ordained blank-face passive as a listener
   registerListener('BLANK_ROLL', 'ordained_blank_passive', gameState.config.classes[gameState.player.classId].onBlankRoll, 'permanent');
-
-  // BUILD 066: register the Ordained Nat 20 passive the same way — a
-  // permanent listener registered once at init(), not per-turn, so
-  // forcing face 20 repeatedly never accumulates duplicate listeners.
   registerListener('NAT_TWENTY', 'ordained_nat_twenty_passive', gameState.config.classes[gameState.player.classId].onNatTwenty, 'permanent');
-
-  // BUILD 067: register the Ordained Nat 1 (Penitence) passive the same
-  // way — a permanent listener registered once at init(), not per-turn,
-  // mirroring the BUILD 066 NAT_TWENTY registration exactly.
   registerListener('NAT_ONE', 'ordained_nat_one_passive', gameState.config.classes[gameState.player.classId].onNatOne, 'permanent');
 
-  // ---------- BUILD 141: poison answer (item A, KI-26) ----------
-  // At START_OF_TURN, before poison ticks and before block clears, the
-  // player's own held block answers their own poison: every
-  // GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK (5) block still held removes
-  // 1 stack of poison, capped at however many stacks the player actually
-  // has. Block is read here, not spent — the existing block-clear step
-  // later in START_OF_TURN (phase-machine.js) still zeroes it exactly as
-  // before. Registered on the 'START_OF_TURN' hook rather than written
-  // inline in phase-machine.js: runPhase()'s own callListeners(phase) call
-  // fires unconditionally at the very top of the function, before any of
-  // that phase's own if-branch logic runs (see EVENT HOOKS, CLAUDE.md) — so
-  // this listener is guaranteed to run before the inline poison tick/block
-  // clear code further down that same phase body, with no dependency on
-  // listener registration order (there is only one listener on this hook).
-  // Enemies are unaffected — they have no block field, so this never
-  // touches gameState.enemy.
+  // ---------- POISON ANSWER ----------
+  // At START_OF_TURN, before poison ticks and before block clears, every
+  // GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK block still held removes 1
+  // stack of poison. Block is read here, not spent. Enemies are
+  // unaffected — they have no block field.
   registerListener('START_OF_TURN', 'poison_answer_passive', function() {
     const block = gameState.player.block;
     const poison = gameState.player.poisonStacks;
@@ -929,37 +730,14 @@ function init() {
     }
   }, 'permanent');
 
-  // ---------- BUILD 097/098: the boss die's enemy half ----------
-  // First real enemy mechanic — the boss is the only enemy that carried a
-  // die at all until BUILD 098 gave the elite its own too (buildAct(),
-  // run-and-map.js: 2 loaded poison faces, no Nat faces — Nat 20/Nat 1
-  // stay boss-only). POISON faces have carried 'enemy_buff_poison' since
-  // BUILD 075 but were never dispatched to anything until BUILD 097;
-  // ENEMY_NAT_TWENTY was a stub and there was no enemy Nat 1 at all before
-  // that build. Registered unconditionally here, not tied to
-  // gameState.player.classId like the three Ordained passives just above —
-  // these are the enemy's own die mechanics, not a player class passive,
-  // so they exist regardless of which class is playing or which enemy
-  // (elite or boss) is currently being fought. Same 'permanent'
-  // registration shape as the player's own three passives, so forcing an
-  // enemy face repeatedly never accumulates duplicate listeners.
+  // ---------- ENEMY DIE MECHANICS ----------
+  // Registered unconditionally, not tied
+  // to gameState.player.classId, since they exist regardless of which
+  // class is playing or which enemy is being fought.
 
-  // A loaded enemy buff face triggering — currently the only real buff is
-  // 'enemy_buff_poison' (boss die faces 5/10/15; elite die faces 7/14 as
-  // of BUILD 098), which applies 5 poison stacks
-  // to the player through the exact same gameState.player.poisonStacks
-  // field every player-facing poison source (Blight/Virulence/Censer/the
-  // dev poison applier) already writes to — no second poison system, per
-  // the prompt's explicit instruction. The existing START_OF_TURN tick
-  // (phase-machine.js) already decays whatever lands here identically to
-  // any other player poison, with no changes needed there.
-  // BUILD 125 (F31): the amount is no longer read live off
-  // GAME_CONFIG.ENEMY_BUFF_POISON_STACKS — it's gameState.enemy.
-  // buffPoisonStacks, fixed at enemy-slot creation (buildAct(),
-  // run-and-map.js) by scaling that flat constant with the current act's
-  // own ACT_INTENT_MULTIPLIER (Math.ceil'd), so a poison face applies more
-  // the deeper the run goes without this listener needing to know about
-  // acts at all.
+  // enemy_buff_poison applies gameState.enemy.buffPoisonStacks (fixed at
+  // enemy-slot creation, scaled per act) to the player through the same
+  // poisonStacks field every player-facing poison source writes to.
   registerListener('ENEMY_BUFF_TRIGGER', 'enemy_buff_dispatch', function(data) {
     if (data.buffId === 'enemy_buff_poison') {
       const amount = gameState.enemy.buffPoisonStacks;
@@ -967,32 +745,17 @@ function init() {
       updatePlayer({ poisonStacks: newStacks });
       log('[ENEMY] applied ' + amount + ' stacks of poison to player, now ' + newStacks + ' stacks of poison');
     } else if (data.buffId === 'enemy_buff_wrath') {
-      // BUILD 141 (item C) — Wrath. Queues into wrathPending; moves into
-      // the active wrath (added to every later Attack) at the next
-      // START_OF_TURN (advanceEnemyIntentForRound(), pipeline.js), so this
-      // round's already-shown Attack value never changes.
-      // BUILD 142 (item C): reads this enemy's OWN per-trigger amount
-      // (gameState.enemy.wrathPerTrigger, set at fight start from
-      // GAME_CONFIG.ENEMIES[...].wrathPerTrigger, beginFightFromSlot()) —
-      // was the flat GAME_CONFIG.ENEMY_WRATH_AMOUNT, which is now only the
-      // default for an enemy with no amount of its own.
+      // Queues into wrathPending; moves into active wrath at the next
+      // START_OF_TURN, so this round's already-shown Attack never changes.
       const amount = gameState.enemy.wrathPerTrigger;
       const newPending = gameState.enemy.wrathPending + amount;
       updateEnemy({ wrathPending: newPending });
       log('[ENEMY] Wrath triggers: Attacks +' + amount + ' from next round.');
     } else if (data.buffId === 'enemy_buff_drain') {
-      // BUILD 141 (item C) — Drain. Queues 1 onto drainNextRound; consumed
-      // at the next START_OF_TURN's soul reset (phase-machine.js).
       const newDrain = gameState.player.drainNextRound + 1;
       updatePlayer({ drainNextRound: newDrain });
       log('[ENEMY] Drain triggers: 1 less soul next round.');
     } else if (data.buffId === 'enemy_buff_seal') {
-      // BUILD 141 (item C) — Seal. Picks the player's heaviest loaded face
-      // (excluding 1/20 and any face already Sealed this round —
-      // pickHeaviestLoadedFaceForSeal(), pipeline.js) and queues it; the
-      // queue moves into gameState.turn.sealedFaces at the next
-      // START_OF_TURN (phase-machine.js), where it actually starts
-      // counting as blank.
       const target = pickHeaviestLoadedFaceForSeal();
       if (target) {
         updatePlayer({ sealNextRound: gameState.player.sealNextRound.concat(target.number) });
@@ -1003,21 +766,11 @@ function init() {
     }
   }, 'permanent');
 
-  // Enemy Nat 20 — every loaded buff face on the enemy die fires, ascending
-  // by face number. Deliberate mirror of the Ordained's own onNatTwenty
-  // above: the two Nat 20s are one mechanic seen from both sides. Not
-  // capped, not once per fight — matches the player exactly. Same loop-
-  // safety approach as the player's version: because gameState.enemy.
-  // die.faces is already stored in ascending-number order (face.number ===
-  // index+1), filtering preserves ascending order with no extra sort, and
-  // each qualifying face fires through the exact same ENEMY_BUFF_TRIGGER
-  // dispatch a single rolled buff face already uses above — no second copy
-  // of the trigger logic. On the current boss die (three poison faces) this
-  // fires enemy_buff_dispatch three times, applying 15 total poison.
+  // Every loaded buff face on the enemy die fires, ascending by face
+  // number. Not capped, not once per fight — mirrors the player exactly.
   registerListener('ENEMY_NAT_TWENTY', 'boss_nat_twenty_passive', function() {
-    // BUILD 142 (item C) — Cardinal and Pontifex each replace the generic
-    // sweep-every-buff-face behaviour entirely with their own designed Nat
-    // 20 (both named by gameState.enemy.name, set by beginFightFromSlot()).
+    // Cardinal and Pontifex each replace the generic sweep with their own
+    // designed Nat 20.
     if (gameState.enemy.name === 'Cardinal') {
       const targets = pickTopLoadedFacesForSeal(2);
       if (targets.length === 0) {
@@ -1042,34 +795,16 @@ function init() {
     });
   }, 'permanent');
 
-  // Enemy Nat 1 — the die turns on its wielder. Two effects, both at once:
-  // this turn's attack is cancelled entirely (enemyAttackCancelledThisTurn,
-  // read once by ENEMY_ACT_PHASE later the same turn — phase-machine.js),
-  // and the enemy applies its own poison to itself, routed through the
-  // exact same gameState.enemy.poisonStacks field player cards already
-  // poison the enemy through — no second poison system. BUILD 098
-  // correction: this was originally 5 stacks per loaded poison face (15 on
-  // the boss, ~65 total decay damage — roughly two thirds of the boss's
-  // own HP from a single 5% roll); now a flat 5 regardless of how many
-  // poison faces the die carries, per the prompt's explicit instruction.
-  // The player-facing amount (5 per loaded face, enemy_buff_dispatch
-  // above) is unchanged and was already correct — only the enemy's own
-  // self-poison was ever the problem. Once per fight, mirroring the
-  // player's own Nat 1
-  // (BUILD 084) exactly: after it fires, face 1 resolves as a plain blank
-  // (the same log line resolveEnemyRoll()'s own blank branch already uses,
-  // no distinguishing tag) for the rest of the fight, gated on
-  // gameState.enemy.natOneFiredThisFight rather than re-deriving anything
-  // from a "cancelled" flag, for the identical reason BUILD 084 gates the
-  // player's own version on natOneFiredThisFight and not penitenceActive.
+  // The die turns on its wielder: this turn's attack is cancelled entirely
+  // and the enemy applies its own flat self-poison. Once per fight —
+  // after it fires, face 1 resolves as a plain blank for the rest of the fight.
   registerListener('ENEMY_NAT_ONE', 'boss_nat_one_passive', function() {
     if (gameState.enemy.natOneFiredThisFight) {
       log('[ENEMY ROLL] blank');
       return;
     }
-    // BUILD 142 (item C) — Cardinal and Pontifex each replace the generic
-    // cancel-attack-and-self-poison behaviour entirely with their own
-    // designed Nat 1; neither cancels the attack, neither self-poisons.
+    // Cardinal and Pontifex each replace the generic cancel-and-self-poison
+    // behaviour with their own designed Nat 1; neither cancels the attack.
     if (gameState.enemy.name === 'Cardinal') {
       updateEnemy({ natOneFiredThisFight: true });
       const target = pickHeaviestLoadedFaceForSeal();
@@ -1088,14 +823,8 @@ function init() {
     }
     updateEnemy({ natOneFiredThisFight: true });
     updateTurn({ enemyAttackCancelledThisTurn: true });
-    // BUILD 098: correction to BUILD 097 — this was 5 stacks PER loaded
-    // poison face (15 on the boss, ~65 total decay damage, roughly two
-    // thirds of the boss's own HP from a 5% roll). Flat 5 stacks
-    // regardless of how many poison faces the die carries, per the
-    // prompt's explicit instruction — the player-facing amount (5 per
-    // loaded face, applied by enemy_buff_dispatch above) is unchanged and
-    // was already correct; only the enemy's OWN self-poison was ever the
-    // problem. The cancelled attack above is untouched.
+    // Flat self-poison regardless of how many poison faces the die
+    // carries — distinct from the player-facing amount enemy_buff_dispatch applies.
     const newStacks = gameState.enemy.poisonStacks + GAME_CONFIG.ENEMY_NAT_ONE_SELF_POISON;
     updateEnemy({ poisonStacks: newStacks });
     log('[ENEMY] Nat 1: attack cancelled, ' + GAME_CONFIG.ENEMY_NAT_ONE_SELF_POISON + ' stacks of poison applied to itself, now ' + newStacks + ' stacks of poison');
@@ -1104,49 +833,24 @@ function init() {
   // Mods — empty
   gameState.config.mods = {};
 
-  // Generic mod dispatcher — resolves config.mods[modId] and runs its effect on MOD_TRIGGER.
-  // data (which includes faceNumber) is now forwarded into effect() — every
-  // existing mod's effect is declared as function() with no parameters, so
-  // this extra argument is silently ignored there, zero behaviour change.
-  // Ordain is the first mod that needs it, to know which specific face to
-  // add weight to (it can't just scan config.mods for its own id, since the
-  // same mod can be loaded on more than one face at once).
-  // BUILD 066: sets modTriggeredThisTurn on every real mod trigger, whether
-  // reached via a normal single-face roll or looped by Nat 20's
-  // onNatTwenty passive — this is the one place both paths funnel through,
-  // so it's also the one place Rapture's "did a mod trigger this turn"
-  // condition can be read from without re-deriving it from rollOutcome
-  // (which reads 'nat_twenty', not 'mod', on a Nat 20 turn).
+  // Generic mod dispatcher — resolves config.mods[modId] and runs its
+  // effect on MOD_TRIGGER. data.faceNumber lets a mod like Ordain know
+  // which specific face to modify, since the same mod can be loaded on
+  // more than one face at once.
   registerListener('MOD_TRIGGER', 'mod_dispatch', function(data) {
     const mod = gameState.config.mods[data.modId];
     if (mod) {
       updateTurn({ modTriggeredThisTurn: true });
-      // BUILD 095: mod-trigger sound (Chain B's climbing identity) — this
-      // is the one dispatch point both a natural single-face roll and
-      // Nat 20's onNatTwenty() loop already funnel every mod trigger
-      // through, so it's the correct place to announce it exactly once
-      // per mod, whatever that mod's own effect() then does.
       playAudioEvent('mod_trigger');
-      // BUILD 132 (D-51): bump the round-scoped trigger cap counter — every
-      // real MOD_TRIGGER dispatch counts, whether reached via a normal
-      // roll, triggerFaceOutsideRoll() (pipeline.js), or here; the one
-      // exemption is Nat 20's own sweep (onNatTwenty above), which tags its
-      // calls natTwentySweep so this funnel can skip counting them.
+      // Nat 20's own sweep tags its calls natTwentySweep so this funnel
+      // can skip counting them toward the round trigger cap.
       if (!data.natTwentySweep) {
         updateTurn({ roundTriggerCount: gameState.turn.roundTriggerCount + 1 });
       }
-      // BUILD 108: bump this specific mod's own trigger count — same funnel
-      // reasoning as modTriggeredThisTurn/the mod_trigger sound above, so a
-      // Nat 20 counts each qualifying face once per pass, same as a normal
-      // roll. Folded into the triggering face's own modData (BUILD 103's
-      // separate gameState.die.triggerCounts array is gone — see STATE
-      // SCHEMA / MULTI-MOD FACES, CLAUDE.md); data.modId tells us which of
-      // this face's (up to two) mod slots just fired, so a face holding two
-      // different mods increments only the one that actually triggered, not
-      // its neighbour. Merges into any existing modData (e.g. Zeal's own
-      // accumulatedBonus) rather than replacing it — the same merge Zeal's
-      // own effect below must also use, for the same reason. Read by
-      // renderDieList()'s trigger-count badge.
+      // Bump this specific mod's own trigger count, folded into the
+      // triggering face's own modData — data.modId tells us which of this
+      // face's (up to two) mod slots just fired. Merges into any existing
+      // modData (e.g. Zeal's own accumulatedBonus) rather than replacing it.
       const faceIndex = data.faceNumber - 1;
       const face = gameState.die.faces[faceIndex];
       const existingModData = face.modData || {};
@@ -1210,13 +914,6 @@ function init() {
     }
   };
 
-  // Offering — pool mod. Enabler: soul + a card, both usable this turn since
-  // MOD_TRIGGER fires in ROLL_PHASE, always before CARD_PHASE. The soul
-  // grant doesn't need turn-scoped listener cleanup — like Consecrate's own
-  // soul grant, it never persists because START_OF_TURN unconditionally
-  // resets soul to maxSoul every turn. The drawn card needs no special
-  // handling either — it sits in hand normally and is discarded at
-  // END_PLAYER_TURN like any other card.
   gameState.config.mods['offering'] = {
     id: 'offering',
     name: 'Offering',
@@ -1229,10 +926,6 @@ function init() {
     }
   };
 
-  // Blight — pool mod. Applies poison to the enemy via the existing
-  // gameState.enemy.poisonStacks field, the same one the dev poison
-  // applier writes to and START_OF_TURN's tick reads from. No new phase
-  // logic, no changes to the decay tick.
   gameState.config.mods['blight'] = {
     id: 'blight',
     name: 'Blight',
@@ -1261,9 +954,6 @@ function init() {
     }
   };
 
-  // Sanctuary — pool mod. No conditions, no scaling, no persistence. Block
-  // goes through generateBlock() (Law 1's block equivalent) and updatePlayer,
-  // the same path the blank passive, Ward, Rite, and Penance already use.
   gameState.config.mods['sanctuary'] = {
     id: 'sanctuary',
     name: 'Sanctuary',
@@ -1279,13 +969,7 @@ function init() {
     }
   };
 
-  // Vigil — pool mod. Rewards holding cards back rather than dumping the
-  // whole hand, so it must read hand size at END_PLAYER_TURN (after the
-  // player has played cards), not at roll time when hand size is always the
-  // fixed post-draw 5. Uses the same turn-scoped registerListener pattern
-  // Consecrate's block-per-card listener already uses, so it cannot persist
-  // past this turn or double-fire — clearListeners('turn') at the next
-  // START_OF_TURN removes it exactly like any other turn-scoped effect.
+  // Reads hand size at END_PLAYER_TURN, after cards are played, not at roll time.
   gameState.config.mods['vigil'] = {
     id: 'vigil',
     name: 'Vigil',
@@ -1301,25 +985,9 @@ function init() {
     }
   };
 
-  // Zeal — pool mod. Deals 10 damage on trigger, then permanently increases
-  // its own damage by 4 for the rest of the run on every subsequent trigger.
-  // BUILD 062: the counter used to live as a plain field directly on this
-  // mod's own config.mods object (accumulatedBonus), incremented in place
-  // inside effect() — a deliberate Law 3 exception, since registerListener()
-  // has no dedup and calling it from inside effect() on every trigger would
-  // have accumulated a duplicate registration per trigger, forever. That
-  // still left config mutating at runtime, contradicting STATE HELPERS
-  // ("config is set once at init and never changed"). The counter now lives
-  // on the triggering face's own modData field instead — the same kind of
-  // per-instance persistent value Ordain's weight already is, and reached
-  // via the same clone-then-write pattern through updateDie() Ordain already
-  // uses, so it's a Law 3-compliant state change. A face without modData
-  // (never triggered Zeal before) is treated as bonus 0. Because the value
-  // lives per-face rather than per-mod, Zeal loaded onto two different faces
-  // accrues independently on each — consistent with the counter being a
-  // property of "this specific face that keeps triggering", not a global
-  // run counter. resetFight() never touches gameState.die, so this persists
-  // across Restart Fight exactly as the old config field did.
+  // Deals 10 damage plus an accumulated bonus, +4 permanently on every
+  // trigger — stored on the triggering face's own modData, per-face (not
+  // per-mod), so Zeal on two faces accrues independently on each.
   gameState.config.mods['zeal'] = {
     id: 'zeal',
     name: 'Zeal',
@@ -1328,22 +996,14 @@ function init() {
     effect: function(data) {
       const faceNumber = data.faceNumber;
       const face = gameState.die.faces[faceNumber - 1];
-      // BUILD 108: mod_dispatch (above) now always creates modData (to hold
-      // this trigger's own triggerCount) before calling this effect(), even
-      // on a face's very first trigger — so modData being truthy no longer
-      // implies accumulatedBonus is set. Read the field itself, not just
-      // its container.
       const bonus = (face.modData && face.modData.accumulatedBonus) || 0;
       const damage = dealDamage('enemy', 10 + bonus, 'attack', 'zeal');
 
       const newBonus = bonus + 4;
       const newFaces = gameState.die.faces.slice();
-      // BUILD 108: merge into the face's existing modData rather than
-      // replacing it wholesale — mod_dispatch (above) already wrote this
-      // trigger's own triggerCount/triggerCount2 into modData before
-      // calling this effect(), and a bare { modData: { accumulatedBonus } }
-      // literal here would silently drop that count on every single Zeal
-      // trigger.
+      // Merges into the face's existing modData rather than replacing it
+      // wholesale — mod_dispatch already wrote this trigger's own
+      // triggerCount into modData before calling this effect().
       newFaces[faceNumber - 1] = Object.assign({}, face, { modData: Object.assign({}, face.modData, { accumulatedBonus: newBonus }) });
       updateDie({ faces: newFaces });
 
@@ -1351,19 +1011,9 @@ function init() {
     }
   };
 
-  // Fervour — pool mod. First mod to use the DAMAGE_MULTIPLIER stage of the
-  // pipeline (calculateDamage()'s multiplier step was already fully
-  // implemented per Law 1 but never exercised by any mod until now). Pure
-  // setup — no direct damage on trigger — it registers a turn-scoped
-  // DAMAGE_MULTIPLIER listener that doubles calculateDamage() calls tagged
-  // 'attack' only, leaving 'poison'-tagged calls (and anything else) at
-  // x1, so poison ticks are never silently doubled by a buff meant for
-  // outgoing attacks. clearOn: 'turn' means clearListeners('turn') at the
-  // next START_OF_TURN removes it automatically, exactly like Consecrate's
-  // and Vigil's own turn-scoped listeners already do — no special
-  // expiry logic needed. Logs its own "hit doubled" line each time the
-  // multiplier actually fires on an attack, so the doubling is visible in
-  // the log stream itself, not just inferable from a bigger damage number.
+  // Pure setup, no direct damage: registers a turn-scoped DAMAGE_MULTIPLIER
+  // listener that doubles calculateDamage() calls tagged 'attack' only, so
+  // poison ticks are never silently doubled.
   gameState.config.mods['fervour'] = {
     id: 'fervour',
     name: 'Fervour',
@@ -1381,17 +1031,7 @@ function init() {
     }
   };
 
-  // Ordain — pool mod. Deals 10 damage, then permanently adds 1 weight to
-  // the specific face it triggered from. rollDie() already reads
-  // gameState.die.faces fresh on every call, so a mid-fight weight change
-  // is picked up correctly on the very next roll with no new logic needed
-  // there. BUILD 107: the weight write itself now goes through the shared
-  // strengthenFace() helper (pipeline.js) — the same one the post-fight
-  // Strengthen die action calls — instead of duplicating its
-  // clone-then-write pattern here. Reading face.weight fresh each time
-  // (not a separately tracked counter) means this naturally stacks with
-  // Strengthen or with repeated Ordain triggers on the same face — each
-  // trigger just adds 1 to whatever the weight already is.
+  // Deals 10 damage, then permanently adds 1 weight to the triggering face.
   gameState.config.mods['ordain'] = {
     id: 'ordain',
     name: 'Ordain',
@@ -1407,18 +1047,8 @@ function init() {
     }
   };
 
-  // Anthem — pool mod (BUILD 113). 6 damage, plus 4 per point of weight on
-  // its own face (weight 1 -> 10, weight 2 -> 14, weight 3 -> 18). Reuses
-  // two existing paths rather than writing anything new: dealDamage()
-  // tagged 'attack' (the exact call Smite already makes), so Fervour's
-  // turn-scoped DAMAGE_MULTIPLIER doubles it exactly as it doubles Smite;
-  // and gameState.turn.rolledFaceWeight (Covenant's own read, set by
-  // resolvePlayerRoll() at roll time — never re-derived from
-  // gameState.die.faces). Anthem only reads weight; it writes nothing, so
-  // it needs no registerListener() call of its own — like Smite/Penance,
-  // it fires through the existing MOD_TRIGGER mod_dispatch listener above,
-  // which already announces 'mod_trigger' and bumps the trigger-count
-  // badge for every mod, Anthem included, with no new code.
+  // 6 damage plus 4 per point of weight on its own face (weight 1 -> 10,
+  // weight 2 -> 14, weight 3 -> 18). Reads weight only, writes nothing.
   gameState.config.mods['anthem'] = {
     id: 'anthem',
     name: 'Anthem',
@@ -1431,15 +1061,8 @@ function init() {
     }
   };
 
-  // Elevation — pool mod (thirteenth mod). 10 damage; the face directly
-  // above this one (faceNumber + 1) permanently gains +1 weight, but only
-  // if that face is loaded (modId !== null) and is not face 20 — face 20's
-  // modId is always the NAT_TWENTY stub, never a real mod, and Strengthen
-  // handles face 20's weight separately (see DIE FACE OBJECT STRUCTURE), so
-  // this mod must not touch it. If the face above is blank, unloaded, or is
-  // face 20, only the 10 damage happens: no weight write, no error. Like
-  // Ordain, the weight write goes through the shared strengthenFace()
-  // helper (pipeline.js) — the only place any face's weight is ever written.
+  // 10 damage; the face directly above (faceNumber + 1) permanently gains
+  // +1 weight, but only if it's loaded and not face 20.
   gameState.config.mods['elevation'] = {
     id: 'elevation',
     name: 'Elevation',
@@ -1459,9 +1082,6 @@ function init() {
     }
   };
 
-  // Largesse — pool mod (checkpoint 3 tags/mods build, common). Direct
-  // effect, no conditions, no scaling, no persistence — same shape as
-  // Consecrate's own soul grant plus Ward's own block, both existing paths.
   gameState.config.mods['largesse'] = {
     id: 'largesse',
     name: 'Largesse',
@@ -1474,17 +1094,7 @@ function init() {
     }
   };
 
-  // Tithe — pool mod (uncommon). End-of-round effect: 5 damage per soul the
-  // player has left, capped at 20 — registered on the exact same
-  // END_PLAYER_TURN hook Vigil's own end-of-round effect already uses (same
-  // turn-scoped registerListener() pattern, same clearListeners('turn')
-  // expiry at the next START_OF_TURN, same per-trigger re-registration that
-  // the registry's own dedup guard collapses to one live listener, same as
-  // a second Vigil would). Damage routes through dealDamage() (which itself
-  // calls calculateDamage()), tagged 'attack' like every other damage mod in
-  // the pool, so Fervour's DAMAGE_MULTIPLIER doubles it exactly as it
-  // doubles Smite. Same capped/uncapped two-branch log style Retribution's
-  // own block cap already uses.
+  // End-of-round effect: 5 damage per soul remaining, capped at 20.
   gameState.config.mods['tithe'] = {
     id: 'tithe',
     name: 'Tithe',
@@ -1686,14 +1296,8 @@ function init() {
     }
   };
 
-  // ---------- BUILD 134: checkpoint 3, the remaining Bound pieces — Concord
-  // and Herald. Kyrie/Novena/Canticle (cards) are defined above, among the
-  // cards; see that comment block for the shared rationale.
+  // ---------- BOUND MODS ----------
 
-  // Concord — pool mod (uncommon). Bound (permanent, via the 'bound' tag —
-  // MOD_DESCRIPTION appends the same ". Bound" suffix Unison/Accord/Kinship
-  // already get). +1 soul, 3 block — direct effect, no conditions, same
-  // shape as Largesse's own soul+block combo.
   gameState.config.mods['concord'] = {
     id: 'concord',
     name: 'Concord',
@@ -1706,13 +1310,8 @@ function init() {
     }
   };
 
-  // Herald — pool mod (rare). Bound (permanent, via the 'bound' tag). 6
-  // damage; one other random loaded face that is not already Bound
-  // (isBoundFace(), pipeline.js) gains Bound for this fight, through
-  // grantBoundToFace() (pipeline.js) and pickRandom() (state.js, the same
-  // Math.random() source shuffle() uses) — own face (data.faceNumber) never
-  // counts, same "other" exclusion Magnificat already uses. If no such face
-  // exists, only the damage happens — no error, no partial state.
+  // One other random loaded face that is not already Bound gains Bound
+  // for this fight; the triggering face itself never counts.
   gameState.config.mods['herald'] = {
     id: 'herald',
     name: 'Herald',
@@ -1737,30 +1336,21 @@ function init() {
 
   renderDevModOptions(); // DEV ONLY — remove before any real release
 
-  // DEV ONLY — BUILD 083: dev chrome closed and the pause checkbox unchecked
-  // on every page load. The markup already says so, but a browser restoring
-  // form state across a soft reload can re-check the box behind the flag's
-  // back — this keeps the two in lockstep. Remove before any real release.
+  // DEV ONLY — a browser restoring form state across a soft reload can
+  // re-check the box behind the flag's back; this keeps the two in
+  // lockstep. Remove before any real release.
   devChromeOpen = false;
   devPauseBeforeFirstRoll = false;
   document.getElementById('devChrome').classList.remove('expanded');
   document.getElementById('devChromeToggleBtn').textContent = 'Dev Tools ▸';
   document.getElementById('devPauseBeforeRollCheckbox').checked = false;
 
-  // BUILD 122 (KI-18): the on-screen build stamp's number now renders from
-  // GAME_CONFIG.BUILD, the single source of truth — no second hand-typed
-  // copy of the build number left anywhere to go stale. index.html's
-  // #buildStamp keeps its own static "STAGE X.Y" text; only the number
-  // after "BUILD" is written here.
+  // GAME_CONFIG.BUILD is the single source of truth — no second
+  // hand-typed copy of the build number left anywhere to go stale.
   document.getElementById('buildStampNumber').textContent = GAME_CONFIG.BUILD;
 
   log('[INIT] gameState initialised');
   log('[INIT COMPLETE] ————————————————————————');
 
-  // BUILD 068: the die faces, enemy die faces, and starting-deck-shuffle
-  // setup that used to live inline here (ending in startFreshTurnPaused(),
-  // jumping straight into a fight) now live in startNewRun(), which ends
-  // on the map screen instead — this is the first system above a single
-  // fight, so a fresh session no longer starts mid-combat.
   startNewRun();
 }
