@@ -51,6 +51,14 @@ const gameState = {
     // resolve as a blank, not re-arm Penitence. Fight-scoped: cleared
     // alongside poisonStacks/penitenceActive, never by a turn boundary.
     natOneFiredThisFight: false,
+    // BUILD 141 (item C) — Drain. drainNextRound is how many soul the NEXT
+    // START_OF_TURN's soul reset should come in under max by; consumed
+    // (reset to 0) the moment it's applied. sealNextRound is the list of
+    // face numbers a Seal trigger has queued to count as blank NEXT round;
+    // it moves into gameState.turn.sealedFaces at that START_OF_TURN and
+    // clears here. Both fight-scoped.
+    drainNextRound: 0,
+    sealNextRound: [],
     // The player's full permanent card collection — starts as a copy of the
     // Ordained starting deck, then grows by one id per card reward picked.
     // Distinct from deck/hand/discard (the current fight's draw pile,
@@ -93,6 +101,29 @@ const gameState = {
     die: { faces: [] },
     poisonStacks: 0,
     activeBuffs: [],
+    // BUILD 141 (item B) — the enemy's repeating intent pattern (1 to 4
+    // entries: {kind:'attack',min,max} | {kind:'charge',release,breakAt} |
+    // {kind:'afflict',stacks}), copied from the entering slot's own static
+    // enemy.pattern by beginFightFromSlot(), same as hp/intentMin/intentMax.
+    // patternIndex walks it, wrapping; chargeStage/chargeBroken/
+    // windupStartHp/currentEntry are fight-scoped charge bookkeeping, reset
+    // by clearFightScopedState(). forcedNextIntent (dev only,
+    // devSetNextIntent()) replaces the next round's pattern-derived entry
+    // exactly once, then clears itself.
+    pattern: [],
+    patternIndex: 0,
+    chargeStage: null,          // null | 'windup' | 'release'
+    chargeBroken: false,
+    windupStartHp: null,
+    currentEntry: null,         // this round's fixed intent spec, set at START_OF_TURN
+    forcedNextIntent: null,
+    // BUILD 141 (item C) — Wrath: adds to every Attack value from the next
+    // round on. wrathPending is what a Wrath trigger writes; it moves into
+    // wrath (the amount actually added to a rolled Attack) at the next
+    // START_OF_TURN, so "the number shown this round never changes after
+    // it is shown." Both fight-scoped.
+    wrath: 0,
+    wrathPending: 0,
     // BUILD 097: mirrors gameState.player.natOneFiredThisFight (BUILD 084)
     // exactly, for the enemy's own Nat 1 — fight-scoped, reset in
     // clearFightScopedState()/startNewRun() the same way the player's is.
@@ -189,7 +220,14 @@ const gameState = {
     // the same die-row-rolled/-flash look a rolled face gets. Round-scoped,
     // same single clear site as outsideTriggeredFaces/roundTriggerCount
     // above.
-    hoppedFaces: []
+    hoppedFaces: [],
+    // BUILD 141 (item C) — this round's Sealed faces (from a Seal trigger
+    // the previous round — gameState.player.sealNextRound moves in here at
+    // START_OF_TURN). A Sealed face counts as blank for every rule that
+    // checks "is this face loaded" this round — see isFaceSealed(),
+    // pipeline.js. Round-scoped, same single clear site as every other
+    // round-scoped roll flag above.
+    sealedFaces: []
   },
 
   run: {

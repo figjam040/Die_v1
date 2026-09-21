@@ -262,7 +262,11 @@ function resolvePlayerRoll(face) {
     // BUILD 054, only what it now reaches has changed, same shape as the
     // BUILD 066 NAT_TWENTY change above.
     callListeners('NAT_ONE', {});
-  } else if (face.modId !== null) {
+  } else if (face.modId !== null && !isFaceSealed(face.number)) {
+    // BUILD 141 (item C): a Sealed face (isFaceSealed()) is excluded from
+    // this branch, so a rolled Sealed face falls straight to the plain
+    // blank BLANK_ROLL dispatch below, exactly as a genuinely blank face
+    // does — "a Sealed face counts as blank for that whole round."
     // BUILD 115: a face can hold up to two mods (modId, then modId2 — load
     // order). Both trigger when the face is rolled, first-loaded first,
     // each resolving fully (mod_dispatch's effect() call returns) before
@@ -306,6 +310,11 @@ function resolvePlayerRoll(face) {
 // merged in like every other modData field (Zeal's accumulatedBonus, Cope's
 // copeBonus), never replacing modData wholesale.
 function isBoundFace(face) {
+  // BUILD 141 (item C): a Sealed face counts as blank for every rule,
+  // including Bound — checked first, before either of the two real ways a
+  // face can be Bound, so a Sealed Bound face reads as not-Bound this
+  // round (the Bound scan and the Nat 20 sweep both skip it as a result).
+  if (isFaceSealed(face.number)) { return false; }
   if (face.modData && face.modData.boundGranted) { return true; }
   const mod = face.modId !== null ? gameState.config.mods[face.modId] : null;
   if (mod && mod.tags && mod.tags.indexOf('bound') !== -1) { return true; }
@@ -403,6 +412,62 @@ function playSweep(faceNumbers, dispatchFn, onComplete) {
   if (onComplete && faceNumbers.length === 0) { onComplete(); }
 }
 
+// ---------- SEAL (BUILD 141, item C) ----------
+
+// The one shared "is this face sealed" check — every "is this face loaded"
+// decision site that needs to treat a Sealed face as blank calls this
+// first (see CLAUDE.md's LOADED-FACE RULE). Round-scoped: sealedFaces is
+// cleared at START_OF_TURN alongside every other round-scoped roll flag.
+function isFaceSealed(faceNumber) {
+  return gameState.turn.sealedFaces.indexOf(faceNumber) !== -1;
+}
+
+// Seal's own target pick — the player's heaviest loaded face, excluding
+// faces 1/20 (never sealable) and any face already Sealed this round
+// (a Sealed face does not count as loaded, so it's never picked again on
+// top of itself). Ties go to the lowest-numbered face, same rule
+// Magnificat's own heaviest-face search already uses. Returns null if
+// nothing is eligible.
+function pickHeaviestLoadedFaceForSeal() {
+  const candidates = gameState.die.faces.filter(function(f) {
+    return f.number !== 1 && f.number !== GAME_CONFIG.DIE_SIZE.PLAYER && f.modId !== null && !isFaceSealed(f.number);
+  });
+  if (candidates.length === 0) { return null; }
+  return candidates.reduce(function(best, f) {
+    if (f.weight > best.weight) { return f; }
+    if (f.weight === best.weight && f.number < best.number) { return f; }
+    return best;
+  });
+}
+
+// ---------- ENEMY DICE OF ANY SIZE (BUILD 141, item C) ----------
+
+// A generic enemy-die builder from a {sizeKey, faces, nats} spec — sizeKey
+// indexes GAME_CONFIG.DIE_SIZE (any entry, not just ELITE/BOSS), faces is a
+// sparse { faceNumber: buffId } map, nats (bool) puts ENEMY_NAT_ONE/
+// ENEMY_NAT_TWENTY on faces 1/size exactly like buildEnemyDieFaces()'s own
+// includeNats flag. Existing elites/bosses (buildAct(), run-and-map.js)
+// keep using buildEnemyDieFaces() directly, byte-identical to BUILD 140 —
+// this is the shape a future designed enemy (BUILD 142) supplies instead,
+// and is also what devSetTestDie() (dev-tools.js) uses to build a same-buff-
+// on-every-face test die of any GAME_CONFIG.DEV_TEST_DIE_SIZES size.
+function buildEnemyDieFromSpec(spec) {
+  const dieSize = GAME_CONFIG.DIE_SIZE[spec.sizeKey];
+  const faces = [];
+  for (let n = 1; n <= dieSize; n++) {
+    let modId = null;
+    if (spec.nats && n === 1) {
+      modId = 'ENEMY_NAT_ONE';
+    } else if (spec.nats && n === dieSize) {
+      modId = 'ENEMY_NAT_TWENTY';
+    } else if (spec.faces && spec.faces[n]) {
+      modId = spec.faces[n];
+    }
+    faces.push({ number: n, modId: modId, modId2: null, weight: 1 });
+  }
+  return faces;
+}
+
 // ---------- OUTSIDE-ROLL TRIGGER (checkpoint 3, prompt D) ----------
 
 // BUILD 132: the one shared function every "trigger a face without rolling
@@ -461,7 +526,7 @@ function triggerFaceOutsideRoll(faceNumber) {
   markFaceHopped(faceNumber);
 
   const face = gameState.die.faces[faceNumber - 1];
-  if (face.modId !== null) {
+  if (face.modId !== null && !isFaceSealed(faceNumber)) {
     log('[TRIGGER] face ' + faceNumber + ' triggered outside a roll (modId: ' + face.modId + ')');
     callListeners('MOD_TRIGGER', { modId: face.modId, faceNumber: face.number });
     if (face.modId2) {
@@ -473,6 +538,100 @@ function triggerFaceOutsideRoll(faceNumber) {
     callListeners('BLANK_ROLL', {});
   }
   return true;
+}
+
+// ---------- ENEMY INTENT PATTERN (BUILD 141, item B) ----------
+
+// Fixes and shows this round's intent — called once, at the very top of
+// START_OF_TURN (phase-machine.js), before poison ticks or block clears,
+// exactly where the old flat intentMin/intentMax roll used to sit. Handles:
+// (1) Wrath's pending-to-active move, always, every round; (2) the charge
+// windup->release transition, including the once-per-charge break check;
+// (3) picking this round's entry — the dev's one-shot forcedNextIntent
+// override if set, else the next pattern entry — for every other case.
+// gameState.enemy is mutated in place by updateEnemy() (Object.assign onto
+// the same object), so a local `enemy` reference stays live across the
+// calls below — no re-fetch needed.
+function advanceEnemyIntentForRound() {
+  const enemy = gameState.enemy;
+
+  // Wrath (item C): moves from pending into active before any Attack this
+  // round is rolled, so a Wrath triggered mid-round this round affects
+  // next round's Attacks, never this one's already-shown value.
+  if (enemy.wrathPending > 0) {
+    const newWrath = enemy.wrath + enemy.wrathPending;
+    updateEnemy({ wrath: newWrath, wrathPending: 0 });
+    log('[ENEMY] Wrath active: Attacks now +' + newWrath + '.');
+  }
+
+  if (!enemy.pattern || enemy.pattern.length === 0) { return; }
+
+  if (enemy.chargeStage === 'windup') {
+    // Last round was the wind-up; this round is the release. Break check:
+    // compare HP lost since windupStartHp was captured, at the wind-up
+    // round's own START_OF_TURN, before ITS poison tick — by now every
+    // event of that wind-up round (including its own poison tick) has
+    // already resolved, so this naturally counts poison toward the break.
+    const entry = enemy.currentEntry;
+    const hpLost = enemy.windupStartHp - enemy.hp;
+    const broke = hpLost >= entry.breakAt;
+    updateEnemy({ chargeStage: 'release', chargeBroken: broke });
+    if (broke) {
+      log('[ENEMY] ' + enemy.id + '\'s Charge breaks.');
+    }
+    return;
+  }
+
+  // Not mid-charge: this round's entry is the dev's one-shot override, if
+  // set (consumed immediately, never reused), else the next pattern entry.
+  const forced = enemy.forcedNextIntent;
+  const entry = forced || enemy.pattern[enemy.patternIndex];
+  if (forced) {
+    updateEnemy({ forcedNextIntent: null });
+  }
+
+  if (entry.kind === 'attack') {
+    const rolled = Math.floor(Math.random() * (entry.max - entry.min + 1)) + entry.min;
+    const value = rolled + enemy.wrath;
+    updateEnemy({ currentEntry: Object.assign({}, entry, { rolledValue: value }), chargeStage: null, chargeBroken: false, windupStartHp: null });
+    // BUILD 068's original log line, unchanged in wording — "The Attack log
+    // line stays as now."
+    log('[ENEMY] intent set to ' + value);
+  } else if (entry.kind === 'charge') {
+    updateEnemy({ currentEntry: entry, chargeStage: 'windup', chargeBroken: false, windupStartHp: enemy.hp });
+    log('[ENEMY] ' + enemy.id + ' charges. Release ' + entry.release + ' next round.');
+  } else if (entry.kind === 'afflict') {
+    updateEnemy({ currentEntry: entry, chargeStage: null, chargeBroken: false, windupStartHp: null });
+  }
+}
+
+// Advances the pattern pointer past the entry that just resolved in
+// ENEMY_ACT_PHASE (or was cancelled by the enemy's own Nat 1) and clears
+// this round's charge bookkeeping. Never called for a charge still sitting
+// in its wind-up stage — the caller (phase-machine.js's ENEMY_ACT_PHASE)
+// checks that first, since a charge advances only after its release round.
+function advanceEnemyPattern() {
+  const enemy = gameState.enemy;
+  const nextIndex = enemy.pattern.length ? (enemy.patternIndex + 1) % enemy.pattern.length : 0;
+  updateEnemy({ patternIndex: nextIndex, chargeStage: null, chargeBroken: false, windupStartHp: null, currentEntry: null });
+}
+
+// BUILD 141 (item B) — the one shared reader for "how much damage is this
+// round's intent actually going to deal, before block" — Interdict
+// (cards-mods.js) reads this instead of the old flat gameState.enemy.intent
+// comparison, so it never has to duplicate the kind/chargeBroken branching
+// above. Attack -> its rolled-plus-Wrath value. Charge on its release round,
+// unbroken -> the release value. A wind-up round, an Afflict round, or a
+// broken release -> 0 (no damage that round).
+function getIncomingIntentDamage() {
+  const enemy = gameState.enemy;
+  const entry = enemy.currentEntry;
+  if (!entry) { return 0; }
+  if (entry.kind === 'attack') { return entry.rolledValue; }
+  if (entry.kind === 'charge') {
+    return (enemy.chargeStage === 'release' && !enemy.chargeBroken) ? entry.release : 0;
+  }
+  return 0;
 }
 
 // BUILD 097: ENEMY_NAT_ONE and ENEMY_NAT_TWENTY are now real dispatches —

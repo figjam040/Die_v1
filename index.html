@@ -566,6 +566,19 @@
     flex-shrink: 0;
   }
 
+  /* BUILD 141 (item C) — a Sealed face's whole row dims (existing --muted
+     tone, no new colour, per D-28) and its badge reuses .die-weight's own
+     box/font, same convention the Bound badge (die-bound-badge) already
+     established — the face's own hue (blank/loaded/nat) never changes,
+     only overall opacity, so a Sealed loaded face still visibly reads as
+     "the same mod, dimmed" rather than turning into a different colour. */
+  .die-row-sealed {
+    opacity: 0.5;
+  }
+  .die-sealed-badge {
+    color: var(--muted);
+  }
+
   /* BUILD 103: the per-face trigger-count badge, originally byte-identical
      box/font to .die-weight, per D-28's no-new-palette rule. A separate
      class rather than reusing .die-weight outright so the two remain
@@ -1468,7 +1481,7 @@
 
 <div class="top-bar">
   <div class="top-bar-left">
-    <div id="buildStamp">DIE V1 — STAGE 2.67<br>BUILD <span id="buildStampNumber"></span></div>
+    <div id="buildStamp">DIE V1 — STAGE 2.68<br>BUILD <span id="buildStampNumber"></span></div>
     <!-- BUILD 109: run record — player-facing, not dev chrome. Sits beside
          the build stamp rather than in .controls-buttons/near End Turn,
          same reasoning BUILD 087 gave New Run for staying out of the way
@@ -1547,6 +1560,8 @@
         <div class="stat-line"><span class="stat-label">Poison Stacks</span><span class="stat-value" id="enemyPoisonValue">—</span></div>
         <div class="stat-line"><span class="stat-label">Loaded buffs</span><span class="stat-value" id="enemyBuffsValue">—</span></div>
         <div class="stat-line"><span class="stat-label">Active this turn</span><span class="stat-value" id="enemyActiveValue">—</span></div>
+        <!-- BUILD 141 (item C) — shown only while gameState.enemy.wrath > 0 (renderStats(), rendering.js). Plain text, existing stat-line shape. -->
+        <div class="stat-line" id="enemyWrathLine" style="display:none;"><span class="stat-value" id="enemyWrathValue">—</span></div>
       </div>
     </div>
 
@@ -1594,6 +1609,8 @@
           <div class="stat-hero"><span class="stat-icon">💧</span><span class="stat-hero-value" id="playerSoulValue">— / —</span></div>
         </div>
         <div class="stat-line"><span class="stat-label">Active debuffs</span><span class="stat-value" id="playerDebuffsValue">—</span></div>
+        <!-- BUILD 141 (item C) — shown only while gameState.player.drainNextRound > 0 (renderStats(), rendering.js). Plain text, existing stat-line shape. -->
+        <div class="stat-line" id="playerDrainLine" style="display:none;"><span class="stat-value" id="playerDrainValue">—</span></div>
         <div class="stat-line"><span class="stat-label">Deck</span><span class="stat-value" id="playerDeckValue">—</span></div>
         <div class="stat-line"><span class="stat-label">Discard</span><span class="stat-value" id="playerDiscardValue">—</span></div>
       </div>
@@ -1709,6 +1726,41 @@
         <input type="number" id="devPoisonInput" min="1" value="6">
         <!-- DEV ONLY -->
         <button id="devApplyPoisonBtn">Apply</button>
+      </div>
+
+      <!-- DEV ONLY — BUILD 141 (item B). Replaces the NEXT round's pattern-derived intent exactly once (devSetNextIntent(), dev-tools.js). Remove before any real release. -->
+      <div id="devSetIntent">
+        <span class="dev-mod-loader-label">SET NEXT INTENT</span>
+        <select id="devIntentKindSelect">
+          <option value="attack" selected>Attack</option>
+          <option value="charge">Charge</option>
+          <option value="afflict">Afflict</option>
+        </select>
+        <span class="dev-mod-loader-label">MIN</span>
+        <input type="number" id="devIntentMinInput" min="0" value="10">
+        <span class="dev-mod-loader-label">MAX</span>
+        <input type="number" id="devIntentMaxInput" min="0" value="10">
+        <span class="dev-mod-loader-label">RELEASE</span>
+        <input type="number" id="devIntentReleaseInput" min="0" value="24">
+        <span class="dev-mod-loader-label">BREAK</span>
+        <input type="number" id="devIntentBreakInput" min="0" value="15">
+        <span class="dev-mod-loader-label">STACKS</span>
+        <input type="number" id="devIntentStacksInput" min="0" value="4">
+        <button id="devSetIntentBtn">Set</button>
+      </div>
+
+      <!-- DEV ONLY — BUILD 141 (item C). Gives the current enemy a test die of any GAME_CONFIG.DEV_TEST_DIE_SIZES size, one buff per face, for this fight only. Remove before any real release. -->
+      <div id="devTestDie">
+        <span class="dev-mod-loader-label">TEST DIE</span>
+        <select id="devTestDieSizeSelect"></select>
+        <span class="dev-mod-loader-label">BUFF</span>
+        <select id="devTestDieBuffSelect">
+          <option value="enemy_buff_poison" selected>Poison</option>
+          <option value="enemy_buff_wrath">Wrath</option>
+          <option value="enemy_buff_drain">Drain</option>
+          <option value="enemy_buff_seal">Seal</option>
+        </select>
+        <button id="devSetTestDieBtn">Set every face</button>
       </div>
 
       </div><!-- /#devChrome — BUILD 083 -->

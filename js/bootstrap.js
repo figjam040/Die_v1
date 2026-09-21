@@ -188,6 +188,48 @@ document.getElementById('devApplyPoisonBtn').addEventListener('click', function(
   devApplyPoison();
 });
 
+// DEV ONLY — remove before any real release. BUILD 141 (item B): Set Next
+// Intent — builds the one intent spec devSetNextIntent() (dev-tools.js)
+// expects from whichever of the three kind-specific input groups is
+// relevant to #devIntentKindSelect's current value; the other two groups'
+// inputs are simply ignored, not hidden (kept plain per the BUILD 143 UI
+// pass note).
+document.getElementById('devSetIntentBtn').addEventListener('click', function() {
+  log('[CLICK] Set Next Intent');
+  const kind = document.getElementById('devIntentKindSelect').value;
+  let intent;
+  if (kind === 'attack') {
+    intent = { kind: 'attack', min: parseInt(document.getElementById('devIntentMinInput').value, 10), max: parseInt(document.getElementById('devIntentMaxInput').value, 10) };
+  } else if (kind === 'charge') {
+    intent = { kind: 'charge', release: parseInt(document.getElementById('devIntentReleaseInput').value, 10), breakAt: parseInt(document.getElementById('devIntentBreakInput').value, 10) };
+  } else {
+    intent = { kind: 'afflict', stacks: parseInt(document.getElementById('devIntentStacksInput').value, 10) };
+  }
+  devSetNextIntent(intent);
+});
+
+// DEV ONLY — remove before any real release. BUILD 141 (item C): Test Die —
+// populates #devTestDieSizeSelect from GAME_CONFIG.DEV_TEST_DIE_SIZES once
+// at load (mirrors renderDevModOptions()'s own populate-once shape), then
+// gives the current enemy a die of the chosen size with the chosen buff on
+// every face, for this fight only (devSetTestDie(), dev-tools.js).
+(function populateDevTestDieSizes() {
+  const select = document.getElementById('devTestDieSizeSelect');
+  GAME_CONFIG.DEV_TEST_DIE_SIZES.forEach(function(size) {
+    const option = document.createElement('option');
+    option.value = size;
+    option.textContent = size;
+    select.appendChild(option);
+  });
+})();
+
+document.getElementById('devSetTestDieBtn').addEventListener('click', function() {
+  log('[CLICK] Set Test Die');
+  const size = parseInt(document.getElementById('devTestDieSizeSelect').value, 10);
+  const buffId = document.getElementById('devTestDieBuffSelect').value;
+  devSetTestDie(size, buffId);
+});
+
 // BUILD 093: mute toggle for the synthesised roll sounds (js/audio.js).
 // Default unmuted — the checkbox starts unchecked in the markup and
 // audioMuted starts false in audio.js; this is the only writer of either.

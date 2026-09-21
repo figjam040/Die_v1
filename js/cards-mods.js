@@ -245,8 +245,14 @@ function init() {
 
   gameState.config.cards['interdict'] = {
     id: 'interdict', name: 'Interdict', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: [],
+    // BUILD 141 (item B): reads getIncomingIntentDamage() (pipeline.js)
+    // instead of the old flat gameState.enemy.intent >= 12 comparison — a
+    // wind-up or a broken release deals 0 real damage this round, so this
+    // now correctly reads 5 block there instead of 10, even though the
+    // enemy's pattern entry for a charge still names a much bigger release
+    // number.
     effect: function(gameState) {
-      const heavyIntent = gameState.enemy.intent >= 12;
+      const heavyIntent = getIncomingIntentDamage() >= 12;
       const block = dealBlock(heavyIntent ? 10 : 5, 'interdict');
       if (heavyIntent) {
         log('[CARD] interdict: 10 block, intent 12+');
@@ -391,7 +397,7 @@ function init() {
     id: 'gradual', name: 'Gradual', soulCost: 1, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['mass'],
     effect: function(gameState) {
       const heaviest = gameState.die.faces.reduce(function(max, f) {
-        return (f.modId !== null && f.weight > max) ? f.weight : max;
+        return (f.modId !== null && !isFaceSealed(f.number) && f.weight > max) ? f.weight : max;
       }, 0);
       const damage = dealDamage('enemy', 3 + heaviest, 'attack', 'gradual');
       log('[CARD] gradual: ' + damage + ' damage (heaviest loaded face weight ' + heaviest + ')');
@@ -633,7 +639,7 @@ function init() {
     id: 'threnody', name: 'Threnody', soulCost: 2, type: 'utility', classRestriction: null, tier: 'uncommon', tags: ['growth'],
     effect: function(gameState) {
       const loaded = gameState.die.faces.filter(function(f) {
-        return f.modId !== null && f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY';
+        return f.modId !== null && f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && !isFaceSealed(f.number);
       });
       if (loaded.length === 0) {
         log('[CARD] threnody: no loaded face to trigger');
@@ -732,7 +738,7 @@ function init() {
       const block = dealBlock(6, 'canticle');
       const faceNumber = gameState.turn.rolledFaceNumber;
       const face = gameState.die.faces[faceNumber - 1];
-      const loaded = face.modId !== null && face.modId !== 'NAT_ONE' && face.modId !== 'NAT_TWENTY';
+      const loaded = face.modId !== null && face.modId !== 'NAT_ONE' && face.modId !== 'NAT_TWENTY' && !isFaceSealed(faceNumber);
       if (loaded) {
         const granted = grantBoundToFace(faceNumber);
         log('[CARD] canticle: ' + block + ' block' + (granted ? ', face ' + faceNumber + ' granted Bound for the fight' : ''));
@@ -797,8 +803,10 @@ function init() {
     // the exact same dispatch call a single rolled mod face already
     // makes in resolvePlayerRoll — no second copy of the trigger logic.
     onNatTwenty: function() {
+      // BUILD 141 (item C): a Sealed face is excluded from the sweep — it
+      // counts as blank this round, for every rule, Nat 20 included.
       const loadedFaces = gameState.die.faces.filter(function(f) {
-        return f.modId !== null && f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY';
+        return f.modId !== null && f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && !isFaceSealed(f.number);
       });
       log('[ROLL] Nat 20: ' + loadedFaces.length + ' loaded face' + (loadedFaces.length === 1 ? '' : 's') + ' trigger' + (loadedFaces.length === 1 ? 's' : ''));
       // BUILD 115: a two-mod face triggers both mods, in load order,
@@ -887,6 +895,34 @@ function init() {
   // mirroring the BUILD 066 NAT_TWENTY registration exactly.
   registerListener('NAT_ONE', 'ordained_nat_one_passive', gameState.config.classes[gameState.player.classId].onNatOne, 'permanent');
 
+  // ---------- BUILD 141: poison answer (item A, KI-26) ----------
+  // At START_OF_TURN, before poison ticks and before block clears, the
+  // player's own held block answers their own poison: every
+  // GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK (5) block still held removes
+  // 1 stack of poison, capped at however many stacks the player actually
+  // has. Block is read here, not spent — the existing block-clear step
+  // later in START_OF_TURN (phase-machine.js) still zeroes it exactly as
+  // before. Registered on the 'START_OF_TURN' hook rather than written
+  // inline in phase-machine.js: runPhase()'s own callListeners(phase) call
+  // fires unconditionally at the very top of the function, before any of
+  // that phase's own if-branch logic runs (see EVENT HOOKS, CLAUDE.md) — so
+  // this listener is guaranteed to run before the inline poison tick/block
+  // clear code further down that same phase body, with no dependency on
+  // listener registration order (there is only one listener on this hook).
+  // Enemies are unaffected — they have no block field, so this never
+  // touches gameState.enemy.
+  registerListener('START_OF_TURN', 'poison_answer_passive', function() {
+    const block = gameState.player.block;
+    const poison = gameState.player.poisonStacks;
+    const perStack = GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK;
+    const removable = Math.floor(block / perStack);
+    const stacksRemoved = Math.min(removable, poison);
+    if (stacksRemoved > 0) {
+      updatePlayer({ poisonStacks: poison - stacksRemoved });
+      log('[POISON] ' + block + ' block held removes ' + stacksRemoved + (stacksRemoved === 1 ? ' stack of poison.' : ' stacks of poison.'));
+    }
+  }, 'permanent');
+
   // ---------- BUILD 097/098: the boss die's enemy half ----------
   // First real enemy mechanic — the boss is the only enemy that carried a
   // die at all until BUILD 098 gave the elite its own too (buildAct(),
@@ -924,6 +960,34 @@ function init() {
       const newStacks = gameState.player.poisonStacks + amount;
       updatePlayer({ poisonStacks: newStacks });
       log('[ENEMY] applied ' + amount + ' stacks of poison to player, now ' + newStacks + ' stacks of poison');
+    } else if (data.buffId === 'enemy_buff_wrath') {
+      // BUILD 141 (item C) — Wrath. Queues into wrathPending; moves into
+      // the active wrath (added to every later Attack) at the next
+      // START_OF_TURN (advanceEnemyIntentForRound(), pipeline.js), so this
+      // round's already-shown Attack value never changes.
+      const newPending = gameState.enemy.wrathPending + GAME_CONFIG.ENEMY_WRATH_AMOUNT;
+      updateEnemy({ wrathPending: newPending });
+      log('[ENEMY] Wrath triggers: Attacks +' + GAME_CONFIG.ENEMY_WRATH_AMOUNT + ' from next round.');
+    } else if (data.buffId === 'enemy_buff_drain') {
+      // BUILD 141 (item C) — Drain. Queues 1 onto drainNextRound; consumed
+      // at the next START_OF_TURN's soul reset (phase-machine.js).
+      const newDrain = gameState.player.drainNextRound + 1;
+      updatePlayer({ drainNextRound: newDrain });
+      log('[ENEMY] Drain triggers: 1 less soul next round.');
+    } else if (data.buffId === 'enemy_buff_seal') {
+      // BUILD 141 (item C) — Seal. Picks the player's heaviest loaded face
+      // (excluding 1/20 and any face already Sealed this round —
+      // pickHeaviestLoadedFaceForSeal(), pipeline.js) and queues it; the
+      // queue moves into gameState.turn.sealedFaces at the next
+      // START_OF_TURN (phase-machine.js), where it actually starts
+      // counting as blank.
+      const target = pickHeaviestLoadedFaceForSeal();
+      if (target) {
+        updatePlayer({ sealNextRound: gameState.player.sealNextRound.concat(target.number) });
+        log('[ENEMY] Seal triggers: face ' + target.number + ' counts as blank next round.');
+      } else {
+        log('[ENEMY] Seal triggers: no loaded face to seal');
+      }
     }
   }, 'permanent');
 
@@ -1505,7 +1569,7 @@ function init() {
     effect: function(data) {
       const ownFaceNumber = data.faceNumber;
       const candidates = gameState.die.faces.filter(function(f) {
-        return f.modId !== null && f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && f.number !== ownFaceNumber;
+        return f.modId !== null && f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && f.number !== ownFaceNumber && !isFaceSealed(f.number);
       });
       if (candidates.length === 0) {
         log('[MOD] magnificat: no other loaded face to trigger');
@@ -1610,7 +1674,7 @@ function init() {
       const ownFaceNumber = data.faceNumber;
       const candidates = gameState.die.faces.filter(function(f) {
         return f.modId !== null && f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' &&
-          f.number !== ownFaceNumber && !isBoundFace(f);
+          f.number !== ownFaceNumber && !isBoundFace(f) && !isFaceSealed(f.number);
       });
       const target = pickRandom(candidates);
       if (target === undefined) {

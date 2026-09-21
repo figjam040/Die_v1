@@ -183,6 +183,38 @@ function devClearFace() {
 // byte-for-byte the same as before the target selector was added.
 // Remove this whole section before any real release.
 
+// ---------- DEV ONLY — SET NEXT INTENT (BUILD 141, item B) ----------
+// Testing tool. Replaces the NEXT round's pattern-derived intent exactly
+// once — advanceEnemyIntentForRound() (pipeline.js) reads
+// gameState.enemy.forcedNextIntent first, if set, ahead of the real
+// pattern, and clears it immediately after use so a second round is
+// unaffected. intent is one of:
+//   { kind: 'attack', min, max }
+//   { kind: 'charge', release, breakAt }
+//   { kind: 'afflict', stacks }
+// Remove this whole section before any real release.
+function devSetNextIntent(intent) {
+  if (!intent || !intent.kind) return;
+  updateEnemy({ forcedNextIntent: intent });
+  log('[DEV] next intent forced: ' + JSON.stringify(intent));
+}
+
+// ---------- DEV ONLY — TEST DIE (BUILD 141, item C) ----------
+// Testing tool. Gives the CURRENT enemy a die of the given size (any of
+// GAME_CONFIG.DEV_TEST_DIE_SIZES) with the given buff on every face (no
+// Nat faces — a dev stress tool, not a designed enemy), for this fight
+// only — not written onto the entering slot's own static config, so a
+// Restart Fight or the next real fight entry replaces it exactly as before.
+// Remove this whole section before any real release.
+function devSetTestDie(size, buffId) {
+  const faces = [];
+  for (let n = 1; n <= size; n++) {
+    faces.push({ number: n, modId: buffId, modId2: null, weight: 1 });
+  }
+  updateEnemy({ hasDie: true, die: { faces: faces } });
+  log('[DEV] test die: ' + size + '-face, ' + buffId + ' on every face');
+}
+
 function devApplyPoison() {
   const amount = parseInt(document.getElementById('devPoisonInput').value, 10);
   if (!amount || amount <= 0) return;

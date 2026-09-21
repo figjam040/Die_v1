@@ -32,6 +32,9 @@
 // F26 files under /js/: eleven — config, state, listener-registry, audio, pipeline, cards-mods, run-and-map, phase-machine, rendering, dev-tools, bootstrap
 // F27 pitch chains cap 8, reset at START_OF_TURN
 // F28 (corrected BUILD 102 — see paste-back) sound duration ceiling 200 ms holds for every frequent sound (roll, card plays, damage, block, end turn, mod trigger, die action, card reward, fight_start_normal/elite); nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it — all six are rare, at most once per fight-ending event, boss fight, or Nat roll, measured live via tests/facts.test.js, not just the two Nat sounds the fact previously named
+// F33 (BUILD 141) at START_OF_TURN, before poison ticks and before block clears, every 5 block the player holds removes 1 stack of poison from the player
+// F34 (BUILD 141) enemies act from a repeating pattern of 1 to 4 intents: Attack (a number rolled evenly in its range), Charge (a no-damage wind-up round, then a release; broken if the enemy loses the break number of HP in the wind-up round, poison ticks included) and Afflict (stacks of poison, no damage); an enemy Nat 1 cancels that round's intent
+// F35 (BUILD 141) any enemy can carry a die of any size from GAME_CONFIG.DIE_SIZE; buffs are poison, Wrath (adds to every Attack from the next round on), Drain (1 less soul next round) and Seal (the player's heaviest loaded face other than 1 and 20 counts as blank next round, for every rule)
 // F31 (BUILD 125) three acts; per-act enemy HP multiplier 1.0/1.4/1.9 and intent multiplier 1.0/1.2/1.45, both applied at enemy creation (buildAct()) with Math.ceil; the enemy buff's poison-stack amount scales with the intent multiplier the same way (also Math.ceil, also fixed at enemy creation); the enemy Nat 1 self-poison stays a flat, unscaled amount
 // F32 (BUILD 125) beating the act 1 or act 2 boss grants a card reward and one die reward, exactly like any other fight win; the act 3 boss is VICTORY with no reward (D-22)
 // ============================================================
@@ -44,7 +47,7 @@ const GAME_CONFIG = {
   // test then fails if it doesn't match the newest CONFIRMED WORKING entry
   // in CLAUDE.md, so a forgotten bump is caught by the test suite instead
   // of being noticed cold several builds later (the KI-18 failure mode).
-  BUILD: 140,
+  BUILD: 141,
 
   // F01 — player HP. Was state.js's gameState.player.hp/maxHp literal (70).
   PLAYER_MAX_HP: 70,
@@ -117,6 +120,13 @@ const GAME_CONFIG = {
     BOSS: { MIN: 10, MAX: 20 }
   },
 
+  // F33 (BUILD 141) — poison answer. At START_OF_TURN, before poison ticks
+  // and before block clears, every POISON_ANSWER_BLOCK_PER_STACK block the
+  // player still holds removes 1 stack of the player's own poison (capped
+  // at however many stacks they actually have). See poison_answer_passive
+  // (cards-mods.js's init(), registered on the START_OF_TURN hook).
+  POISON_ANSWER_BLOCK_PER_STACK: 5,
+
   // F19/F23 — enemy poison amounts. Two separate facts that no longer share
   // a value: F19 is what a triggered buff face applies TO THE PLAYER
   // (cards-mods.js's enemy_buff_dispatch), base 3, scaled per act by
@@ -137,7 +147,19 @@ const GAME_CONFIG = {
   // size per class and per boss — Parked, not built): the player, an elite
   // and the boss must each be free to vary independently later without a
   // second refactor. Nothing in js/ reads a bare 20 for a die size any more.
-  DIE_SIZE: { PLAYER: 20, ELITE: 20, BOSS: 20 },
+  DIE_SIZE: { PLAYER: 20, ELITE: 20, BOSS: 20, NORMAL: 6 },
+
+  // BUILD 141 (item C) — Wrath's per-trigger amount, added to
+  // gameState.enemy.wrathPending by enemy_buff_dispatch (cards-mods.js)
+  // whenever an 'enemy_buff_wrath' face triggers.
+  ENEMY_WRATH_AMOUNT: 2,
+
+  // BUILD 141 (item C) — dev-only Test Die sizes (#devTestDieSizeSelect,
+  // devSetTestDie() dev-tools.js). Not a design constant read by any real
+  // enemy — DIE_SIZE.NORMAL above is the one new real per-entity size this
+  // build adds (a normal fight's own die stays hasDie:false and unused
+  // either way, ready for BUILD 142's designed enemies).
+  DEV_TEST_DIE_SIZES: [6, 12, 20],
 
   // F20/F21 — elite and boss die face layouts. Was run-and-map.js's
   // buildAct() inline buildEnemyDieFaces([7, 14], false) / ([5, 10, 15], true)

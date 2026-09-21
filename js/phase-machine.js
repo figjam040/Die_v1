@@ -139,13 +139,28 @@ function runPhase(phase) {
     // playAudioEvent().
     resetSoundChains();
 
-    // BUILD 068: was a hardcoded Math.floor(Math.random()*13)+6 (a fixed
-    // 6-18 band). Now reads gameState.enemy.intentMin/intentMax, set per
-    // slot in beginFightFromSlot() — normal fights default to 6/18 (the
-    // exact same range, unchanged), elite/boss carry their own wider bands.
-    const newIntent = Math.floor(Math.random() * (gameState.enemy.intentMax - gameState.enemy.intentMin + 1)) + gameState.enemy.intentMin;
-    updateEnemy({ intent: newIntent });
-    log('[ENEMY] intent set to ' + newIntent);
+    // BUILD 141 (item B, F34): was a flat uniform roll over gameState.enemy.
+    // intentMin/intentMax (BUILD 068). Enemies now act from a repeating
+    // pattern of 1-4 intents (Attack/Charge/Afflict) — see
+    // advanceEnemyIntentForRound() (pipeline.js), which handles the Attack
+    // roll, the charge windup->release transition and its break check, and
+    // the dev's one-shot forcedNextIntent override, all in one place. Every
+    // enemy built by buildAct() today still carries a single-entry
+    // [{kind:'attack', min, max}] pattern using that exact same intentMin/
+    // intentMax, so this call reproduces the old roll byte-for-byte until
+    // BUILD 142 adds real multi-intent patterns.
+    advanceEnemyIntentForRound();
+
+    // BUILD 141 (item C) — Seal's queue moves into this round's active
+    // sealedFaces here, before ROLL_PHASE ever runs, so a queued face
+    // already counts as blank for this round's own roll.
+    if (gameState.player.sealNextRound.length > 0) {
+      gameState.player.sealNextRound.forEach(function(faceNumber) {
+        log('[ENEMY] Face ' + faceNumber + ' is sealed and counts as blank.');
+      });
+      updateTurn({ sealedFaces: gameState.turn.sealedFaces.concat(gameState.player.sealNextRound) });
+      updatePlayer({ sealNextRound: [] });
+    }
 
     if (gameState.player.poisonStacks > 0) {
       // Mirrors the enemy poison tick exactly: damage through calculateDamage()
@@ -200,8 +215,12 @@ function runPhase(phase) {
     updatePlayer({ block: 0 });
     log('[START] block cleared: ' + blockBefore + ' to 0');
 
-    updatePlayer({ soul: gameState.player.maxSoul });
-    log('[START] soul reset to ' + gameState.player.maxSoul);
+    // BUILD 141 (item C) — Drain: the soul reset comes in drainNextRound
+    // under maxSoul, floored at 0, then the queue is consumed. 0 when no
+    // Drain is queued, reproducing the plain maxSoul reset byte-for-byte.
+    const soulAfterDrain = Math.max(0, gameState.player.maxSoul - gameState.player.drainNextRound);
+    updatePlayer({ soul: soulAfterDrain, drainNextRound: 0 });
+    log('[START] soul reset to ' + soulAfterDrain);
 
     // BUILD 067: Penitence's per-turn soul loss, after the reset above so
     // a Penitence turn begins at maxSoul - 1 (e.g. 2), never negative.
@@ -284,48 +303,87 @@ function runPhase(phase) {
     // per-outcome log lines) runs at all this turn. enemyAttackCancelledThisTurn
     // is set by boss_nat_one_passive (cards-mods.js) during ENEMY_ROLL_PHASE,
     // earlier the same turn, and cleared for good at the next START_OF_TURN.
+    // BUILD 141 (item B): the enemy's own Nat 1 cancels THIS ROUND's intent,
+    // whatever kind it is — a charge's wind-up round is cancelled outright,
+    // skipping the release entirely (advanceEnemyPattern() moves the
+    // pattern pointer past the whole charge, exactly like a normal
+    // attack/afflict round completing); a charge's release round or a plain
+    // attack/afflict round completing under cancellation still advances
+    // normally, just with no effect this round. Every case above reduces to
+    // the same call: advance the pattern, no damage, no poison applied.
     if (gameState.turn.enemyAttackCancelledThisTurn) {
       log('[ENEMY] attack cancelled by its own Nat 1');
+      advanceEnemyPattern();
       return;
     }
-    const intent = gameState.enemy.intent;
+
+    const entry = gameState.enemy.currentEntry;
     const block = gameState.player.block;
-    const rawDamage = Math.max(0, intent - block);
-    // BUILD 094: block-absorb sound, announced before dealDamage() below
-    // so it lands first — this is the one place the intent-vs-block
-    // subtraction already happens, so it's the only correct spot to know
-    // "block actually absorbed some of this hit" (as opposed to just
-    // "the player currently has some block," which dealBlock() itself
-    // would not know for an enemy attack it isn't even involved in).
-    // Math.min(intent, block) is the actual amount of the hit block ate,
-    // gated on >0 so a hit that arrives against zero block never plays
-    // the absorb thud. The damage_player sound (fired inside dealDamage()
-    // below, independently, gated on damage>0) follows immediately after
-    // for whatever gets through — a fully-blocked hit fires this sound
-    // alone, an unblocked hit fires only damage_player, and a partially
-    // blocked hit fires both exactly once each, in that order.
-    const blockedAmount = Math.min(intent, block);
-    if (blockedAmount > 0) {
-      playAudioEvent('block_absorb');
-    }
-    // BUILD 064: explicit source tag closes the one previously-untagged
-    // calculateDamage() call the audit found. 'enemy_attack' is deliberately
-    // not 'attack' so it stays outside Fervour's sourceType === 'attack'
-    // check — enemy damage to the player must never be doubled by a buff
-    // meant for the player's own outgoing attacks. Routed through
-    // dealDamage(target: 'player', ...) like every other damage site, but
-    // with fireListener false: this site never fired ON_DAMAGE_DEALT before
-    // this build (no listener is registered for it) and the prompt's own
-    // constraint is to match current listener behaviour exactly, not add a
-    // trigger. The damage===0/else branch (distinct "fully blocked" vs
-    // "dealt" log lines) is this call site's own decision logic and stays
-    // here — dealDamage() always applies its result unconditionally
-    // (subtracting 0 is a no-op), only the two log lines differ.
-    const damage = dealDamage('player', rawDamage, 'enemy_attack', null, false);
-    if (damage === 0) {
-      log('[ENEMY] attack fully blocked (intent ' + intent + ', block ' + block + ')');
+    const enemyName = gameState.enemy.id;
+
+    if (entry && entry.kind === 'charge') {
+      if (gameState.enemy.chargeStage === 'windup') {
+        // No damage this round — the wind-up itself was already announced
+        // (and logged) at START_OF_TURN. Pattern does not advance: the
+        // release is next round, same patternIndex.
+        log('[ENEMY] ' + enemyName + ' winds up.');
+      } else {
+        // Release round.
+        if (gameState.enemy.chargeBroken) {
+          log('[ENEMY] ' + enemyName + '\'s release is lost.');
+        } else {
+          const rawDamage = Math.max(0, entry.release - block);
+          const blockedAmount = Math.min(entry.release, block);
+          if (blockedAmount > 0) { playAudioEvent('block_absorb'); }
+          const damage = dealDamage('player', rawDamage, 'enemy_attack', null, false);
+          log('[ENEMY] ' + enemyName + ' releases for ' + damage + '.');
+        }
+        advanceEnemyPattern();
+      }
+    } else if (entry && entry.kind === 'afflict') {
+      const stacks = entry.stacks;
+      const newStacks = gameState.player.poisonStacks + stacks;
+      updatePlayer({ poisonStacks: newStacks });
+      log('[ENEMY] ' + enemyName + ' afflicts: ' + stacks + ' stacks of poison.');
+      advanceEnemyPattern();
     } else {
-      log('[ENEMY] dealt ' + damage + ' damage (intent ' + intent + ', block ' + block + ')');
+      // Attack (or, defensively, no pattern at all — treated as a zero
+      // intent so nothing throws).
+      const intent = entry ? entry.rolledValue : 0;
+      const rawDamage = Math.max(0, intent - block);
+      // BUILD 094: block-absorb sound, announced before dealDamage() below
+      // so it lands first — this is the one place the intent-vs-block
+      // subtraction already happens, so it's the only correct spot to know
+      // "block actually absorbed some of this hit" (as opposed to just
+      // "the player currently has some block," which dealBlock() itself
+      // would not know for an enemy attack it isn't even involved in).
+      // Math.min(intent, block) is the actual amount of the hit block ate,
+      // gated on >0 so a hit that arrives against zero block never plays
+      // the absorb thud. The damage_player sound (fired inside dealDamage()
+      // below, independently, gated on damage>0) follows immediately after
+      // for whatever gets through — a fully-blocked hit fires this sound
+      // alone, an unblocked hit fires only damage_player, and a partially
+      // blocked hit fires both exactly once each, in that order.
+      const blockedAmount = Math.min(intent, block);
+      if (blockedAmount > 0) {
+        playAudioEvent('block_absorb');
+      }
+      // BUILD 064: explicit source tag closes the one previously-untagged
+      // calculateDamage() call the audit found. 'enemy_attack' is
+      // deliberately not 'attack' so it stays outside Fervour's
+      // sourceType === 'attack' check — enemy damage to the player must
+      // never be doubled by a buff meant for the player's own outgoing
+      // attacks. Routed through dealDamage(target: 'player', ...) like
+      // every other damage site, but with fireListener false: this site
+      // never fired ON_DAMAGE_DEALT before this build (no listener is
+      // registered for it) and must not gain one now.
+      const damage = dealDamage('player', rawDamage, 'enemy_attack', null, false);
+      if (damage === 0) {
+        log('[ENEMY] attack fully blocked (intent ' + intent + ', block ' + block + ')');
+      } else {
+        log('[ENEMY] dealt ' + damage + ' damage (intent ' + intent + ', block ' + block + ')');
+      }
+      advanceEnemyPattern();
     }
   }
 

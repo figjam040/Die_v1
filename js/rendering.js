@@ -286,6 +286,12 @@ function faceHoverText(face, buffPoisonStacks) {
     text = 'cancels the enemy’s attack this turn (once per fight), applies ' + GAME_CONFIG.ENEMY_NAT_ONE_SELF_POISON + ' stacks of poison to itself';
   } else if (face.modId === 'enemy_buff_poison') {
     text = 'applies ' + buffPoisonStacks + ' stacks of poison to you';
+  } else if (face.modId === 'enemy_buff_wrath') {
+    text = 'Wrath: every Attack after this round deals ' + GAME_CONFIG.ENEMY_WRATH_AMOUNT + ' more, for the rest of the fight. Each trigger adds again.';
+  } else if (face.modId === 'enemy_buff_drain') {
+    text = 'Drain: the player starts next round with 1 less soul.';
+  } else if (face.modId === 'enemy_buff_seal') {
+    text = "Seal: the player's heaviest loaded face, other than 1 and 20, counts as blank next round.";
   } else if (face.modId && MOD_DESCRIPTION[face.modId]) {
     text = MOD_DESCRIPTION[face.modId];
   }
@@ -382,6 +388,14 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
   // faces (and the map's static previews) never carry modData at all.
   const showTriggerBadges = (faces === gameState.die.faces);
 
+  // BUILD 141 (item C) — Sealed display, player die only (the same
+  // reference-equality gate showTriggerBadges already uses above): a face
+  // currently sealed (gameState.turn.sealedFaces) dims and shows "SEALED";
+  // a face queued to seal NEXT round (gameState.player.sealNextRound) shows
+  // "SEALED NEXT ROUND" with no dimming (it's still fully loaded/rollable
+  // this round).
+  const isPlayerDie = showTriggerBadges;
+
   const tracksRolledFace = (containerId === 'playerDieList' || containerId === 'dieActionDieList' || containerId === 'enemyDieList');
   const isEnemyContainer = containerId === 'enemyDieList';
   const trackedRolledFaceNumber = isEnemyContainer ? gameState.turn.enemyRolledFaceNumber : gameState.turn.rolledFaceNumber;
@@ -447,6 +461,9 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       row.classList.add('nat-twenty');
     } else if (face.modId !== null) {
       row.classList.add('loaded');
+    }
+    if (isPlayerDie && isFaceSealed(face.number)) {
+      row.classList.add('die-row-sealed');
     }
 
     // BUILD 090: the rolled-face highlight — only the containers that ever
@@ -655,6 +672,21 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       }
     }
 
+    // BUILD 141 (item C) — the Sealed/Sealed-next-round badge, player die
+    // only, same box/font as the Bound badge above (D-28's no-new-palette
+    // rule) — see the isPlayerDie gate set once above, per render.
+    if (isPlayerDie && isFaceSealed(face.number)) {
+      const sealedSpan = document.createElement('span');
+      sealedSpan.className = 'die-weight die-sealed-badge';
+      sealedSpan.textContent = 'SEALED';
+      modWrap.appendChild(sealedSpan);
+    } else if (isPlayerDie && gameState.player.sealNextRound.indexOf(face.number) !== -1) {
+      const sealedSpan = document.createElement('span');
+      sealedSpan.className = 'die-weight die-sealed-badge';
+      sealedSpan.textContent = 'SEALED NEXT ROUND';
+      modWrap.appendChild(sealedSpan);
+    }
+
     row.appendChild(btn);
     row.appendChild(modWrap);
 
@@ -673,7 +705,12 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
 
     // BUILD 071: same .hover-tip component BUILD 070 built for the card
     // reward panel — only added when there's real text to show.
-    const hoverText = faceHoverText(face, buffPoisonStacks);
+    // BUILD 141 (item C): a currently-Sealed face's hover replaces its
+    // usual mod description entirely — "counts as blank this round" is the
+    // one true thing about it right now, regardless of what's loaded there.
+    const hoverText = (isPlayerDie && isFaceSealed(face.number))
+      ? 'Sealed: counts as blank this round.'
+      : faceHoverText(face, buffPoisonStacks);
     // BUILD 079: during the Strengthen picker, an eligible row's hover also
     // shows what the face becomes — same faceHoverText() function, same
     // weight+1 arithmetic dieActionPickStrengthenFace() itself applies, so
@@ -714,17 +751,86 @@ function flashElement(id, className) {
 let lastEnemyHp = null;
 let lastPlayerHp = null;
 
+// BUILD 141 (item B) — plain-text intent display for every pattern kind
+// (Attack/Charge wind-up/Release/Broken/Afflict), read entirely off
+// gameState.enemy.currentEntry/chargeStage/chargeBroken/windupStartHp — no
+// hand-typed numbers, everything comes straight from the same fields
+// advanceEnemyIntentForRound()/ENEMY_ACT_PHASE (pipeline.js/phase-machine.js)
+// already set. #enemyIntentValue carries the primary label, #enemyIntentLabel
+// the wind-up round's own live "damage taken / breakAt" counter (recomputed
+// fresh every render from windupStartHp vs the current hp, not a separately
+// tracked running total) — empty for every other kind. Kept plain text per
+// the BUILD 143 UI pass note: no new colours, no new markup.
+function renderEnemyIntent() {
+  const enemy = gameState.enemy;
+  const entry = enemy.currentEntry;
+  const valueEl = document.getElementById('enemyIntentValue');
+  const labelEl = document.getElementById('enemyIntentLabel');
+  if (!entry) {
+    valueEl.textContent = '—';
+    labelEl.textContent = '—';
+    valueEl.title = '';
+    return;
+  }
+  if (entry.kind === 'attack') {
+    valueEl.textContent = 'ATTACK ' + entry.rolledValue;
+    labelEl.textContent = '';
+    valueEl.title = 'Attack: deals ' + entry.rolledValue + ' damage this round. Block lowers it.';
+  } else if (entry.kind === 'charge') {
+    if (enemy.chargeStage === 'windup') {
+      valueEl.textContent = 'CHARGE → ' + entry.release;
+      const taken = Math.max(0, enemy.windupStartHp - enemy.hp);
+      labelEl.textContent = taken + ' / ' + entry.breakAt;
+      valueEl.title = 'Charge: deals no damage this round. Next round the release deals ' + entry.release + '. If it takes ' + entry.breakAt + ' damage this round, the Charge breaks and the release deals nothing.';
+    } else if (enemy.chargeBroken) {
+      valueEl.textContent = 'BROKEN';
+      labelEl.textContent = '';
+      valueEl.title = 'The Charge broke this round. The release deals nothing.';
+    } else {
+      valueEl.textContent = 'RELEASE ' + entry.release;
+      labelEl.textContent = '';
+      valueEl.title = 'Release: deals ' + entry.release + ' damage this round. Block lowers it.';
+    }
+  } else if (entry.kind === 'afflict') {
+    valueEl.textContent = 'AFFLICT ' + entry.stacks;
+    labelEl.textContent = '';
+    valueEl.title = 'Afflict: deals no damage. Applies ' + entry.stacks + ' stacks of poison to the player.';
+  }
+}
+
 function renderStats() {
   // BUILD 135: a kill can leave gameState.enemy.hp negative (overkill damage
   // is never clamped in state — pipeline.js's calculateDamage()/dealDamage()
   // apply the raw amount) — displayed HP is clamped to 0 here, at render
   // time only, so the underlying state some tests/logs read is untouched.
   document.getElementById('enemyHpValue').textContent = Math.max(0, gameState.enemy.hp) + ' / ' + gameState.enemy.maxHp;
-  document.getElementById('enemyIntentValue').textContent = gameState.enemy.intent;
-  document.getElementById('enemyIntentLabel').textContent = 'Attacks for ' + gameState.enemy.intent;
+  renderEnemyIntent();
   document.getElementById('enemyPoisonValue').textContent = gameState.enemy.poisonStacks;
   document.getElementById('enemyBuffsValue').textContent = gameState.enemy.activeBuffs.length ? gameState.enemy.activeBuffs.join(', ') : '—';
   document.getElementById('enemyActiveValue').textContent = '—';
+  // BUILD 141 (item C) — WRATH stat, shown only above 0 (a plain text stat
+  // line, same shape every other stat-line already uses — no new markup).
+  const wrathLine = document.getElementById('enemyWrathLine');
+  if (wrathLine) {
+    if (gameState.enemy.wrath > 0) {
+      wrathLine.style.display = '';
+      document.getElementById('enemyWrathValue').textContent = 'WRATH +' + gameState.enemy.wrath;
+      document.getElementById('enemyWrathValue').title = 'Wrath: each Attack deals this much more.';
+    } else {
+      wrathLine.style.display = 'none';
+    }
+  }
+  // BUILD 141 (item C) — DRAIN marker, shown only when queued.
+  const drainLine = document.getElementById('playerDrainLine');
+  if (drainLine) {
+    if (gameState.player.drainNextRound > 0) {
+      drainLine.style.display = '';
+      document.getElementById('playerDrainValue').textContent = 'DRAIN −' + gameState.player.drainNextRound + ' SOUL';
+      document.getElementById('playerDrainValue').title = 'Drain: ' + gameState.player.drainNextRound + ' less soul at the start of next round.';
+    } else {
+      drainLine.style.display = 'none';
+    }
+  }
 
   document.getElementById('playerBlockValue').textContent = gameState.player.block;
   document.getElementById('playerHpValue').textContent = gameState.player.hp + ' / ' + gameState.player.maxHp;
@@ -737,7 +843,14 @@ function renderStats() {
   const playerDebuffs = [];
   if (gameState.player.poisonStacks) playerDebuffs.push('poison x' + gameState.player.poisonStacks);
   if (gameState.player.penitenceActive) playerDebuffs.push('penitence');
-  document.getElementById('playerDebuffsValue').textContent = playerDebuffs.length ? playerDebuffs.join(', ') : '—';
+  const playerDebuffsEl = document.getElementById('playerDebuffsValue');
+  playerDebuffsEl.textContent = playerDebuffs.length ? playerDebuffs.join(', ') : '—';
+  // BUILD 141 (item A) — the player's own poison hover text, read off the
+  // real GAME_CONFIG constant the poison_answer_passive listener
+  // (cards-mods.js) itself reads, never a hand-typed number. Always set,
+  // regardless of current poisonStacks, so it's discoverable even at 0 —
+  // this element is the only on-screen place poison shows.
+  playerDebuffsEl.title = 'Poison: at the start of each round, every ' + GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK + ' block still held removes 1 stack of poison. Then poison deals 1 damage per stack, ignoring block, and loses 1 stack.';
   document.getElementById('playerDeckValue').textContent = gameState.player.deck.length;
   document.getElementById('playerDiscardValue').textContent = gameState.player.discard.length;
 
@@ -767,7 +880,7 @@ const CARD_EFFECT_TEXT = {
   communion: '2 soul',
   censer: '4 poison',
   purge: '6 damage, 10 if enemy poisoned',
-  interdict: '5 block, 10 if enemy intent 12+',
+  interdict: "5 block. 10 if the enemy's intent deals 12 or more damage this round.",
   reckoning: '3 damage + 2 per poison stack',
   retribution: 'damage = block, capped at 12',
   covenant: '2 damage + 3 per face weight',

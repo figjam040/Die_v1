@@ -157,16 +157,34 @@ function buildAct(actNumber) {
   const scaleIntent = function(v) { return Math.ceil(v * intentMult); };
   const buffPoisonStacks = Math.ceil(GAME_CONFIG.ENEMY_BUFF_POISON_STACKS * intentMult);
 
+  // BUILD 141 (item B, F34) — every enemy definition now carries pattern, a
+  // repeating list of 1-4 intents. Per the prompt's explicit instruction
+  // ("convert every current enemy to pattern [{kind:'attack', min, max}] ...
+  // so play is identical"), every enemy built here still gets exactly the
+  // one-entry pattern below, using that same enemy's own (already act-
+  // scaled) intentMin/intentMax — the four-wide Attack range and multi-
+  // intent patterns are reserved for the designed enemies BUILD 142 adds.
+  const attackPattern = function(min, max) { return [{ kind: 'attack', min: min, max: max }]; };
+
   const buildNormalFight = function(typeIndex) {
-    return { type: 'fight', label: 'Fight', enemy: { hp: scaleHp(normalHp[typeIndex]), intentMin: scaleIntent(normalIntent.MIN), intentMax: scaleIntent(normalIntent.MAX), hasDie: false, buffPoisonStacks: buffPoisonStacks, normalTypeIndex: typeIndex }, completed: false };
+    const intentMin = scaleIntent(normalIntent.MIN);
+    const intentMax = scaleIntent(normalIntent.MAX);
+    return { type: 'fight', label: 'Fight', enemy: { hp: scaleHp(normalHp[typeIndex]), intentMin: intentMin, intentMax: intentMax, hasDie: false, buffPoisonStacks: buffPoisonStacks, normalTypeIndex: typeIndex, pattern: attackPattern(intentMin, intentMax) }, completed: false };
   };
   const buildRite = function() { return { type: 'rite', label: 'Rite', completed: false }; };
   const buildElite = function() {
-    return { type: 'fight', label: 'Elite', enemy: { hp: scaleHp(GAME_CONFIG.HP.ELITE), intentMin: scaleIntent(GAME_CONFIG.INTENT.ELITE.MIN), intentMax: scaleIntent(GAME_CONFIG.INTENT.ELITE.MAX), hasDie: true, buffPoisonStacks: buffPoisonStacks, die: { faces: buildEnemyDieFaces(GAME_CONFIG.ELITE_DIE.POISON_FACES, GAME_CONFIG.ELITE_DIE.INCLUDE_NATS, GAME_CONFIG.DIE_SIZE.ELITE) } }, completed: false };
+    const intentMin = scaleIntent(GAME_CONFIG.INTENT.ELITE.MIN);
+    const intentMax = scaleIntent(GAME_CONFIG.INTENT.ELITE.MAX);
+    return { type: 'fight', label: 'Elite', enemy: { hp: scaleHp(GAME_CONFIG.HP.ELITE), intentMin: intentMin, intentMax: intentMax, hasDie: true, buffPoisonStacks: buffPoisonStacks, pattern: attackPattern(intentMin, intentMax), die: { faces: buildEnemyDieFaces(GAME_CONFIG.ELITE_DIE.POISON_FACES, GAME_CONFIG.ELITE_DIE.INCLUDE_NATS, GAME_CONFIG.DIE_SIZE.ELITE) } }, completed: false };
   };
 
+  const openingIntentMin = scaleIntent(GAME_CONFIG.INTENT.OPENING.MIN);
+  const openingIntentMax = scaleIntent(GAME_CONFIG.INTENT.OPENING.MAX);
+  const bossIntentMin = scaleIntent(GAME_CONFIG.INTENT.BOSS.MIN);
+  const bossIntentMax = scaleIntent(GAME_CONFIG.INTENT.BOSS.MAX);
+
   return {
-    opening: { type: 'fight', label: 'Fight', enemy: { hp: scaleHp(GAME_CONFIG.HP.OPENING), intentMin: scaleIntent(GAME_CONFIG.INTENT.OPENING.MIN), intentMax: scaleIntent(GAME_CONFIG.INTENT.OPENING.MAX), hasDie: false, buffPoisonStacks: buffPoisonStacks }, completed: false },
+    opening: { type: 'fight', label: 'Fight', enemy: { hp: scaleHp(GAME_CONFIG.HP.OPENING), intentMin: openingIntentMin, intentMax: openingIntentMax, hasDie: false, buffPoisonStacks: buffPoisonStacks, pattern: attackPattern(openingIntentMin, openingIntentMax) }, completed: false },
     upper: [
       buildNormalFight(0),
       buildRite(),
@@ -187,7 +205,7 @@ function buildAct(actNumber) {
       buildNormalFight(1),
       buildRite()
     ],
-    boss: { type: 'fight', label: 'Boss', enemy: { hp: scaleHp(GAME_CONFIG.HP.BOSS), intentMin: scaleIntent(GAME_CONFIG.INTENT.BOSS.MIN), intentMax: scaleIntent(GAME_CONFIG.INTENT.BOSS.MAX), hasDie: true, buffPoisonStacks: buffPoisonStacks, die: { faces: buildEnemyDieFaces(GAME_CONFIG.BOSS_DIE.POISON_FACES, GAME_CONFIG.BOSS_DIE.INCLUDE_NATS, GAME_CONFIG.DIE_SIZE.BOSS) } }, completed: false }
+    boss: { type: 'fight', label: 'Boss', enemy: { hp: scaleHp(GAME_CONFIG.HP.BOSS), intentMin: bossIntentMin, intentMax: bossIntentMax, hasDie: true, buffPoisonStacks: buffPoisonStacks, pattern: attackPattern(bossIntentMin, bossIntentMax), die: { faces: buildEnemyDieFaces(GAME_CONFIG.BOSS_DIE.POISON_FACES, GAME_CONFIG.BOSS_DIE.INCLUDE_NATS, GAME_CONFIG.DIE_SIZE.BOSS) } }, completed: false }
   };
 }
 
@@ -215,9 +233,18 @@ function clearFightScopedState() {
     penitenceTurnsRemaining: 0,
     natOneFiredThisFight: false
   });
+  // BUILD 141 (items B/C): Drain/Seal queues are fight-scoped, reset
+  // alongside the player's other fight-scoped debuff state above.
+  updatePlayer({ drainNextRound: 0, sealNextRound: [] });
   // BUILD 097: natOneFiredThisFight reset alongside the enemy's other
   // fight-scoped fields, mirroring the player's own reset three lines up.
-  updateEnemy({ poisonStacks: 0, activeBuffs: [], natOneFiredThisFight: false });
+  // BUILD 141 (item B/C): pattern walk/charge bookkeeping/Wrath are also
+  // fight-scoped — beginFightFromSlot() (the real fight-entry path) already
+  // sets these fresh from the entering slot's own pattern, but this shared
+  // reset (also called directly by advanceRun()/resetFight()) must not
+  // leave a stale in-progress charge or accumulated Wrath sitting on
+  // gameState.enemy between calls.
+  updateEnemy({ poisonStacks: 0, activeBuffs: [], natOneFiredThisFight: false, patternIndex: 0, chargeStage: null, chargeBroken: false, windupStartHp: null, currentEntry: null, forcedNextIntent: null, wrath: 0, wrathPending: 0 });
   updateTurn({ round: 0, cardsPlayedThisTurn: 0 });
   // BUILD 133 (checkpoint 3, Bound engine) — a Bound grant (modData.
   // boundGranted, grantBoundToFace(), pipeline.js) lasts one fight only,
@@ -271,6 +298,12 @@ function startNewRun() {
   // all, which is what wipes both Zeal's own accumulatedBonus and the
   // per-mod trigger counts on a brand new run.
   updateDie({ faces: buildFreshPlayerDieFaces() });
+  // BUILD 141 (items B/C): pattern/charge/Wrath state and the player's own
+  // Drain/Seal queues are fight-scoped, same as poisonStacks/natOneFired
+  // ThisFight — reset here alongside them so a Restart Fight never carries
+  // over an in-progress charge, an accumulated Wrath, a pending Drain, or a
+  // queued Seal from before the reset.
+  updatePlayer({ drainNextRound: 0, sealNextRound: [] });
   // BUILD 097: natOneFiredThisFight reset here too, same reason as
   // clearFightScopedState() above — a brand new run never inherits a
   // spent enemy Nat 1 from whatever the previous run last fought.
@@ -627,6 +660,21 @@ function beginFightFromSlot(slot) {
     // reads this field instead of GAME_CONFIG.ENEMY_BUFF_POISON_STACKS
     // directly.
     buffPoisonStacks: slot.enemy.buffPoisonStacks,
+    // BUILD 141 (item B) — this slot's own static pattern (see buildAct()),
+    // copied exactly like hp/intentMin/intentMax; the live enemy's pattern
+    // walk (patternIndex) and any in-progress charge always start fresh at
+    // a new fight, never carried over from whatever the previous enemy was
+    // doing.
+    pattern: slot.enemy.pattern,
+    patternIndex: 0,
+    chargeStage: null,
+    chargeBroken: false,
+    windupStartHp: null,
+    currentEntry: null,
+    forcedNextIntent: null,
+    // BUILD 141 (item C) — Wrath is fight-scoped, same reasoning.
+    wrath: 0,
+    wrathPending: 0,
     // BUILD 098: die now varies per slot (elite: 2 poison faces only;
     // boss: 3 poison faces + both Nats — buildAct()) instead of always
     // being the same shared object. Copies the slot's own static die
