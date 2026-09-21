@@ -308,6 +308,21 @@ function playNat1Sound() {
   playTone('sawtooth', 442, 132, 260, 0.10);
 }
 
+// BUILD 142 (item D, KI-22) — the enemy's own Nat 20/Nat 1 finally get a
+// sound: the player's own nat_20/nat_1 synthesis, an octave lower (half
+// every frequency), each kept at 200ms or under so neither needs adding to
+// GAME_CONFIG.SOUND_DURATION_CEILING_EXEMPT.
+function playEnemyNat20Sound() {
+  playClick(450, 60, 0.20);
+  setTimeout(function() { playClick(650, 60, 0.20); }, 60);
+  setTimeout(function() { playClick(950, 70, 0.22); }, 120);
+}
+
+function playEnemyNat1Sound() {
+  playTone('sawtooth', 225, 70, 190, 0.16);
+  playTone('sawtooth', 221, 66, 190, 0.10);
+}
+
 // Fight won — sine, two ascending notes. BUILD 096: lowered both notes
 // (520Hz -> 780Hz, was 700/1050) to sit further from Nat 20's now-more-
 // prominent cascade, and added a short fade-in (6ms) to each note so
@@ -420,6 +435,8 @@ const SOUND_TABLE = {
   end_turn: playEndTurnSound,
   nat_20: playNat20Sound,
   nat_1: playNat1Sound,
+  enemy_nat_20: playEnemyNat20Sound,
+  enemy_nat_1: playEnemyNat1Sound,
   fight_won: playFightWonSound,
   fight_lost: playFightLostSound,
   fight_start_normal: playFightStartNormalSound,

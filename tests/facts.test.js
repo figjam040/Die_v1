@@ -172,10 +172,13 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   await runTest('CHECKPOINT 3 MAP: no lane shows the same normal enemy twice in a row', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
+      // BUILD 142: normalTypeIndex is gone (replaced by named enemy defs,
+      // GAME_CONFIG.ENEMIES) — the same "no repeat" property now checks the
+      // enemy's own name instead of the old anonymous rotation index.
       function normalTypeSequence(lane) {
         return gameState.run.act[lane]
           .filter(function(s) { return s.type === 'fight' && s.label === 'Fight'; })
-          .map(function(s) { return s.enemy.normalTypeIndex; });
+          .map(function(s) { return s.enemy.name; });
       }
       return { upper: normalTypeSequence('upper'), lower: normalTypeSequence('lower') };
     });
@@ -231,39 +234,45 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.ok(!bareModPoison.test(blightLog + virulenceLog), 'found a [MOD] log line stating a bare "N poison" amount');
   });
 
+  // BUILD 142 (item A/B) rewrite: act 1's five lane-fight positions now
+  // carry their own fixed HP (GAME_CONFIG.ACT1_LANE_FIGHT_HP), not the old
+  // three-value NORMAL_FIGHT_HP rotation, and every enemy acts from a
+  // literal, final-numbers pattern (GAME_CONFIG.ENEMIES) rather than a
+  // flat intentMin/intentMax band read from GAME_CONFIG.INTENT — updated
+  // under this build's own test rule (named explicitly in its prompt).
   await runTest('F17/F18 HP and intent per slot type (GAME_CONFIG + built act)', async () => {
     const page = await freshPage(browser);
     const act = await page.evaluate(() => gameState.run.act);
     const cfg = await page.evaluate(() => GAME_CONFIG);
     assert.strictEqual(act.opening.enemy.hp, cfg.HP.OPENING);
-    assert.strictEqual(act.opening.enemy.intentMin, cfg.INTENT.OPENING.MIN);
-    assert.strictEqual(act.opening.enemy.intentMax, cfg.INTENT.OPENING.MAX);
-    specOnlyDeepEqual(cfg.NORMAL_FIGHT_HP, [70, 78, 85], 'F17/F18: GAME_CONFIG.NORMAL_FIGHT_HP === [70,78,85] (documented fact, no independent oracle)');
-    assert.strictEqual(act.upper[0].enemy.hp, cfg.NORMAL_FIGHT_HP[0]);
-    assert.strictEqual(act.upper[2].enemy.hp, cfg.NORMAL_FIGHT_HP[2]);
-    assert.strictEqual(act.lower[0].enemy.hp, cfg.NORMAL_FIGHT_HP[0]);
-    assert.strictEqual(act.lower[2].enemy.hp, cfg.NORMAL_FIGHT_HP[1]);
-    assert.strictEqual(act.lower[3].enemy.hp, cfg.NORMAL_FIGHT_HP[2]);
+    assert.strictEqual(act.opening.enemy.name, 'Verger', 'act 1 opening enemy must be the Verger');
+    specOnlyDeepEqual(cfg.ACT1_LANE_FIGHT_HP, [58, 65, 72, 78, 85], 'F17: GAME_CONFIG.ACT1_LANE_FIGHT_HP === [58,65,72,78,85] (documented fact, no independent oracle)');
+    assert.strictEqual(act.upper[0].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[0]);
+    assert.strictEqual(act.upper[2].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[1]);
+    assert.strictEqual(act.lower[0].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[0]);
+    assert.strictEqual(act.lower[2].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[1]);
+    assert.strictEqual(act.lower[3].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[2]);
     [act.upper[0], act.upper[2], act.lower[0], act.lower[2], act.lower[3]].forEach(function(s) {
-      assert.strictEqual(s.enemy.intentMin, cfg.INTENT.NORMAL.MIN);
-      assert.strictEqual(s.enemy.intentMax, cfg.INTENT.NORMAL.MAX);
+      assert.ok(s.enemy.pattern.length > 0, 'every act 1 lane fight must carry a non-empty pattern');
     });
     assert.strictEqual(act.upper[3].enemy.hp, cfg.HP.ELITE);
-    assert.strictEqual(act.upper[3].enemy.intentMin, cfg.INTENT.ELITE.MIN);
-    assert.strictEqual(act.upper[3].enemy.intentMax, cfg.INTENT.ELITE.MAX);
+    assert.strictEqual(act.upper[3].enemy.name, 'Lector', 'act 1 elite must be the Lector');
     assert.strictEqual(act.boss.enemy.hp, cfg.HP.BOSS);
-    assert.strictEqual(act.boss.enemy.intentMin, cfg.INTENT.BOSS.MIN);
-    assert.strictEqual(act.boss.enemy.intentMax, cfg.INTENT.BOSS.MAX);
+    assert.strictEqual(act.boss.enemy.name, 'Hierophant', 'act 1 boss must be the Hierophant');
     await page.close();
   });
 
-  await runTest('F20 elite die: poison on 7 and 14, no Nat faces', async () => {
+  // BUILD 142: the act 1 elite is now Lector, a named designed enemy —
+  // 12-sided (DIE_SIZE.ELITE lowered from 20 to 12), poison on faces 3 and
+  // 9 (not the old flat 7/14), plus its own drain/wrath faces, no Nats.
+  await runTest('F20 elite die: Lector, 12-sided, poison on 3 and 9, no Nat faces', async () => {
     const page = await freshPage(browser);
     const faces = await page.evaluate(() => gameState.run.act.upper[GAME_CONFIG.ELITE_SLOT_INDEX].enemy.die.faces);
+    assert.strictEqual(faces.length, 12, 'the elite die must be 12-sided');
     const poisonFaces = faces.filter(function(f) { return f.modId === 'enemy_buff_poison'; }).map(function(f) { return f.number; });
-    assert.deepStrictEqual(poisonFaces, [7, 14]);
+    assert.deepStrictEqual(poisonFaces, [3, 9]);
     assert.strictEqual(faces[0].modId, null, 'elite face 1 must be an ordinary blank, no ENEMY_NAT_ONE');
-    assert.strictEqual(faces[19].modId, null, 'elite face 20 must be an ordinary blank, no ENEMY_NAT_TWENTY');
+    assert.strictEqual(faces[11].modId, 'enemy_buff_wrath', 'elite face 12 (the top face) is Lector\'s own wrath face, not a Nat — the elite die never carries Nats');
     await page.close();
   });
 
@@ -1162,15 +1171,24 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.strictEqual(acts.act2.boss.enemy.buffPoisonStacks, 4, 'act 2 enemy buff must apply ceil(3*1.2)=4 stacks of poison');
     assert.strictEqual(acts.act3.boss.enemy.buffPoisonStacks, 5, 'act 3 enemy buff must apply ceil(3*1.45)=5 stacks of poison');
 
-    // Act 1 numbers must be byte-identical to pre-125 buildAct() — every
-    // multiplier is 1.0 there.
+    // Act 1's own HP multiplier is still 1.0, but BUILD 142 (item A) gave
+    // its five lane-fight positions their own fixed HP (ACT1_LANE_FIGHT_HP)
+    // instead of the old three-value NORMAL_FIGHT_HP rotation — updated
+    // here under BUILD 142's own test rule (item A deliberately changes
+    // this). The opening/elite/boss HP figures are still unchanged.
+    // BUILD 142 (item B) also drops the old flat boss intentMin/intentMax
+    // assertions: every enemy now acts from a literal, final-numbers
+    // pattern (GAME_CONFIG.ENEMIES) that ACT_INTENT_MULTIPLIER no longer
+    // scales, so a boss's intentMin/intentMax are now purely derived
+    // display bounds (patternBounds(), run-and-map.js), not a scaled band —
+    // checked against the Hierophant's own pattern instead.
     assert.strictEqual(acts.act1.opening.enemy.hp, 50, 'act 1 opening HP must be unchanged');
-    assert.strictEqual(acts.act1.upper[0].enemy.hp, 70, 'act 1 normal (70) must be unchanged');
-    assert.strictEqual(acts.act1.upper[2].enemy.hp, 85, 'act 1 normal (85) must be unchanged');
+    assert.strictEqual(acts.act1.upper[0].enemy.hp, 58, 'act 1 lane position 1 HP must be ACT1_LANE_FIGHT_HP[0] (58)');
+    assert.strictEqual(acts.act1.upper[2].enemy.hp, 65, 'act 1 lane position 2 HP must be ACT1_LANE_FIGHT_HP[1] (65)');
     assert.strictEqual(acts.act1.upper[3].enemy.hp, 100, 'act 1 elite HP must be unchanged');
     assert.strictEqual(acts.act1.boss.enemy.hp, 100, 'act 1 boss HP must be unchanged');
-    assert.strictEqual(acts.act1.boss.enemy.intentMin, 10, 'act 1 boss intent band must be unchanged');
-    assert.strictEqual(acts.act1.boss.enemy.intentMax, 20, 'act 1 boss intent band must be unchanged');
+    assert.strictEqual(acts.act1.boss.enemy.name, 'Hierophant', 'act 1 boss must be the Hierophant');
+    assert.ok(acts.act1.boss.enemy.pattern.length > 0, 'act 1 boss must carry a non-empty pattern');
     assert.strictEqual(acts.act1.boss.enemy.buffPoisonStacks, 3, 'act 1 enemy buff must still apply the flat 3 stacks of poison');
   });
 
@@ -1565,7 +1583,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       lauds: ['growth'],
       reliquary: ['bastion'], vindication: ['bastion'],
       myrrh: ['poison'], exequy: ['poison'],
-      hosanna: ['soul'], gloria: ['soul'], oblation: ['soul'],
+      hosanna: [], gloria: ['soul'], oblation: ['soul'],
       // BUILD 132 — checkpoint 3, trigger a face outside a roll (prompt D).
       threnody: ['growth'], reverberation: ['mass'],
       // BUILD 134 — checkpoint 3, the remaining Bound pieces.
@@ -1965,26 +1983,32 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 131: Hosanna — 6 damage, or 11 if 3 or more soul remains after paying for it', async () => {
+  await runTest('BUILD 142: Hosanna — 6 damage against an Attack, 12 against anything else', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
     await page.evaluate(() => { forcePlayerRoll(3); });
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
 
-    // Below the threshold after paying (cost 1): 2 - 1 = 1 soul left.
-    await page.evaluate(() => { updatePlayer({ hand: ['hosanna'], soul: 2 }); });
-    const beforeLow = await page.evaluate(() => gameState.enemy.hp);
+    // The opening fight's own enemy is mid-Attack by default (its pattern
+    // is a single repeating Attack entry) — base 6 damage.
+    await page.evaluate(() => { updatePlayer({ hand: ['hosanna'], soul: 5 }); });
+    const beforeAttack = await page.evaluate(() => gameState.enemy.hp);
     await page.evaluate(() => { playCard(0); });
-    const afterLow = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(beforeLow - afterLow, 6, 'expected base 6 damage with 1 soul left after paying');
+    const afterAttack = await page.evaluate(() => gameState.enemy.hp);
+    assert.strictEqual(beforeAttack - afterAttack, 6, 'expected base 6 damage while the enemy intent is an Attack');
 
-    // At the threshold after paying: 4 - 1 = 3 soul left.
-    await page.evaluate(() => { updatePlayer({ hand: ['hosanna'], soul: 4 }); });
-    const beforeHigh = await page.evaluate(() => gameState.enemy.hp);
+    // Queue an Afflict for next round via the dev drawer, then end the
+    // round through the normal auto-advance chain so START_OF_TURN
+    // actually consumes the forced entry before the next CARD_PHASE.
+    await page.evaluate(() => { devSetNextIntent({ kind: 'afflict', stacks: 4 }); });
+    await page.evaluate(() => { autoAdvance(); });
+    await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE' && gameState.enemy.currentEntry && gameState.enemy.currentEntry.kind === 'afflict');
+    await page.evaluate(() => { updatePlayer({ hand: ['hosanna'], soul: 5 }); });
+    const beforeAfflict = await page.evaluate(() => gameState.enemy.hp);
     await page.evaluate(() => { playCard(0); });
-    const afterHigh = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(beforeHigh - afterHigh, 11, 'expected empowered 11 damage with 3 soul left after paying');
+    const afterAfflict = await page.evaluate(() => gameState.enemy.hp);
+    assert.strictEqual(beforeAfflict - afterAfflict, 12, 'expected empowered 12 damage while the enemy intent is an Afflict');
     await liveBrowser.close();
   });
 
@@ -2090,24 +2114,23 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   // through playCard() as every other card test in this file does.
   // ---------------------------------------------------------------
 
-  await runTest('BUILD 132: Threnody — the lowest-numbered loaded face triggers', async () => {
+  await runTest('BUILD 142: Threnody — always triggers gameState.run.threnodyFace, whatever is loaded there', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
     await page.evaluate(() => {
+      const faceNumber = gameState.run.threnodyFace;
       const newFaces = gameState.die.faces.slice();
-      newFaces[4] = Object.assign({}, newFaces[4], { modId: 'blight' }); // face 5
-      newFaces[2] = Object.assign({}, newFaces[2], { modId: 'smite' }); // face 3 — lower than face 5 and the anchor (face 10)
+      newFaces[faceNumber - 1] = Object.assign({}, newFaces[faceNumber - 1], { modId: 'smite' });
       updateDie({ faces: newFaces });
     });
-    await page.evaluate(() => { forcePlayerRoll(9); }); // face 9, untouched, stays blank
+    await page.evaluate(() => { forcePlayerRoll(9 === gameState.run.threnodyFace ? 8 : 9); }); // roll a different face, untouched, stays blank
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
     await page.evaluate(() => { updatePlayer({ hand: ['threnody'], soul: 5 }); });
-    const before = await page.evaluate(() => ({ hp: gameState.enemy.hp, poison: gameState.enemy.poisonStacks }));
+    const before = await page.evaluate(() => gameState.enemy.hp);
     await page.evaluate(() => { playCard(0); });
-    const after = await page.evaluate(() => ({ hp: gameState.enemy.hp, poison: gameState.enemy.poisonStacks }));
-    assert.strictEqual(before.hp - after.hp, 16, 'expected the lowest-numbered loaded face (3, smite) to trigger, not face 5 (blight) or the anchor (face 10, consecrate)');
-    assert.strictEqual(after.poison - before.poison, 0, 'blight (face 5) must not have triggered');
+    const after = await page.evaluate(() => gameState.enemy.hp);
+    assert.strictEqual(before - after, 16, 'expected Threnody\'s own fixed face (loaded with smite) to trigger regardless of which face was rolled');
     await liveBrowser.close();
   });
 
@@ -2654,7 +2677,6 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       tenet: CARD_EFFECT_TEXT['tenet'],
       gradual: CARD_EFFECT_TEXT['gradual'],
       magnificat: MOD_DESCRIPTION['magnificat'],
-      threnody: CARD_EFFECT_TEXT['threnody'],
       reverberation: CARD_EFFECT_TEXT['reverberation'],
       canticle: CARD_EFFECT_TEXT['canticle'],
       herald: MOD_DESCRIPTION['herald'],
@@ -2670,7 +2692,10 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.strictEqual(texts.tenet, '6 damage, +1 for each time the rolled face has triggered this run');
     assert.strictEqual(texts.gradual, '3 damage, +1 per weight of your heaviest face');
     assert.strictEqual(texts.magnificat, 'Triggers your heaviest other face');
-    assert.strictEqual(texts.threnody, 'Triggers your lowest-numbered loaded face');
+    // BUILD 142: Threnody's own text assertion moved to tests/build142.test.js
+    // (item F) — it now names the live, run-fixed threnodyFace number via
+    // getCardEffectText() (rendering.js), not a fixed string this shared
+    // batch of raw CARD_EFFECT_TEXT/MOD_DESCRIPTION lookups can check.
     assert.strictEqual(texts.reverberation, 'The face you rolled triggers again. On a 1 or 20: 6 block instead');
     assert.strictEqual(texts.canticle, '6 block. The face you rolled gains Bound for this fight');
     assert.strictEqual(texts.herald, '6 damage. One other random loaded face gains Bound for this fight. Bound');

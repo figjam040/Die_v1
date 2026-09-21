@@ -260,14 +260,17 @@ async function enterOpeningFight(page) {
     await page.close();
   });
 
-  await runTest('Item B-i: seeded run — first 8 opening-fight intent values match the BUILD 140 baseline', async () => {
-    const seedPath = path.resolve(__dirname, 'build141_seed_baseline.json');
-    let baseline = null;
-    try {
-      baseline = JSON.parse(require('fs').readFileSync(seedPath, 'utf8'));
-    } catch (e) {
-      console.log('  (no baseline file found at ' + seedPath + ' — skipping strict comparison, reporting live values only)');
-    }
+  // BUILD 142 (item B) deliberately changes what this test was checking:
+  // the opening enemy (Verger) no longer rolls a flat intentMin/intentMax
+  // band (4-12) — it now acts from its own literal, final-numbers pattern
+  // ([attack 6-9, attack 6-9], GAME_CONFIG.ENEMIES.verger_opening), so the
+  // exact per-round numbers captured in the BUILD 140 baseline file no
+  // longer apply. Updated under BUILD 142's own test rule: the strict
+  // baseline comparison is dropped (the file itself is BUILD-140-shaped
+  // and would now fail by design), replaced with a check that every
+  // sampled value actually falls inside Verger's new attack range — still
+  // a real behavioural assertion, not a spec-only one.
+  await runTest('Item B-i (BUILD 142 update): seeded run — first 8 opening-fight intent values fall inside Verger\'s new 6-9 attack range', async () => {
     const page = await browser.newPage();
     page.on('dialog', function(d) { d.accept(); });
     // Same seeding approach used for the BUILD 140 baseline capture (see
@@ -298,9 +301,9 @@ async function enterOpeningFight(page) {
       await page.waitForFunction((round) => gameState.turn.round > round || gameState.run.status !== 'active', i + 1, { timeout: 15000 }).catch(() => {});
     }
     console.log('  live intent sequence: ' + JSON.stringify(values));
-    if (baseline) {
-      assert.deepStrictEqual(values, baseline, 'first 8 intent values must match the BUILD 140 baseline exactly');
-    }
+    values.forEach(function(v) {
+      assert.ok(v >= 6 && v <= 9, 'expected every opening-fight Attack value inside Verger\'s new 6-9 range, got ' + v);
+    });
     await page.close();
   });
 
@@ -441,7 +444,13 @@ async function enterOpeningFight(page) {
     await page.close();
   });
 
-  await runTest('Item C-h: the existing elite and boss dice behave as in BUILD 140', async () => {
+  // BUILD 142 (item B.e) deliberately lowers DIE_SIZE.ELITE from 20 to 12
+  // and gives the act 1 elite (now the named Lector) its own die layout —
+  // updated here under BUILD 142's own test rule (named explicitly in its
+  // prompt: "the existing elite and boss dice behave as in BUILD 140" no
+  // longer holds for the elite half, only the boss half, which item B.f
+  // leaves untouched).
+  await runTest('Item C-h: the boss die behaves as in BUILD 140; the elite die is now Lector\'s own 12-sided layout (BUILD 142)', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
       const act = gameState.run.act;
@@ -450,17 +459,19 @@ async function enterOpeningFight(page) {
         bossFaces: act.boss.enemy.die.faces.map(f => f.modId)
       };
     });
-    const eliteExpected = new Array(20).fill(null);
-    eliteExpected[6] = 'enemy_buff_poison';
-    eliteExpected[13] = 'enemy_buff_poison';
-    assert.deepStrictEqual(v.eliteFaces, eliteExpected, 'elite die layout must be unchanged');
+    const eliteExpected = new Array(12).fill(null);
+    eliteExpected[2] = 'enemy_buff_poison'; // face 3
+    eliteExpected[5] = 'enemy_buff_drain';  // face 6
+    eliteExpected[8] = 'enemy_buff_poison'; // face 9
+    eliteExpected[11] = 'enemy_buff_wrath'; // face 12
+    assert.deepStrictEqual(v.eliteFaces, eliteExpected, 'Lector\'s own die layout (12-sided, poison/drain/wrath)');
     const bossExpected = new Array(20).fill(null);
     bossExpected[0] = 'ENEMY_NAT_ONE';
     bossExpected[4] = 'enemy_buff_poison';
     bossExpected[9] = 'enemy_buff_poison';
     bossExpected[14] = 'enemy_buff_poison';
     bossExpected[19] = 'ENEMY_NAT_TWENTY';
-    assert.deepStrictEqual(v.bossFaces, bossExpected, 'boss die layout must be unchanged');
+    assert.deepStrictEqual(v.bossFaces, bossExpected, 'boss die layout must be unchanged (Hierophant reuses the exact BUILD 140 boss die)');
     await page.close();
   });
 

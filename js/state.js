@@ -124,6 +124,16 @@ const gameState = {
     // it is shown." Both fight-scoped.
     wrath: 0,
     wrathPending: 0,
+    // BUILD 142 (item C) — this enemy's own per-trigger Wrath amount and
+    // Pontifex's Nat 20 one-shot flag; see beginFightFromSlot() (run-and-
+    // map.js), the only place either is ever meaningfully set.
+    wrathPerTrigger: GAME_CONFIG.ENEMY_WRATH_AMOUNT,
+    pontifexDoubleAttackThisRound: false,
+    // BUILD 142 (items B/C) — the enemy's own display/log name (Verger,
+    // Thurifer, ... Pontifex), copied from the entering slot's own static
+    // enemy.name by beginFightFromSlot(); distinct from id above (still the
+    // slot label the panel title/recordFightRoundEnd() key off).
+    name: 'test_enemy',
     // BUILD 097: mirrors gameState.player.natOneFiredThisFight (BUILD 084)
     // exactly, for the enemy's own Nat 1 — fight-scoped, reset in
     // clearFightScopedState()/startNewRun() the same way the player's is.
@@ -250,7 +260,12 @@ const gameState = {
     // gameState.run.act via buildAct(actNumber) with that act's own
     // multipliers. Never reset mid-act; player hp/die/deck are untouched by
     // an act transition (D-27: no heal between acts).
-    actNumber: 1
+    actNumber: 1,
+    // BUILD 142 (item F) — Threnody's own fixed face, set once per run by
+    // startNewRun() (run-and-map.js), a whole number from 2 to 19. Every
+    // copy of the card in the deck reads this same field, so they always
+    // share the one number for the whole run.
+    threnodyFace: null
   },
 
   // BUILD 109: the run record — a player-facing, localStorage-backed log of

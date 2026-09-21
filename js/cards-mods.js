@@ -543,17 +543,20 @@ function init() {
     }
   };
 
-  // Hosanna — tier common, cost 1, tags Soul. playCard() deducts soulCost
-  // before effect() runs (see playCard()), so gameState.player.soul here
-  // already reflects the cost paid — no separate "after paying" read needed.
+  // Hosanna — tier common, cost 1, tags none. BUILD 142 (item E) reworks
+  // this card entirely: reads the enemy's own intent this round
+  // (gameState.enemy.currentEntry — set by advanceEnemyIntentForRound(),
+  // pipeline.js) instead of the player's remaining soul. A wind-up, a
+  // release and an Afflict all count as "not an Attack" — only a literal
+  // {kind:'attack'} entry gets the base 6.
   gameState.config.cards['hosanna'] = {
-    id: 'hosanna', name: 'Hosanna', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['soul'],
+    id: 'hosanna', name: 'Hosanna', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: [],
     effect: function(gameState) {
-      const soulAfter = gameState.player.soul;
-      const empowered = soulAfter >= 3;
-      const damage = dealDamage('enemy', empowered ? 11 : 6, 'attack', 'hosanna');
-      if (empowered) {
-        log('[CARD] hosanna: ' + damage + ' damage (' + soulAfter + ' soul remaining)');
+      const entry = gameState.enemy.currentEntry;
+      const notAttack = !entry || entry.kind !== 'attack';
+      const damage = dealDamage('enemy', notAttack ? 12 : 6, 'attack', 'hosanna');
+      if (notAttack) {
+        log('[CARD] hosanna: ' + damage + ' damage (enemy intent is not an Attack)');
       } else {
         log('[CARD] hosanna: ' + damage + ' damage');
       }
@@ -632,25 +635,28 @@ function init() {
   // outside-roll piece uses; Magnificat (a mod) is defined further down
   // among the mods.
 
-  // Threnody — tier uncommon, cost 2, tags Growth. The lowest-numbered
-  // loaded face (excluding the two Nat stubs, which are never real mods)
-  // triggers. No loaded face at all is a no-op, logged rather than thrown.
+  // Threnody — tier uncommon, cost 2, tags Growth. BUILD 142 (item F)
+  // reworks this card entirely: instead of always hitting the lowest-
+  // numbered loaded face, it now always triggers the SAME face all run —
+  // gameState.run.threnodyFace, a whole number from 2 to 19 rolled once at
+  // run creation (startNewRun(), run-and-map.js) — through
+  // triggerFaceOutsideRoll() (pipeline.js), which already treats a blank
+  // OR Sealed face as blank (the 2-block roll), exactly like Reverberation.
   gameState.config.cards['threnody'] = {
     id: 'threnody', name: 'Threnody', soulCost: 2, type: 'utility', classRestriction: null, tier: 'uncommon', tags: ['growth'],
     effect: function(gameState) {
-      const loaded = gameState.die.faces.filter(function(f) {
-        return f.modId !== null && f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && !isFaceSealed(f.number);
-      });
-      if (loaded.length === 0) {
-        log('[CARD] threnody: no loaded face to trigger');
+      const faceNumber = gameState.run.threnodyFace;
+      const face = gameState.die.faces[faceNumber - 1];
+      const loaded = face.modId !== null && !isFaceSealed(faceNumber);
+      const triggered = triggerFaceOutsideRoll(faceNumber);
+      if (!triggered) {
+        log('[CARD] Threnody: face ' + faceNumber + ' could not trigger (already triggered outside a roll this round, or the round trigger cap was reached)');
         return;
       }
-      const lowest = loaded.reduce(function(min, f) { return f.number < min.number ? f : min; });
-      const triggered = triggerFaceOutsideRoll(lowest.number);
-      if (triggered) {
-        log('[CARD] threnody: face ' + lowest.number + ' triggered');
+      if (loaded) {
+        log('[CARD] Threnody: face ' + faceNumber + ' triggers.');
       } else {
-        log('[CARD] threnody: face ' + lowest.number + ' could not trigger (already triggered outside a roll this round, or the round trigger cap was reached)');
+        log('[CARD] Threnody: face ' + faceNumber + ' is blank, 2 block.');
       }
     }
   };
@@ -965,9 +971,15 @@ function init() {
       // the active wrath (added to every later Attack) at the next
       // START_OF_TURN (advanceEnemyIntentForRound(), pipeline.js), so this
       // round's already-shown Attack value never changes.
-      const newPending = gameState.enemy.wrathPending + GAME_CONFIG.ENEMY_WRATH_AMOUNT;
+      // BUILD 142 (item C): reads this enemy's OWN per-trigger amount
+      // (gameState.enemy.wrathPerTrigger, set at fight start from
+      // GAME_CONFIG.ENEMIES[...].wrathPerTrigger, beginFightFromSlot()) —
+      // was the flat GAME_CONFIG.ENEMY_WRATH_AMOUNT, which is now only the
+      // default for an enemy with no amount of its own.
+      const amount = gameState.enemy.wrathPerTrigger;
+      const newPending = gameState.enemy.wrathPending + amount;
       updateEnemy({ wrathPending: newPending });
-      log('[ENEMY] Wrath triggers: Attacks +' + GAME_CONFIG.ENEMY_WRATH_AMOUNT + ' from next round.');
+      log('[ENEMY] Wrath triggers: Attacks +' + amount + ' from next round.');
     } else if (data.buffId === 'enemy_buff_drain') {
       // BUILD 141 (item C) — Drain. Queues 1 onto drainNextRound; consumed
       // at the next START_OF_TURN's soul reset (phase-machine.js).
@@ -1003,6 +1015,24 @@ function init() {
   // of the trigger logic. On the current boss die (three poison faces) this
   // fires enemy_buff_dispatch three times, applying 15 total poison.
   registerListener('ENEMY_NAT_TWENTY', 'boss_nat_twenty_passive', function() {
+    // BUILD 142 (item C) — Cardinal and Pontifex each replace the generic
+    // sweep-every-buff-face behaviour entirely with their own designed Nat
+    // 20 (both named by gameState.enemy.name, set by beginFightFromSlot()).
+    if (gameState.enemy.name === 'Cardinal') {
+      const targets = pickTopLoadedFacesForSeal(2);
+      if (targets.length === 0) {
+        log('[ENEMY] Cardinal\'s Nat 20: no loaded face to seal');
+      } else {
+        updatePlayer({ sealNextRound: gameState.player.sealNextRound.concat(targets.map(function(f) { return f.number; })) });
+        log('[ENEMY] Cardinal\'s Nat 20 seals face' + (targets.length === 1 ? '' : 's') + ' ' + targets.map(function(f) { return f.number; }).join(' and ') + '.');
+      }
+      return;
+    }
+    if (gameState.enemy.name === 'Pontifex') {
+      updateEnemy({ pontifexDoubleAttackThisRound: true });
+      log('[ENEMY] Pontifex\'s Nat 20: the Attack resolves twice.');
+      return;
+    }
     const loadedFaces = gameState.enemy.die.faces.filter(function(f) {
       return f.modId !== null && f.modId !== 'ENEMY_NAT_ONE' && f.modId !== 'ENEMY_NAT_TWENTY';
     });
@@ -1035,6 +1065,25 @@ function init() {
   registerListener('ENEMY_NAT_ONE', 'boss_nat_one_passive', function() {
     if (gameState.enemy.natOneFiredThisFight) {
       log('[ENEMY ROLL] blank');
+      return;
+    }
+    // BUILD 142 (item C) — Cardinal and Pontifex each replace the generic
+    // cancel-attack-and-self-poison behaviour entirely with their own
+    // designed Nat 1; neither cancels the attack, neither self-poisons.
+    if (gameState.enemy.name === 'Cardinal') {
+      updateEnemy({ natOneFiredThisFight: true });
+      const target = pickHeaviestLoadedFaceForSeal();
+      if (target) {
+        triggerFaceOutsideRoll(target.number);
+        log('[ENEMY] Cardinal\'s Nat 1: face ' + target.number + ' triggers.');
+      } else {
+        log('[ENEMY] Cardinal\'s Nat 1: no loaded face to trigger');
+      }
+      return;
+    }
+    if (gameState.enemy.name === 'Pontifex') {
+      updateEnemy({ natOneFiredThisFight: true, wrath: 0, wrathPending: 0 });
+      log('[ENEMY] Pontifex\'s Nat 1: Wrath lost.');
       return;
     }
     updateEnemy({ natOneFiredThisFight: true });

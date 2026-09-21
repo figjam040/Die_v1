@@ -1202,6 +1202,22 @@
     animation: dieRowRolledBlankPulse 500ms ease-out;
   }
 
+  /* BUILD 142 (item D, KI-22) — on a genuine enemy Nat (20 or 1), the rolled
+     row pulses three times over 600ms in the existing --nat colour, layered
+     on top of whatever look (die-row-rolled/-flash, .nat-one/.nat-twenty)
+     that row already carries — no new colour, no new indent, plain
+     box-shadow only. Same one-render-only idiom as the flash classes above:
+     renderDieList() only adds this on the render right after a new Nat
+     roll; a later re-render of the same roll gets nothing extra here. */
+  @keyframes enemyNatPulse {
+    0%, 100% { box-shadow: none; }
+    16.67%, 50%, 83.33% { box-shadow: 0 0 0 2px var(--nat); }
+  }
+
+  .die-row-enemy-nat-pulse {
+    animation: enemyNatPulse 600ms ease-in-out;
+  }
+
   /* Controls */
 
   .controls-row {
@@ -1481,7 +1497,7 @@
 
 <div class="top-bar">
   <div class="top-bar-left">
-    <div id="buildStamp">DIE V1 — STAGE 2.68<br>BUILD <span id="buildStampNumber"></span></div>
+    <div id="buildStamp">DIE V1 — STAGE 2.69<br>BUILD <span id="buildStampNumber"></span></div>
     <!-- BUILD 109: run record — player-facing, not dev chrome. Sits beside
          the build stamp rather than in .controls-buttons/near End Turn,
          same reasoning BUILD 087 gave New Run for staying out of the way
@@ -1547,6 +1563,8 @@
              elite, no mark for a normal fight. Same font/colour as every
              other .panel-title, no new palette. -->
         <div class="panel-title" id="enemyPanelTitle">ENEMY</div>
+        <!-- BUILD 142 (items B/C) — the enemy's own designed identity name (Verger, Thurifer, ... Pontifex), distinct from the ENEMY/ELITE/BOSS title above. Plain text, existing stat-line shape. -->
+        <div class="stat-line" id="enemyNameLine"><span class="stat-label">Name</span><span class="stat-value" id="enemyNameValue">—</span></div>
         <div class="hero-stats">
           <div class="stat-hero"><span class="stat-icon">♥</span><span class="stat-hero-value" id="enemyHpValue">— / —</span></div>
           <div class="stat-hero">
@@ -1562,6 +1580,8 @@
         <div class="stat-line"><span class="stat-label">Active this turn</span><span class="stat-value" id="enemyActiveValue">—</span></div>
         <!-- BUILD 141 (item C) — shown only while gameState.enemy.wrath > 0 (renderStats(), rendering.js). Plain text, existing stat-line shape. -->
         <div class="stat-line" id="enemyWrathLine" style="display:none;"><span class="stat-value" id="enemyWrathValue">—</span></div>
+        <!-- BUILD 142 (item C) — Pontifex's own panel line, shown only for that boss (renderStats(), rendering.js). Plain text, existing stat-line shape. -->
+        <div class="stat-line" id="enemyReadLine" style="display:none;"><span class="stat-value" id="enemyReadValue">—</span></div>
       </div>
     </div>
 

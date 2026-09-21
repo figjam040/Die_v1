@@ -900,3 +900,15 @@ Stage 2.67 (BUILD 140) — card fixes and plainer text: Tenet and Gradual lose t
 Stage 2.67 (BUILD 140) — card fixes and plainer text: Tenet and Gradual lose their caps for slower growth, and confusing text is reworded.
 
 Full write-ups for this and every earlier build: HISTORY.md.
+
+Stage 2.68 (BUILD 141) — three items, all kept.
+
+Item A, the poison answer (F33, KI-26): a new permanent listener, poison_answer_passive (cards-mods.js's init(), hook 'START_OF_TURN'), fires ahead of the phase's own inline poison tick/block clear (runPhase()'s generic callListeners(phase) call already fires before any phase-specific logic — see EVENT HOOKS — so this needed no new ordering mechanism). Removes floor(block / GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK (5)) stacks of poison, capped at the player's actual stacks; block is read, not spent, and still clears exactly as before. Player poison now has a hover (title attribute on #playerDebuffsValue, rendering.js) explaining the mechanic in full. Enemies are untouched (no block field).
+
+Item B, enemy intent patterns (F34, BASE for BUILD 142): every enemy now carries `pattern` (Attack/Charge/Afflict entries); every buildAct()-built enemy still gets a single-entry attack pattern off its own intentMin/intentMax, verified byte-identical to BUILD 140 via a seeded replay (tests/build141.test.js Item B-i). Full mechanic (advanceEnemyIntentForRound()/advanceEnemyPattern()/getIncomingIntentDamage(), the dev Set Next Intent control, the new on-screen labels) is written up in the ENEMY DIE PER TYPE standing section's intent paragraph — see there rather than duplicating it here.
+
+Item C (F35, BASE for BUILD 142): an enemy can carry a die of any GAME_CONFIG.DIE_SIZE (renderDieList() needed no change), plus three new buffs — Wrath, Drain, Seal — dispatched through the existing enemy_buff_dispatch listener; a Sealed face counts as blank everywhere (isFaceSealed(), pipeline.js). Full mechanic and every changed "is this face loaded" site are written up in ENEMY DIE PER TYPE's own new paragraphs and LOADED-FACE RULE / SEAL — see there rather than duplicating it here.
+
+Verification: facts 111/111, mods 40/40 (both unchanged pass counts, no assertion weakened), new tests/build141.test.js 22/22 (5 item A + 9 item B + 8 item C), including a seeded byte-identical replay against a genuine pre-BUILD-141 baseline captured from the backup copy. Screenshot diff (node tests/screenshots.js --compare, vs the true BUILD 140 set): map 3.27%, fight 0.15%, die_action 1.54%, card_reward 0.46%, dev_drawer 4.18% — all accounted for by the log panel's larger per-face JSON dump, the rewritten intent label, and the new dev-drawer control rows; no other visual change found.
+
+Limitation: Notion was not updated with F33/F34/F35 (no Notion MCP access this session) — config.js/CLAUDE.md are up to date; the Notion page still needs the same three lines pasted in.

@@ -102,7 +102,7 @@ function refreshInspector() {
       enemyTitleEl.textContent = 'ENEMY';
     }
   }
-  renderDieList('enemyDieList', gameState.enemy.die.faces, forceEnemyRoll, null, gameState.enemy.buffPoisonStacks);
+  renderDieList('enemyDieList', gameState.enemy.die.faces, forceEnemyRoll, null, gameState.enemy.buffPoisonStacks, gameState.enemy.name, gameState.enemy.wrathPerTrigger);
   renderPhaseBadge();
   renderResultBanner();
   renderDieActionPanel();
@@ -276,20 +276,48 @@ function modDisplayName(modId) {
 // live fight, or the map preview's own slot.enemy.buffPoisonStacks),
 // passed in by renderDieList() rather than read here, so this function
 // still never reaches into gameState/act numbers itself.
-function faceHoverText(face, buffPoisonStacks) {
+// BUILD 142 (items B/C/D) — enemyName/wrathAmount are the same idea as
+// buffPoisonStacks: the calling enemy's own act-scaled/per-enemy numbers,
+// threaded through by renderDieList() rather than read from gameState
+// here, so a map preview (a different enemy object entirely) still shows
+// its own correct text. enemyName drives Cardinal/Pontifex's own Nat
+// hover text (fully replacing the generic wording) and Hierophant's/
+// Lector's own appended sentence; wrathAmount falls back to the flat
+// GAME_CONFIG default when a caller doesn't have a live enemy to read one
+// from (kept for backward compatibility, no caller currently omits it).
+function faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount) {
   let text = null;
   if (face.modId === 'NAT_TWENTY' || face.modId === 'NAT_ONE') {
     text = NAT_DESCRIPTION[face.modId] || null;
   } else if (face.modId === 'ENEMY_NAT_TWENTY') {
-    text = 'fires every loaded poison face this turn, ascending face order, each applying ' + buffPoisonStacks + ' stacks of poison to you';
+    if (enemyName === 'Cardinal') {
+      text = "the player's two heaviest loaded faces, other than 1 and 20, count as blank next round.";
+    } else if (enemyName === 'Pontifex') {
+      text = 'an Attack this round resolves twice.';
+    } else if (enemyName === 'Hierophant') {
+      text = 'Nat 20: every loaded buff triggers, in ascending order.';
+    } else {
+      text = 'fires every loaded poison face this turn, ascending face order, each applying ' + buffPoisonStacks + ' stacks of poison to you';
+    }
   } else if (face.modId === 'ENEMY_NAT_ONE') {
-    text = 'cancels the enemy’s attack this turn (once per fight), applies ' + GAME_CONFIG.ENEMY_NAT_ONE_SELF_POISON + ' stacks of poison to itself';
+    if (enemyName === 'Cardinal') {
+      text = "the player's heaviest loaded face triggers. Once per fight.";
+    } else if (enemyName === 'Pontifex') {
+      text = 'it loses all its Wrath. Once per fight.';
+    } else if (enemyName === 'Hierophant') {
+      text = 'Nat 1: its attack is cancelled and it takes ' + GAME_CONFIG.ENEMY_NAT_ONE_SELF_POISON + ' stacks of poison, once per fight. Also happens when the player rolls a Nat 1.';
+    } else {
+      text = 'cancels the enemy’s attack this turn (once per fight), applies ' + GAME_CONFIG.ENEMY_NAT_ONE_SELF_POISON + ' stacks of poison to itself';
+    }
   } else if (face.modId === 'enemy_buff_poison') {
     text = 'applies ' + buffPoisonStacks + ' stacks of poison to you';
   } else if (face.modId === 'enemy_buff_wrath') {
-    text = 'Wrath: every Attack after this round deals ' + GAME_CONFIG.ENEMY_WRATH_AMOUNT + ' more, for the rest of the fight. Each trigger adds again.';
+    text = 'Wrath: every Attack after this round deals ' + (wrathAmount || GAME_CONFIG.ENEMY_WRATH_AMOUNT) + ' more, for the rest of the fight. Each trigger adds again.';
   } else if (face.modId === 'enemy_buff_drain') {
     text = 'Drain: the player starts next round with 1 less soul.';
+    if (enemyName === 'Lector' && face.number === 6) {
+      text += ' Also triggers when the player rolls a 6.';
+    }
   } else if (face.modId === 'enemy_buff_seal') {
     text = "Seal: the player's heaviest loaded face, other than 1 and 20, counts as blank next round.";
   } else if (face.modId && MOD_DESCRIPTION[face.modId]) {
@@ -359,7 +387,10 @@ const lastSeenHoppedFacesByContainer = {};
 // die's poison/Nat faces can name the real number for the current act.
 // Callers rendering the player's own die pass nothing; harmless, since no
 // player face ever carries an enemy modId.
-function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonStacks) {
+// BUILD 142: optional 6th/7th args, enemyName/wrathAmount — same idea,
+// threaded straight through to faceHoverText() for Cardinal/Pontifex/
+// Hierophant/Lector's own hover overrides and each enemy's own Wrath amount.
+function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonStacks, enemyName, wrathAmount) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const title = container.querySelector('.panel-title');
@@ -494,6 +525,15 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       // sustained/flash look, keyed off whether THIS face's own hop is new
       // this render (not the rolled face's roll signature above).
       row.classList.add(newlyHoppedThisRender.indexOf(face.number) !== -1 ? 'die-row-rolled-flash' : 'die-row-rolled');
+    }
+
+    // BUILD 142 (item D, KI-22) — a genuine enemy Nat (not the post-first-
+    // fire blank-equivalent) pulses its rolled row three times, on top of
+    // whatever look it already has above. Enemy die only, and only on the
+    // render right after the roll actually landed (isNewRollThisRender),
+    // same one-shot idiom the flash classes already use.
+    if (isEnemyContainer && trackedRolledFaceNumber === face.number && isNewRollThisRender && (trackedRollOutcome === 'nat_twenty' || trackedRollOutcome === 'nat_one')) {
+      row.classList.add('die-row-enemy-nat-pulse');
     }
 
     const btn = document.createElement('button');
@@ -710,7 +750,7 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     // one true thing about it right now, regardless of what's loaded there.
     const hoverText = (isPlayerDie && isFaceSealed(face.number))
       ? 'Sealed: counts as blank this round.'
-      : faceHoverText(face, buffPoisonStacks);
+      : faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount);
     // BUILD 079: during the Strengthen picker, an eligible row's hover also
     // shows what the face becomes — same faceHoverText() function, same
     // weight+1 arithmetic dieActionPickStrengthenFace() itself applies, so
@@ -718,7 +758,7 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     // and hover already show, never new copy.
     let becomesText = null;
     if (pickConfig && pickConfig.showBecomes && pickEligible) {
-      becomesText = faceHoverText(Object.assign({}, face, { weight: face.weight + 1 }), buffPoisonStacks);
+      becomesText = faceHoverText(Object.assign({}, face, { weight: face.weight + 1 }), buffPoisonStacks, enemyName, wrathAmount);
     }
     if (hoverText || becomesText) {
       const tip = document.createElement('span');
@@ -766,6 +806,27 @@ function renderEnemyIntent() {
   const entry = enemy.currentEntry;
   const valueEl = document.getElementById('enemyIntentValue');
   const labelEl = document.getElementById('enemyIntentLabel');
+  // BUILD 142 (item D, KI-22) — a genuine enemy Nat this round overrides
+  // whatever the pattern's own intent text would otherwise show, for the
+  // rest of this round (gameState.turn.enemyRollOutcome, cleared at the
+  // next START_OF_TURN alongside every other round-scoped roll flag).
+  if (gameState.turn.enemyRollOutcome === 'nat_twenty') {
+    valueEl.textContent = 'NAT 20';
+    labelEl.textContent = '';
+    valueEl.title = 'Nat 20: every loaded buff triggers this round.';
+    return;
+  }
+  if (gameState.turn.enemyRollOutcome === 'nat_one') {
+    // Cardinal and Pontifex's own Nat 1 does not cancel the attack (see
+    // GAME_CONFIG.ENEMIES/cards-mods.js) — showing "CANCELLED" for either
+    // would be wrong, so only the cancelling (default/Hierophant) case
+    // gets that wording.
+    const cancels = gameState.enemy.name !== 'Cardinal' && gameState.enemy.name !== 'Pontifex';
+    valueEl.textContent = cancels ? 'CANCELLED — NAT 1' : 'NAT 1';
+    labelEl.textContent = '';
+    valueEl.title = 'Nat 1: a designed effect happens instead of this round\'s own intent.';
+    return;
+  }
   if (!entry) {
     valueEl.textContent = '—';
     labelEl.textContent = '—';
@@ -804,6 +865,22 @@ function renderStats() {
   // apply the raw amount) — displayed HP is clamped to 0 here, at render
   // time only, so the underlying state some tests/logs read is untouched.
   document.getElementById('enemyHpValue').textContent = Math.max(0, gameState.enemy.hp) + ' / ' + gameState.enemy.maxHp;
+  // BUILD 142 (items B/C) — the enemy's own designed identity name.
+  const nameEl = document.getElementById('enemyNameValue');
+  if (nameEl) { nameEl.textContent = gameState.enemy.name || '—'; }
+  // BUILD 142 (item C) — Pontifex's own panel line: reads the player's
+  // heaviest loaded face, shown only for that boss.
+  const readLine = document.getElementById('enemyReadLine');
+  if (readLine) {
+    if (gameState.enemy.name === 'Pontifex') {
+      readLine.style.display = '';
+      const readValueEl = document.getElementById('enemyReadValue');
+      readValueEl.textContent = 'Reads the heaviest face: Wrath +' + gameState.enemy.wrathPerTrigger + ' when the player rolls it.';
+      readValueEl.title = 'When the player rolls their heaviest loaded face, Wrath triggers.';
+    } else {
+      readLine.style.display = 'none';
+    }
+  }
   renderEnemyIntent();
   document.getElementById('enemyPoisonValue').textContent = gameState.enemy.poisonStacks;
   document.getElementById('enemyBuffsValue').textContent = gameState.enemy.activeBuffs.length ? gameState.enemy.activeBuffs.join(', ') : '—';
@@ -901,17 +978,36 @@ const CARD_EFFECT_TEXT = {
   vindication: 'Deal damage equal to twice your block, max 24',
   myrrh: '6 block, +1 per stack of poison on the enemy, max 12',
   exequy: "Deal damage equal to the enemy's stacks of poison, max 12",
-  hosanna: '6 damage, 11 if you have 3+ soul left after paying',
+  hosanna: "6 damage. 12 if the enemy's intent this round is not an Attack.",
   gloria: '30 damage',
   oblation: 'Spend all your soul. 7 damage per soul spent, max 42',
   tabernacle: '3 block, +3 per weight of the rolled face, max 12',
   jubilee: '4 damage, +2 per weight added to the die this run, max 24',
-  threnody: 'Triggers your lowest-numbered loaded face',
+  // BUILD 142 (item F): threnody's own text is no longer a fixed string —
+  // it names the live gameState.run.threnodyFace number, fixed once per
+  // run. This static entry is kept only as the never-reached fallback
+  // getCardEffectText() below falls back to if threnodyFace is somehow
+  // unset; every real caller goes through that function instead of reading
+  // this map directly for 'threnody'.
+  threnody: 'Face triggers. The face is set once per run. A blank face gives 2 block.',
   reverberation: 'The face you rolled triggers again. On a 1 or 20: 6 block instead',
   kyrie: '5 damage, 10 if the rolled face has Bound',
   novena: 'every Bound face triggers',
   canticle: '6 block. The face you rolled gains Bound for this fight'
 };
+
+// BUILD 142 (item F) — the one place Threnody's own live-numbered text is
+// built; every site that draws a card's effect text (hand, card reward,
+// rite removal) calls this instead of reading CARD_EFFECT_TEXT[cardId]
+// directly, so Threnody's real, run-fixed face number shows everywhere a
+// card's text is drawn. Every other card is untouched — same static
+// lookup as before.
+function getCardEffectText(cardId) {
+  if (cardId === 'threnody' && gameState.run.threnodyFace !== null) {
+    return 'Face ' + gameState.run.threnodyFace + ' triggers. The face is set once per run. A blank face gives 2 block.';
+  }
+  return CARD_EFFECT_TEXT[cardId] || '';
+}
 
 // BUILD 071: hover text for mods and Nat faces, derived from each mod's
 // own log() lines (stripping the '[MOD] name: ' prefix and, where a
@@ -1030,7 +1126,7 @@ function renderCardButtons() {
 
     const effectEl = document.createElement('span');
     effectEl.className = 'hand-card-effect';
-    effectEl.textContent = CARD_EFFECT_TEXT[cardId] || '';
+    effectEl.textContent = getCardEffectText(cardId);
 
     btn.appendChild(costEl);
     btn.appendChild(nameEl);
@@ -1539,7 +1635,7 @@ function renderCardRewardPanel() {
     // No new copy written for any card.
     const tip = document.createElement('span');
     tip.className = 'hover-tip';
-    tip.textContent = CARD_EFFECT_TEXT[cardId] || '';
+    tip.textContent = getCardEffectText(cardId);
     btn.appendChild(tip);
     btn.addEventListener('click', function() { log('[CLICK] ' + card.name); cardRewardPickCard(cardId); });
     row.appendChild(btn);
@@ -1674,7 +1770,7 @@ function renderRiteScreen() {
 
       const tip = document.createElement('span');
       tip.className = 'hover-tip';
-      tip.textContent = CARD_EFFECT_TEXT[cardId] || '';
+      tip.textContent = getCardEffectText(cardId);
       btn.appendChild(tip);
 
       btn.addEventListener('click', function() { log('[CLICK] ' + card.name); riteRemoveCard(index); });
@@ -1761,6 +1857,22 @@ function attachDevJumpIfEligible(node, laneName, index) {
 function mapLaneStateClass(laneName) {
   if (gameState.run.lane === null) { return ''; }
   return (gameState.run.lane === laneName) ? 'map-lane-committed' : 'map-lane-abandoned';
+}
+
+// BUILD 142 (item B.g) — the elite/boss map previews used to show a plain
+// "Intent min–max" line; every enemy now carries a real, named pattern
+// instead of a flat band, so the preview names the enemy and its pattern
+// in plain words (e.g. "Lector — Attack 13–17, Afflict 4, Charge 27"),
+// same order the pattern array itself lists. A Charge shows only its
+// release value — the wind-up round deals no damage, so the release is
+// the one number worth previewing.
+function formatPatternWords(pattern) {
+  return pattern.map(function(entry) {
+    if (entry.kind === 'attack') { return 'Attack ' + entry.min + '–' + entry.max; }
+    if (entry.kind === 'charge') { return 'Charge ' + entry.release; }
+    if (entry.kind === 'afflict') { return 'Afflict ' + entry.stacks; }
+    return '';
+  }).join(', ');
 }
 
 function renderMapScreen() {
@@ -1930,7 +2042,7 @@ function renderMapScreen() {
   elitePreview.innerHTML =
     '<div class="panel-title">ELITE PREVIEW</div>' +
     '<div>HP ' + eliteEnemy.hp + '</div>' +
-    '<div>Intent ' + eliteEnemy.intentMin + '–' + eliteEnemy.intentMax + '</div>';
+    '<div>' + eliteEnemy.name + ' — ' + formatPatternWords(eliteEnemy.pattern) + '</div>';
   previewRow.appendChild(elitePreview);
 
   const eliteDieContainer = document.createElement('div');
@@ -1952,7 +2064,7 @@ function renderMapScreen() {
   bossPreview.innerHTML =
     '<div class="panel-title">BOSS PREVIEW</div>' +
     '<div>HP ' + bossEnemy.hp + '</div>' +
-    '<div>Intent ' + bossEnemy.intentMin + '–' + bossEnemy.intentMax + '</div>';
+    '<div>' + bossEnemy.name + ' — ' + formatPatternWords(bossEnemy.pattern) + '</div>';
   previewRow.appendChild(bossPreview);
 
   const bossDieContainer = document.createElement('div');
@@ -1979,6 +2091,6 @@ function renderMapScreen() {
   // BUILD 139: same hover buffPoisonStacks arg the live enemy die passes —
   // each slot's own act-scaled amount (buildAct(), fixed at build time),
   // so the map preview's poison/Nat hover text names the real number too.
-  renderDieList('eliteDiePreviewList', eliteEnemy.die.faces, null, null, eliteEnemy.buffPoisonStacks);
-  renderDieList('bossDiePreviewList', bossEnemy.die.faces, null, null, bossEnemy.buffPoisonStacks);
+  renderDieList('eliteDiePreviewList', eliteEnemy.die.faces, null, null, eliteEnemy.buffPoisonStacks, eliteEnemy.name, eliteEnemy.wrathPerTrigger);
+  renderDieList('bossDiePreviewList', bossEnemy.die.faces, null, null, bossEnemy.buffPoisonStacks, bossEnemy.name, bossEnemy.wrathPerTrigger);
 }

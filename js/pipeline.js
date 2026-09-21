@@ -440,6 +440,22 @@ function pickHeaviestLoadedFaceForSeal() {
   });
 }
 
+// BUILD 142 (item C, Cardinal's own Nat 20) — same candidates/tie rule as
+// pickHeaviestLoadedFaceForSeal() above (weight desc, then number asc), but
+// returns up to n of them instead of just the top one — Cardinal's Nat 20
+// Seals its two heaviest loaded faces at once. Never fewer than n unless
+// fewer than n faces are eligible.
+function pickTopLoadedFacesForSeal(n) {
+  const candidates = gameState.die.faces.filter(function(f) {
+    return f.number !== 1 && f.number !== GAME_CONFIG.DIE_SIZE.PLAYER && f.modId !== null && !isFaceSealed(f.number);
+  });
+  candidates.sort(function(a, b) {
+    if (b.weight !== a.weight) { return b.weight - a.weight; }
+    return a.number - b.number;
+  });
+  return candidates.slice(0, n);
+}
+
 // ---------- ENEMY DICE OF ANY SIZE (BUILD 141, item C) ----------
 
 // A generic enemy-die builder from a {sizeKey, faces, nats} spec — sizeKey
@@ -577,7 +593,7 @@ function advanceEnemyIntentForRound() {
     const broke = hpLost >= entry.breakAt;
     updateEnemy({ chargeStage: 'release', chargeBroken: broke });
     if (broke) {
-      log('[ENEMY] ' + enemy.id + '\'s Charge breaks.');
+      log('[ENEMY] ' + enemy.name + '\'s Charge breaks.');
     }
     return;
   }
@@ -599,7 +615,7 @@ function advanceEnemyIntentForRound() {
     log('[ENEMY] intent set to ' + value);
   } else if (entry.kind === 'charge') {
     updateEnemy({ currentEntry: entry, chargeStage: 'windup', chargeBroken: false, windupStartHp: enemy.hp });
-    log('[ENEMY] ' + enemy.id + ' charges. Release ' + entry.release + ' next round.');
+    log('[ENEMY] ' + enemy.name + ' charges. Release ' + entry.release + ' next round.');
   } else if (entry.kind === 'afflict') {
     updateEnemy({ currentEntry: entry, chargeStage: null, chargeBroken: false, windupStartHp: null });
   }
@@ -663,12 +679,55 @@ function resolveEnemyRoll(face) {
   updateTurn({ enemyRollOutcome: enemyRollOutcome, enemyRolledFaceNumber: face.number });
   log('[ENEMY ROLL] face: ' + face.number + ' modId: ' + face.modId);
   if (face.modId === 'ENEMY_NAT_ONE') {
+    // BUILD 142 (item D, KI-22) — a genuine Nat 1 (not the post-first-fire
+    // blank-equivalent, per enemyRollOutcome's own derivation above) gets
+    // its own sound; the visual pulse itself is driven entirely off
+    // enemyRollOutcome/enemyRolledFaceNumber in renderDieList() (rendering.
+    // js), no extra state needed here.
+    if (enemyRollOutcome === 'nat_one') { playAudioEvent('enemy_nat_1'); }
     callListeners('ENEMY_NAT_ONE', {});
   } else if (face.modId === 'ENEMY_NAT_TWENTY') {
+    playAudioEvent('enemy_nat_20');
     callListeners('ENEMY_NAT_TWENTY', {});
   } else if (face.modId !== null) {
     callListeners('ENEMY_BUFF_TRIGGER', { buffId: face.modId, faceNumber: face.number });
   } else {
     log('[ENEMY ROLL] blank');
+  }
+}
+
+// BUILD 142 (items B/C) — per-enemy "reads": a few designed enemies react
+// to the PLAYER's own roll this round, independent of whatever their own
+// die just did. Called once per round, from nextPhase()'s ENEMY_ROLL_PHASE
+// transition (phase-machine.js), right after the enemy's own die roll (if
+// any) has resolved — gameState.turn.rolledFaceNumber/rollOutcome are
+// already fixed by then (set during the player's own earlier ROLL_PHASE
+// this same round), so this always reads this round's real values.
+function applyEnemyReads() {
+  const enemy = gameState.enemy;
+  if (enemy.name === 'Lector') {
+    // Lector's own face 6 is Drain — reading a player roll of 6 triggers
+    // Drain a second, independent way, at most once a round (one check).
+    if (gameState.turn.rolledFaceNumber === 6) {
+      updatePlayer({ drainNextRound: gameState.player.drainNextRound + 1 });
+      log('[ENEMY] Lector reads the 6: Drain triggers.');
+    }
+  } else if (enemy.name === 'Hierophant') {
+    // The player's own Nat 1 also triggers the Hierophant's — same
+    // natOneFiredThisFight gate as a normal roll of its own face 1, so this
+    // is a no-op once that's already fired this fight, from either source.
+    if (gameState.turn.rollOutcome === 'nat_one' && !enemy.natOneFiredThisFight) {
+      log('[ENEMY] Hierophant answers the Nat 1: attack cancelled.');
+      callListeners('ENEMY_NAT_ONE', {});
+    }
+  } else if (enemy.name === 'Pontifex') {
+    // Reads the player's own heaviest loaded face (pickHeaviestLoadedFace
+    // ForSeal()'s exact candidate rule: excludes 1/20 and Sealed faces,
+    // ties to the lowest number) — rolling it triggers Wrath.
+    const heaviest = pickHeaviestLoadedFaceForSeal();
+    if (heaviest && gameState.turn.rolledFaceNumber === heaviest.number) {
+      updateEnemy({ wrathPending: enemy.wrathPending + enemy.wrathPerTrigger });
+      log('[ENEMY] Pontifex reads face ' + heaviest.number + ': Wrath triggers.');
+    }
   }
 }

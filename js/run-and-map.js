@@ -148,64 +148,143 @@ function buildEnemyDieFaces(poisonFaceNumbers, includeNats, dieSize) {
 // value a normal fight actually got, for tests/facts.test.js's own
 // adjacency assertion — opening/elite/boss carry no such field, only
 // plain 'fight' slots with a normal enemy do.
+// BUILD 142 (items A/B/C) — the fifteen designed enemies (GAME_CONFIG.
+// ENEMIES) replace the old anonymous HP/intent-band slot builders above.
+// Every pattern number is now final and literal (buildAct() no longer
+// scales a pattern's own min/max/release/breakAt/stacks by
+// ACT_INTENT_MULTIPLIER — that multiplier still sets the enemy poison-buff
+// amount only, exactly as before). HP is still Math.ceil(base * that act's
+// ACT_HP_MULTIPLIER) — byte-identical formula to pre-142 — only WHICH base
+// number and WHICH named enemy occupies a given slot changed.
+//
+// patternBounds() derives a purely informational intentMin/intentMax from
+// a pattern (the widest Attack range, or a Charge's own release value) —
+// nothing computes damage from these two fields any more (see
+// getIncomingIntentDamage(), pipeline.js); they exist only because
+// beginFightFromSlot() and the state.js placeholder still carry the fields
+// and some future/dev code may read them for display.
+function patternBounds(pattern) {
+  let min = null;
+  let max = null;
+  pattern.forEach(function(entry) {
+    if (entry.kind === 'attack') {
+      if (min === null || entry.min < min) min = entry.min;
+      if (max === null || entry.max > max) max = entry.max;
+    } else if (entry.kind === 'charge') {
+      if (min === null || entry.release < min) min = entry.release;
+      if (max === null || entry.release > max) max = entry.release;
+    }
+  });
+  return { min: min || 0, max: max || 0 };
+}
+
 function buildAct(actNumber) {
-  const normalHp = GAME_CONFIG.NORMAL_FIGHT_HP;
-  const normalIntent = GAME_CONFIG.INTENT.NORMAL;
   const hpMult = GAME_CONFIG.ACT_HP_MULTIPLIER[actNumber - 1];
   const intentMult = GAME_CONFIG.ACT_INTENT_MULTIPLIER[actNumber - 1];
   const scaleHp = function(hp) { return Math.ceil(hp * hpMult); };
-  const scaleIntent = function(v) { return Math.ceil(v * intentMult); };
   const buffPoisonStacks = Math.ceil(GAME_CONFIG.ENEMY_BUFF_POISON_STACKS * intentMult);
+  const ENEMIES = GAME_CONFIG.ENEMIES;
 
-  // BUILD 141 (item B, F34) — every enemy definition now carries pattern, a
-  // repeating list of 1-4 intents. Per the prompt's explicit instruction
-  // ("convert every current enemy to pattern [{kind:'attack', min, max}] ...
-  // so play is identical"), every enemy built here still gets exactly the
-  // one-entry pattern below, using that same enemy's own (already act-
-  // scaled) intentMin/intentMax — the four-wide Attack range and multi-
-  // intent patterns are reserved for the designed enemies BUILD 142 adds.
-  const attackPattern = function(min, max) { return [{ kind: 'attack', min: min, max: max }]; };
-
-  const buildNormalFight = function(typeIndex) {
-    const intentMin = scaleIntent(normalIntent.MIN);
-    const intentMax = scaleIntent(normalIntent.MAX);
-    return { type: 'fight', label: 'Fight', enemy: { hp: scaleHp(normalHp[typeIndex]), intentMin: intentMin, intentMax: intentMax, hasDie: false, buffPoisonStacks: buffPoisonStacks, normalTypeIndex: typeIndex, pattern: attackPattern(intentMin, intentMax) }, completed: false };
+  // Builds one fight-type slot's live enemy object from a GAME_CONFIG.
+  // ENEMIES id and this slot's own HP. hasDie is derived from whether the
+  // def carries a dieSpec at all — act 1's lane normals (Thurifer/Asperser/
+  // Verger) carry none (no die, per the prompt); act 2/3's normals now do
+  // (a real 6-sided die each), and every elite/boss always does.
+  const buildEnemyFromDef = function(defId, hp) {
+    const def = ENEMIES[defId];
+    const bounds = patternBounds(def.pattern);
+    const enemy = {
+      name: def.name,
+      hp: hp,
+      intentMin: bounds.min,
+      intentMax: bounds.max,
+      hasDie: !!def.dieSpec,
+      buffPoisonStacks: buffPoisonStacks,
+      pattern: def.pattern
+    };
+    if (def.dieSpec) {
+      enemy.die = { faces: buildEnemyDieFromSpec(def.dieSpec) };
+    }
+    if (def.wrathPerTrigger) {
+      enemy.wrathPerTrigger = def.wrathPerTrigger;
+    }
+    return enemy;
   };
-  const buildRite = function() { return { type: 'rite', label: 'Rite', completed: false }; };
-  const buildElite = function() {
-    const intentMin = scaleIntent(GAME_CONFIG.INTENT.ELITE.MIN);
-    const intentMax = scaleIntent(GAME_CONFIG.INTENT.ELITE.MAX);
-    return { type: 'fight', label: 'Elite', enemy: { hp: scaleHp(GAME_CONFIG.HP.ELITE), intentMin: intentMin, intentMax: intentMax, hasDie: true, buffPoisonStacks: buffPoisonStacks, pattern: attackPattern(intentMin, intentMax), die: { faces: buildEnemyDieFaces(GAME_CONFIG.ELITE_DIE.POISON_FACES, GAME_CONFIG.ELITE_DIE.INCLUDE_NATS, GAME_CONFIG.DIE_SIZE.ELITE) } }, completed: false };
+  const fightSlot = function(label, defId, hp) {
+    return { type: 'fight', label: label, enemy: buildEnemyFromDef(defId, hp), completed: false };
   };
+  const rite = function() { return { type: 'rite', label: 'Rite', completed: false }; };
 
-  const openingIntentMin = scaleIntent(GAME_CONFIG.INTENT.OPENING.MIN);
-  const openingIntentMax = scaleIntent(GAME_CONFIG.INTENT.OPENING.MAX);
-  const bossIntentMin = scaleIntent(GAME_CONFIG.INTENT.BOSS.MIN);
-  const bossIntentMax = scaleIntent(GAME_CONFIG.INTENT.BOSS.MAX);
+  if (actNumber === 1) {
+    // Act 1's five lane-fight positions each carry their own fixed HP
+    // (GAME_CONFIG.ACT1_LANE_FIGHT_HP, item A) rather than the lightest/
+    // second-lightest/heaviest rotation acts 2/3 use below. Position 3 is
+    // the Elite on the upper lane (Lector) and Verger's own second
+    // appearance on the lower lane (no elite there).
+    const laneHp = GAME_CONFIG.ACT1_LANE_FIGHT_HP;
+    return {
+      opening: fightSlot('Fight', 'verger_opening', scaleHp(GAME_CONFIG.HP.OPENING)),
+      upper: [
+        fightSlot('Fight', 'thurifer', laneHp[0]),
+        rite(),
+        fightSlot('Fight', 'asperser', laneHp[1]),
+        fightSlot('Elite', 'lector', GAME_CONFIG.HP.ELITE),
+        rite(),
+        fightSlot('Fight', 'thurifer', laneHp[3]),
+        fightSlot('Fight', 'asperser', laneHp[4]),
+        rite()
+      ],
+      lower: [
+        fightSlot('Fight', 'thurifer', laneHp[0]),
+        rite(),
+        fightSlot('Fight', 'asperser', laneHp[1]),
+        fightSlot('Fight', 'verger_lane', laneHp[2]),
+        rite(),
+        fightSlot('Fight', 'thurifer', laneHp[3]),
+        fightSlot('Fight', 'asperser', laneHp[4]),
+        rite()
+      ],
+      boss: fightSlot('Boss', 'hierophant', GAME_CONFIG.HP.BOSS)
+    };
+  }
+
+  // Acts 2/3 — same lightest/second-lightest/heaviest rotation and lane
+  // shape as pre-142 (NORMAL_FIGHT_HP indices 0/1/2, Math.ceil(base*mult),
+  // byte-identical HP numbers), only naming which designed enemy sits at
+  // each index. Lane order: position 1/4 second-lightest, 2/5 heaviest,
+  // 3 lightest (upper lane's own position 3 is the Elite instead, as in
+  // act 1). The opening fight is always that act's lightest normal, at
+  // opening HP rather than its own normal HP.
+  const normalHp = GAME_CONFIG.NORMAL_FIGHT_HP;
+  const lightestId = actNumber === 2 ? 'chorister' : 'anchorite';
+  const secondId = actNumber === 2 ? 'cantor' : 'mendicant';
+  const heaviestId = actNumber === 2 ? 'flagellant' : 'inquisitor';
+  const eliteId = actNumber === 2 ? 'archdeacon' : 'exarch';
+  const bossId = actNumber === 2 ? 'cardinal' : 'pontifex';
 
   return {
-    opening: { type: 'fight', label: 'Fight', enemy: { hp: scaleHp(GAME_CONFIG.HP.OPENING), intentMin: openingIntentMin, intentMax: openingIntentMax, hasDie: false, buffPoisonStacks: buffPoisonStacks, pattern: attackPattern(openingIntentMin, openingIntentMax) }, completed: false },
+    opening: fightSlot('Fight', lightestId, scaleHp(GAME_CONFIG.HP.OPENING)),
     upper: [
-      buildNormalFight(0),
-      buildRite(),
-      buildNormalFight(2),
-      buildElite(),
-      buildRite(),
-      buildNormalFight(0),
-      buildNormalFight(1),
-      buildRite()
+      fightSlot('Fight', secondId, scaleHp(normalHp[1])),
+      rite(),
+      fightSlot('Fight', heaviestId, scaleHp(normalHp[2])),
+      fightSlot('Elite', eliteId, scaleHp(GAME_CONFIG.HP.ELITE)),
+      rite(),
+      fightSlot('Fight', secondId, scaleHp(normalHp[1])),
+      fightSlot('Fight', heaviestId, scaleHp(normalHp[2])),
+      rite()
     ],
     lower: [
-      buildNormalFight(0),
-      buildRite(),
-      buildNormalFight(1),
-      buildNormalFight(2),
-      buildRite(),
-      buildNormalFight(0),
-      buildNormalFight(1),
-      buildRite()
+      fightSlot('Fight', secondId, scaleHp(normalHp[1])),
+      rite(),
+      fightSlot('Fight', heaviestId, scaleHp(normalHp[2])),
+      fightSlot('Fight', lightestId, scaleHp(normalHp[0])),
+      rite(),
+      fightSlot('Fight', secondId, scaleHp(normalHp[1])),
+      fightSlot('Fight', heaviestId, scaleHp(normalHp[2])),
+      rite()
     ],
-    boss: { type: 'fight', label: 'Boss', enemy: { hp: scaleHp(GAME_CONFIG.HP.BOSS), intentMin: bossIntentMin, intentMax: bossIntentMax, hasDie: true, buffPoisonStacks: buffPoisonStacks, pattern: attackPattern(bossIntentMin, bossIntentMax), die: { faces: buildEnemyDieFaces(GAME_CONFIG.BOSS_DIE.POISON_FACES, GAME_CONFIG.BOSS_DIE.INCLUDE_NATS, GAME_CONFIG.DIE_SIZE.BOSS) } }, completed: false }
+    boss: fightSlot('Boss', bossId, scaleHp(GAME_CONFIG.HP.BOSS))
   };
 }
 
@@ -244,8 +323,13 @@ function clearFightScopedState() {
   // reset (also called directly by advanceRun()/resetFight()) must not
   // leave a stale in-progress charge or accumulated Wrath sitting on
   // gameState.enemy between calls.
-  updateEnemy({ poisonStacks: 0, activeBuffs: [], natOneFiredThisFight: false, patternIndex: 0, chargeStage: null, chargeBroken: false, windupStartHp: null, currentEntry: null, forcedNextIntent: null, wrath: 0, wrathPending: 0 });
+  updateEnemy({ poisonStacks: 0, activeBuffs: [], natOneFiredThisFight: false, patternIndex: 0, chargeStage: null, chargeBroken: false, windupStartHp: null, currentEntry: null, forcedNextIntent: null, wrath: 0, wrathPending: 0, pontifexDoubleAttackThisRound: false });
   updateTurn({ round: 0, cardsPlayedThisTurn: 0 });
+  // BUILD 142 (item S) — a face Sealed in one fight must not carry into the
+  // next: sealedFaces is turn-scoped but a fight boundary can land mid-round,
+  // so it needs its own explicit clear here, beside the drainNextRound/
+  // sealNextRound reset above.
+  updateTurn({ sealedFaces: [] });
   // BUILD 133 (checkpoint 3, Bound engine) — a Bound grant (modData.
   // boundGranted, grantBoundToFace(), pipeline.js) lasts one fight only,
   // unlike the rest of a face's modData (trigger counts, Zeal's/Cope's own
@@ -304,6 +388,10 @@ function startNewRun() {
   // over an in-progress charge, an accumulated Wrath, a pending Drain, or a
   // queued Seal from before the reset.
   updatePlayer({ drainNextRound: 0, sealNextRound: [] });
+  // BUILD 142 (item S) — same sealedFaces clear as clearFightScopedState()
+  // above, so a brand new run never inherits a Sealed face from whatever
+  // the previous run last had queued or active.
+  updateTurn({ sealedFaces: [] });
   // BUILD 097: natOneFiredThisFight reset here too, same reason as
   // clearFightScopedState() above — a brand new run never inherits a
   // spent enemy Nat 1 from whatever the previous run last fought.
@@ -339,7 +427,10 @@ function startNewRun() {
     // after 'opening' resolves — see advanceRun()).
     currentSlot: 'opening',
     act: buildAct(1),
-    actNumber: 1
+    actNumber: 1,
+    // BUILD 142 (item F) — Threnody's own fixed face for this run, a whole
+    // number from 2 to 19, rolled evenly (18 possible values).
+    threnodyFace: Math.floor(Math.random() * 18) + 2
   });
 
   // BUILD 109: a brand new run always starts its run record fresh, after
@@ -647,6 +738,14 @@ function devJumpToSlot(laneName, index) {
 function beginFightFromSlot(slot) {
   updateEnemy({
     id: slot.label,
+    // BUILD 142 (items B/C) — the enemy's own display/log identity name
+    // (Verger, Thurifer, ... Pontifex), distinct from id (still the slot
+    // label 'Fight'/'Elite'/'Boss', which #enemyPanelTitle's ENEMY/ELITE ★/
+    // BOSS ☠ logic still keys off unchanged). Every log line that used to
+    // read gameState.enemy.id for the enemy's own name (advanceEnemyIntent
+    // ForRound()/ENEMY_ACT_PHASE, pipeline.js/phase-machine.js) now reads
+    // this field instead.
+    name: slot.enemy.name,
     hp: slot.enemy.hp,
     maxHp: slot.enemy.hp,
     intentMin: slot.enemy.intentMin,
@@ -675,6 +774,14 @@ function beginFightFromSlot(slot) {
     // BUILD 141 (item C) — Wrath is fight-scoped, same reasoning.
     wrath: 0,
     wrathPending: 0,
+    // BUILD 142 (item C) — this enemy's own per-trigger Wrath amount
+    // (GAME_CONFIG.ENEMIES[...].wrathPerTrigger); falls back to the flat
+    // GAME_CONFIG.ENEMY_WRATH_AMOUNT default for an enemy def with no
+    // amount of its own (and for devSetTestDie()'s dev-only test dice).
+    wrathPerTrigger: slot.enemy.wrathPerTrigger || GAME_CONFIG.ENEMY_WRATH_AMOUNT,
+    // BUILD 142 (item C) — Pontifex's own Nat 20 one-shot flag; fight-scoped,
+    // consumed by ENEMY_ACT_PHASE the instant it's read (phase-machine.js).
+    pontifexDoubleAttackThisRound: false,
     // BUILD 098: die now varies per slot (elite: 2 poison faces only;
     // boss: 3 poison faces + both Nats — buildAct()) instead of always
     // being the same shared object. Copies the slot's own static die

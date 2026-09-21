@@ -23,9 +23,9 @@
 // F12 Strengthen targets face 20, never face 1 · F13 Load offer is 3 mods, excluding the anchor and loaded mods
 // F14 die rewards as built: every fight win grants 1, an elite win 2, a rite 1 (or heal or removal); the boss grants none (D-22) · F15 rite heal 20
 // F16 (checkpoint 3 map) lanes 2, slots per lane 8, three rites per lane (slots 2, 5, 8), the elite is slot 4 of the upper lane
-// F17 HP: opening 50, normals 70/78/85, elite 100, boss 100
-// F18 intent: opening 4–12, normals 6–18, elite 10–18, boss 10–20
-// F19 enemy buff applies 3 stacks of poison (act 1), scaled per act to 4 (act 2) and 5 (act 3) · F20 elite buff faces 7 and 14, both poison, no Nat faces · F21 boss buff faces 5, 10, 15, all poison, plus Nat 20 and Nat 1
+// F17 (BUILD 142) act 1 HP: opening 50, lane fights by position 58/65/72/78/85, elite 100, boss 100
+// F18 (BUILD 142) intent: opening 4–12, normals 6–18, elite 10–18, boss 10–20 — every enemy acts from a pattern (F36, F37)
+// F19 enemy buff applies 3 stacks of poison (act 1), scaled per act to 4 (act 2) and 5 (act 3) · F20 (BUILD 142) act 1 elite (Lector) buff faces 3 and 9, both poison, 12-sided, no Nat faces · F21 (BUILD 142) act 1 boss (Hierophant) buff faces 5, 10, 15, all poison, plus Nat 20 and Nat 1
 // F22 enemy Nat 20 every loaded buff triggers, ascending, repeatable · F23 enemy Nat 1 attack cancelled, self-applies a flat 5 stacks of poison, once per fight
 // F24 mods 25 (checkpoint 3, the remaining Bound pieces, BUILD 134: 2 new — Concord, Herald; 24 offerable plus Consecrate, tiers 12 common/8 uncommon/4 rare), each asserted by tests/mods.test.js
 // F25 cards 36 (checkpoint 3, the remaining Bound pieces, BUILD 134: 3 new — Kyrie, Novena, Canticle; tiers 18 common/12 uncommon/6 rare), each asserted by tests/facts.test.js
@@ -35,7 +35,11 @@
 // F33 (BUILD 141) at START_OF_TURN, before poison ticks and before block clears, every 5 block the player holds removes 1 stack of poison from the player
 // F34 (BUILD 141) enemies act from a repeating pattern of 1 to 4 intents: Attack (a number rolled evenly in its range), Charge (a no-damage wind-up round, then a release; broken if the enemy loses the break number of HP in the wind-up round, poison ticks included) and Afflict (stacks of poison, no damage); an enemy Nat 1 cancels that round's intent
 // F35 (BUILD 141) any enemy can carry a die of any size from GAME_CONFIG.DIE_SIZE; buffs are poison, Wrath (adds to every Attack from the next round on), Drain (1 less soul next round) and Seal (the player's heaviest loaded face other than 1 and 20 counts as blank next round, for every rule)
-// F31 (BUILD 125) three acts; per-act enemy HP multiplier 1.0/1.4/1.9 and intent multiplier 1.0/1.2/1.45, both applied at enemy creation (buildAct()) with Math.ceil; the enemy buff's poison-stack amount scales with the intent multiplier the same way (also Math.ceil, also fixed at enemy creation); the enemy Nat 1 self-poison stays a flat, unscaled amount
+// F36 (BUILD 142) act 1 enemies: Verger (opening at 6–9, position 3 at 9–12), Thurifer (positions 1 and 4), Asperser (positions 2 and 5), Lector (elite), Hierophant (boss); an enemy Nat 20 or Nat 1 has its own sound and a pulse on the rolled row (KI-22)
+// F37 (BUILD 142) acts 2 and 3 enemies: Chorister, Cantor, Flagellant, Archdeacon, Cardinal; Anchorite, Mendicant, Inquisitor, Exarch, Pontifex; normals roll 6-sided dice, elites 12-sided, bosses 20-sided with their own Nat pair; the Pontifex reads the player's heaviest face
+// F38 (BUILD 142) Threnody's face is set once per run, 2 to 19, in gameState.run
+// F39 (BUILD 142) a Seal lasts one round: the sealed list is replaced at every START_OF_TURN and emptied at fight start
+// F31 (BUILD 125, corrected BUILD 142) three acts; per-act enemy HP multiplier 1.0/1.4/1.9, applied at enemy creation (buildAct()) with Math.ceil; the intent multiplier 1.0/1.2/1.45 no longer scales a pattern's own numbers (BUILD 142) — it sets only the enemy buff's poison-stack amount, the same way (also Math.ceil, also fixed at enemy creation); the enemy Nat 1 self-poison stays a flat, unscaled amount
 // F32 (BUILD 125) beating the act 1 or act 2 boss grants a card reward and one die reward, exactly like any other fight win; the act 3 boss is VICTORY with no reward (D-22)
 // ============================================================
 
@@ -47,7 +51,7 @@ const GAME_CONFIG = {
   // test then fails if it doesn't match the newest CONFIRMED WORKING entry
   // in CLAUDE.md, so a forgotten bump is caught by the test suite instead
   // of being noticed cold several builds later (the KI-18 failure mode).
-  BUILD: 141,
+  BUILD: 142,
 
   // F01 — player HP. Was state.js's gameState.player.hp/maxHp literal (70).
   PLAYER_MAX_HP: 70,
@@ -120,6 +124,16 @@ const GAME_CONFIG = {
     BOSS: { MIN: 10, MAX: 20 }
   },
 
+  // F36 (BUILD 142, item A) — act 1's five lane-fight positions no longer
+  // rotate through NORMAL_FIGHT_HP's three values (that scheme still holds
+  // for acts 2/3, item C) — each of act 1's five lane-fight positions now
+  // has its own fixed HP, indexed by position (1st to 5th, 0-based here).
+  // The opening (50) and the elite/boss (100/100, HP.ELITE/HP.BOSS above)
+  // are unchanged; position 3 on the upper lane is the Elite, not a normal
+  // fight, so only positions 1/2/4/5 ever read this array on that lane —
+  // the lower lane (no elite) reads all five.
+  ACT1_LANE_FIGHT_HP: [58, 65, 72, 78, 85],
+
   // F33 (BUILD 141) — poison answer. At START_OF_TURN, before poison ticks
   // and before block clears, every POISON_ANSWER_BLOCK_PER_STACK block the
   // player still holds removes 1 stack of the player's own poison (capped
@@ -147,7 +161,12 @@ const GAME_CONFIG = {
   // size per class and per boss — Parked, not built): the player, an elite
   // and the boss must each be free to vary independently later without a
   // second refactor. Nothing in js/ reads a bare 20 for a die size any more.
-  DIE_SIZE: { PLAYER: 20, ELITE: 20, BOSS: 20, NORMAL: 6 },
+  // BUILD 142 (item B.e) — ELITE lowered from 20 to 12: every elite in the
+  // game (Lector, Archdeacon, Exarch) now rolls a 12-sided die, per the
+  // prompt's explicit instruction. BOSS stays 20 (with Nats); NORMAL (6)
+  // is read by no real enemy yet (every normal fight is still hasDie:false)
+  // — reserved for a future build.
+  DIE_SIZE: { PLAYER: 20, ELITE: 12, BOSS: 20, NORMAL: 6 },
 
   // BUILD 141 (item C) — Wrath's per-trigger amount, added to
   // gameState.enemy.wrathPending by enemy_buff_dispatch (cards-mods.js)
@@ -166,6 +185,109 @@ const GAME_CONFIG = {
   // call-site arguments.
   ELITE_DIE: { POISON_FACES: [7, 14], INCLUDE_NATS: false },
   BOSS_DIE: { POISON_FACES: [5, 10, 15], INCLUDE_NATS: true },
+
+  // F37/F38 (BUILD 142, items B/C) — the fifteen designed enemies, keyed by
+  // id (not always the same as the display name — Verger appears twice,
+  // as the opening fight and again at act 1's lane position 3, each with
+  // its own pattern/HP context). Every pattern number here is final and
+  // literal — buildAct() no longer scales a pattern's own min/max/release/
+  // breakAt/stacks by ACT_INTENT_MULTIPLIER (that multiplier still sets the
+  // enemy poison-buff amount only, per the prompt). dieSpec (optional) is
+  // the {sizeKey, faces, nats} shape buildEnemyDieFromSpec() (pipeline.js)
+  // already reads; wrathPerTrigger (optional) is that enemy's own Wrath
+  // amount, copied onto gameState.enemy.wrathPerTrigger by
+  // beginFightFromSlot() — every enemy below carries at most one distinct
+  // Wrath amount across all of its own Wrath faces, so one field per enemy
+  // is enough (see BUILD 142 paste-back, item C investigation).
+  ENEMIES: {
+    // ---- act 1 ----
+    verger_opening: {
+      name: 'Verger',
+      pattern: [{ kind: 'attack', min: 6, max: 9 }, { kind: 'attack', min: 6, max: 9 }]
+    },
+    verger_lane: {
+      name: 'Verger',
+      pattern: [{ kind: 'attack', min: 9, max: 12 }, { kind: 'attack', min: 9, max: 12 }]
+    },
+    thurifer: {
+      name: 'Thurifer',
+      pattern: [{ kind: 'attack', min: 10, max: 14 }, { kind: 'charge', release: 24, breakAt: 15 }]
+    },
+    asperser: {
+      name: 'Asperser',
+      pattern: [{ kind: 'attack', min: 11, max: 15 }, { kind: 'attack', min: 11, max: 15 }, { kind: 'afflict', stacks: 4 }]
+    },
+    lector: {
+      name: 'Lector',
+      pattern: [{ kind: 'attack', min: 13, max: 17 }, { kind: 'afflict', stacks: 4 }, { kind: 'charge', release: 27, breakAt: 19 }],
+      dieSpec: { sizeKey: 'ELITE', faces: { 3: 'enemy_buff_poison', 9: 'enemy_buff_poison', 6: 'enemy_buff_drain', 12: 'enemy_buff_wrath' }, nats: false },
+      wrathPerTrigger: 2
+    },
+    hierophant: {
+      name: 'Hierophant',
+      pattern: [{ kind: 'attack', min: 16, max: 20 }, { kind: 'charge', release: 32, breakAt: 23 }, { kind: 'afflict', stacks: 4 }],
+      dieSpec: { sizeKey: 'BOSS', faces: { 5: 'enemy_buff_poison', 10: 'enemy_buff_poison', 15: 'enemy_buff_poison' }, nats: true }
+    },
+    // ---- act 2 ----
+    chorister: {
+      name: 'Chorister',
+      pattern: [{ kind: 'attack', min: 11, max: 15 }, { kind: 'charge', release: 26, breakAt: 18 }],
+      dieSpec: { sizeKey: 'NORMAL', faces: { 6: 'enemy_buff_drain' }, nats: false }
+    },
+    cantor: {
+      name: 'Cantor',
+      pattern: [{ kind: 'attack', min: 13, max: 17 }, { kind: 'charge', release: 27, breakAt: 21 }, { kind: 'attack', min: 13, max: 17 }],
+      dieSpec: { sizeKey: 'NORMAL', faces: { 2: 'enemy_buff_poison', 5: 'enemy_buff_drain' }, nats: false }
+    },
+    flagellant: {
+      name: 'Flagellant',
+      pattern: [{ kind: 'attack', min: 17, max: 21 }, { kind: 'afflict', stacks: 5 }],
+      dieSpec: { sizeKey: 'NORMAL', faces: { 3: 'enemy_buff_poison', 6: 'enemy_buff_wrath' }, nats: false },
+      wrathPerTrigger: 3
+    },
+    archdeacon: {
+      name: 'Archdeacon',
+      pattern: [{ kind: 'attack', min: 16, max: 20 }, { kind: 'afflict', stacks: 5 }, { kind: 'charge', release: 32, breakAt: 25 }],
+      dieSpec: { sizeKey: 'ELITE', faces: { 3: 'enemy_buff_poison', 12: 'enemy_buff_poison', 6: 'enemy_buff_seal', 9: 'enemy_buff_wrath' }, nats: false },
+      wrathPerTrigger: 2
+    },
+    cardinal: {
+      name: 'Cardinal',
+      pattern: [{ kind: 'attack', min: 19, max: 23 }, { kind: 'charge', release: 37, breakAt: 29 }, { kind: 'afflict', stacks: 5 }],
+      dieSpec: { sizeKey: 'BOSS', faces: { 3: 'enemy_buff_poison', 15: 'enemy_buff_poison', 7: 'enemy_buff_wrath', 18: 'enemy_buff_wrath', 11: 'enemy_buff_seal' }, nats: true },
+      wrathPerTrigger: 3
+    },
+    // ---- act 3 ----
+    anchorite: {
+      name: 'Anchorite',
+      pattern: [{ kind: 'attack', min: 13, max: 17 }, { kind: 'attack', min: 13, max: 17 }, { kind: 'afflict', stacks: 6 }],
+      dieSpec: { sizeKey: 'NORMAL', faces: { 6: 'enemy_buff_wrath' }, nats: false },
+      wrathPerTrigger: 2
+    },
+    mendicant: {
+      name: 'Mendicant',
+      pattern: [{ kind: 'attack', min: 17, max: 21 }, { kind: 'afflict', stacks: 6 }, { kind: 'attack', min: 17, max: 21 }],
+      dieSpec: { sizeKey: 'NORMAL', faces: { 3: 'enemy_buff_wrath', 6: 'enemy_buff_wrath' }, nats: false },
+      wrathPerTrigger: 3
+    },
+    inquisitor: {
+      name: 'Inquisitor',
+      pattern: [{ kind: 'attack', min: 20, max: 24 }, { kind: 'charge', release: 39, breakAt: 33 }],
+      dieSpec: { sizeKey: 'NORMAL', faces: { 4: 'enemy_buff_poison' }, nats: false }
+    },
+    exarch: {
+      name: 'Exarch',
+      pattern: [{ kind: 'attack', min: 21, max: 25 }, { kind: 'afflict', stacks: 6 }, { kind: 'charge', release: 41, breakAt: 35 }],
+      dieSpec: { sizeKey: 'ELITE', faces: { 3: 'enemy_buff_poison', 6: 'enemy_buff_seal', 12: 'enemy_buff_seal', 9: 'enemy_buff_wrath' }, nats: false },
+      wrathPerTrigger: 3
+    },
+    pontifex: {
+      name: 'Pontifex',
+      pattern: [{ kind: 'attack', min: 21, max: 25 }, { kind: 'afflict', stacks: 6 }, { kind: 'attack', min: 21, max: 25 }, { kind: 'charge', release: 41, breakAt: 35 }],
+      dieSpec: { sizeKey: 'BOSS', faces: { 4: 'enemy_buff_poison', 16: 'enemy_buff_poison', 8: 'enemy_buff_seal', 19: 'enemy_buff_seal', 12: 'enemy_buff_wrath' }, nats: true },
+      wrathPerTrigger: 3
+    }
+  },
 
   // F27 — pitch-chain step cap. Was audio.js's standalone CHAIN_STEP_CAP = 8.
   CHAIN_STEP_CAP: 8,

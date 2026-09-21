@@ -151,16 +151,18 @@ function runPhase(phase) {
     // BUILD 142 adds real multi-intent patterns.
     advanceEnemyIntentForRound();
 
-    // BUILD 141 (item C) — Seal's queue moves into this round's active
-    // sealedFaces here, before ROLL_PHASE ever runs, so a queued face
-    // already counts as blank for this round's own roll.
-    if (gameState.player.sealNextRound.length > 0) {
-      gameState.player.sealNextRound.forEach(function(faceNumber) {
-        log('[ENEMY] Face ' + faceNumber + ' is sealed and counts as blank.');
-      });
-      updateTurn({ sealedFaces: gameState.turn.sealedFaces.concat(gameState.player.sealNextRound) });
-      updatePlayer({ sealNextRound: [] });
-    }
+    // BUILD 142 (item S) — fixes a BUILD 141 bug: sealedFaces was only ever
+    // concatenated onto, never replaced, so a face sealed for one round
+    // stayed sealed forever. A Seal lasts exactly one round: the active
+    // list is REPLACED by a copy of this round's queue every START_OF_TURN,
+    // even when that queue is empty (so last round's seals actually wear
+    // off), before ROLL_PHASE ever runs, so a newly queued face already
+    // counts as blank for this round's own roll.
+    gameState.player.sealNextRound.forEach(function(faceNumber) {
+      log('[ENEMY] Face ' + faceNumber + ' is sealed and counts as blank.');
+    });
+    updateTurn({ sealedFaces: gameState.player.sealNextRound.slice() });
+    updatePlayer({ sealNextRound: [] });
 
     if (gameState.player.poisonStacks > 0) {
       // Mirrors the enemy poison tick exactly: damage through calculateDamage()
@@ -319,7 +321,19 @@ function runPhase(phase) {
 
     const entry = gameState.enemy.currentEntry;
     const block = gameState.player.block;
-    const enemyName = gameState.enemy.id;
+    const enemyName = gameState.enemy.name;
+
+    // BUILD 142 (item C, Pontifex's own Nat 20) — "an Attack this round
+    // resolves twice; a wind-up, a release and an Afflict resolve once."
+    // Consumed here, once, regardless of which kind this round's entry
+    // actually is (a wind-up round coinciding with the flag still just
+    // clears it with no extra effect) — the local pontifexDouble captures
+    // whether it was set before clearing it, so the attack branch below can
+    // still act on it.
+    const pontifexDouble = gameState.enemy.pontifexDoubleAttackThisRound;
+    if (pontifexDouble) {
+      updateEnemy({ pontifexDoubleAttackThisRound: false });
+    }
 
     if (entry && entry.kind === 'charge') {
       if (gameState.enemy.chargeStage === 'windup') {
@@ -378,7 +392,10 @@ function runPhase(phase) {
       // never fired ON_DAMAGE_DEALT before this build (no listener is
       // registered for it) and must not gain one now.
       const damage = dealDamage('player', rawDamage, 'enemy_attack', null, false);
-      if (damage === 0) {
+      if (pontifexDouble) {
+        const damage2 = dealDamage('player', rawDamage, 'enemy_attack', null, false);
+        log('[ENEMY] ' + enemyName + '\'s Nat 20: the Attack resolves twice — dealt ' + damage + ' + ' + damage2 + ' damage (intent ' + intent + ', block ' + block + ')');
+      } else if (damage === 0) {
         log('[ENEMY] attack fully blocked (intent ' + intent + ', block ' + block + ')');
       } else {
         log('[ENEMY] dealt ' + damage + ' damage (intent ' + intent + ', block ' + block + ')');
@@ -403,16 +420,27 @@ function nextPhase() {
     const face = rollDie(gameState.die.faces);
     resolvePlayerRoll(face);
   }
-  if (currentPhase === 'ENEMY_ROLL_PHASE' && !enemyRollResolved) {
-    enemyRollResolved = true;
-    // BUILD 075: the phase itself is unchanged and always runs (the
-    // fight loop's shape is untouched) — for a dieless enemy there is
-    // simply nothing to roll, so neither rollDie() nor resolveEnemyRoll()
-    // (and none of their log lines) run at all.
-    if (gameState.enemy.hasDie) {
-      const enemyFace = rollDie(gameState.enemy.die.faces);
-      resolveEnemyRoll(enemyFace);
+  if (currentPhase === 'ENEMY_ROLL_PHASE') {
+    if (!enemyRollResolved) {
+      enemyRollResolved = true;
+      // BUILD 075: the phase itself is unchanged and always runs (the
+      // fight loop's shape is untouched) — for a dieless enemy there is
+      // simply nothing to roll, so neither rollDie() nor resolveEnemyRoll()
+      // (and none of their log lines) run at all.
+      if (gameState.enemy.hasDie) {
+        const enemyFace = rollDie(gameState.enemy.die.faces);
+        resolveEnemyRoll(enemyFace);
+      }
     }
+    // BUILD 142 (items B/C) — a few designed enemies (Lector, Hierophant,
+    // Pontifex) also react to the PLAYER's own roll this round, independent
+    // of the enemy's own die — applyEnemyReads() (pipeline.js). Called
+    // unconditionally here (not nested inside the !enemyRollResolved guard
+    // above) so it still runs exactly once per round even when the enemy's
+    // own roll was forced earlier via the dev drawer (forceEnemyRoll(),
+    // dev-tools.js, which sets enemyRollResolved itself and never calls
+    // this function).
+    applyEnemyReads();
   }
 
   const currentIndex = PHASE_ORDER.indexOf(gameState.turn.phase);
