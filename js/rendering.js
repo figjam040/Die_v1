@@ -54,6 +54,8 @@ function log(message) {
   } else if (message.indexOf('[CARD] played ') === 0) {
     const cardMatch = message.match(/^\[CARD\] played (.+) \(cost \d+\)$/);
     if (cardMatch) { triggerCardFx(cardMatch[1]); }
+  } else if (message.indexOf('[MOD] ') === 0) {
+    noteRollHeroValue(message);
   }
 }
 
@@ -75,12 +77,9 @@ function refreshInspector() {
   renderStats();
   renderCardButtons();
   renderDieList('playerDieList', gameState.die.faces, forcePlayerRoll);
-  // The enemy panel keeps the empty die slot for a dieless enemy rather
-  // than hiding the die column outright.
-  const enemyDieListEl = document.getElementById('enemyDieList');
-  const enemyPanelEl = document.getElementById('enemyPanel');
-  enemyDieListEl.style.display = '';
-  enemyPanelEl.classList.remove('combat-panel-no-die');
+  // Kept rendered but never shown: the enemy's own faces read off
+  // #enemyBuffsValue and #enemyDieIcon instead.
+  document.getElementById('enemyDieList').style.display = 'none';
   const enemyTitleEl = document.getElementById('enemyPanelTitle');
   if (enemyTitleEl) {
     if (gameState.enemy.id === 'Boss') {
@@ -92,6 +91,9 @@ function refreshInspector() {
     }
   }
   renderDieList('enemyDieList', gameState.enemy.die.faces, forceEnemyRoll, null, gameState.enemy.buffPoisonStacks, gameState.enemy.name, gameState.enemy.wrathPerTrigger);
+  renderDieIcons();
+  renderArtBoxes();
+  renderTopBarTokens();
   renderPhaseBadge();
   renderResultBanner();
   renderDieActionPanel();
@@ -160,31 +162,111 @@ function renderPhaseBadge() {
   badge.className = 'phase-badge phase-' + phase.toLowerCase();
 }
 
-function renderRollResult(faceNumber, modIdRaw) {
+// The roll stage's own segments for the face just rolled: one per mod on
+// that face, in load order. Each segment's `value` is filled in from that
+// mod's own log line (see noteRollHeroValue) — nothing is recomputed here.
+let rollHeroSegments = [];
+
+// The first number a mod's own log line reports for its trigger, read in
+// the four shapes every mod already logs. Returns null when that line
+// carries no such number (a "registered" line, say).
+function rollHeroValueFromLogLine(message) {
+  const patterns = [/(\d+) damage/, /(\d+) block/, /\+(\d+) soul/, /(\d+) stacks of poison/];
+  for (let i = 0; i < patterns.length; i++) {
+    const m = message.match(patterns[i]);
+    if (m) return parseInt(m[1], 10);
+  }
+  return null;
+}
+
+function noteRollHeroValue(message) {
+  const match = message.match(/^\[MOD\] ([a-z_]+): (.+)$/);
+  if (!match) return;
+  const seg = rollHeroSegments.find(function(s) { return s.modId === match[1] && s.value === null; });
+  if (!seg) return;
+  const value = rollHeroValueFromLogLine(match[2]);
+  if (value === null) return;
+  seg.value = value;
+  paintRollHero();
+}
+
+function paintRollHero() {
   const hero = document.getElementById('rollHero');
   const numEl = document.getElementById('rollResultNumber');
   const labelEl = document.getElementById('rollResultLabel');
   if (!hero || !numEl || !labelEl) return;
 
-  const modId = (modIdRaw === 'null') ? null : modIdRaw;
-  let label;
-  let isNat = false;
-  if (modId === 'NAT_ONE' || modId === 'ENEMY_NAT_ONE') {
-    label = 'NAT 1';
-    isNat = true;
-  } else if (modId === 'NAT_TWENTY' || modId === 'ENEMY_NAT_TWENTY') {
-    label = 'NAT 20';
-    isNat = true;
-  } else if (modId === null) {
-    label = 'BLANK';
-  } else {
-    label = modDisplayName(modId);
+  labelEl.innerHTML = '';
+  if (rollHeroSegments.length === 0) {
+    hero.classList.add('roll-hero-empty');
+    numEl.classList.remove('roll-hero-nat');
+    labelEl.classList.remove('roll-hero-nat');
+    numEl.textContent = '';
+    labelEl.textContent = 'AWAITING ROLL';
+    return;
   }
 
-  numEl.textContent = faceNumber;
-  labelEl.textContent = label;
   hero.classList.remove('roll-hero-empty');
+  const isNat = rollHeroSegments[0].isNat;
   numEl.classList.toggle('roll-hero-nat', isNat);
+  labelEl.classList.toggle('roll-hero-nat', isNat);
+
+  const first = rollHeroSegments[0];
+  numEl.textContent = first.natText || (first.value === null ? '' : '+' + first.value);
+
+  rollHeroSegments.forEach(function(seg, idx) {
+    // Every segment past the first prints its own value beside its name,
+    // so a two-mod face shows both names and both numbers.
+    if (idx > 0 && seg.value !== null) {
+      const v = document.createElement('span');
+      v.className = 'roll-hero-number';
+      v.textContent = ' +' + seg.value;
+      labelEl.appendChild(v);
+    }
+    if (seg.name) {
+      const nameEl = document.createElement('span');
+      nameEl.textContent = (idx > 0 ? ' ' : '') + seg.name.toUpperCase();
+      labelEl.appendChild(nameEl);
+    }
+    const count = rollHeroTriggerCount(seg);
+    if (count > 0) {
+      const countEl = document.createElement('span');
+      countEl.className = 'roll-hero-count';
+      countEl.textContent = '↻' + count;
+      labelEl.appendChild(countEl);
+    }
+  });
+}
+
+// Read live at paint time, not captured when the roll landed, so the count
+// shown already includes this trigger.
+function rollHeroTriggerCount(seg) {
+  if (seg.modId === null || seg.faceNumber == null) return 0;
+  const face = gameState.die.faces[seg.faceNumber - 1];
+  const modData = (face && face.modData) || {};
+  return (seg.slot === 2 ? modData.triggerCount2 : modData.triggerCount) || 0;
+}
+
+function renderRollResult(faceNumber, modIdRaw) {
+  const hero = document.getElementById('rollHero');
+  if (!hero) return;
+
+  const modId = (modIdRaw === 'null') ? null : modIdRaw;
+  const face = gameState.die.faces[faceNumber - 1];
+
+  if (modId === 'NAT_ONE' || modId === 'ENEMY_NAT_ONE') {
+    rollHeroSegments = [{ modId: null, name: 'Penitence', value: null, isNat: true, natText: 'NAT 1' }];
+  } else if (modId === 'NAT_TWENTY' || modId === 'ENEMY_NAT_TWENTY') {
+    rollHeroSegments = [{ modId: null, name: '', value: null, isNat: true, natText: 'NAT 20' }];
+  } else if (modId === null) {
+    rollHeroSegments = [{ modId: null, name: 'Blank', value: GAME_CONFIG.BLANK_ROLL_BLOCK, isNat: false }];
+  } else {
+    rollHeroSegments = [{ modId: modId, faceNumber: faceNumber, slot: 1, name: modDisplayName(modId), value: null, isNat: false }];
+    if (face && face.modId2) {
+      rollHeroSegments.push({ modId: face.modId2, faceNumber: faceNumber, slot: 2, name: modDisplayName(face.modId2), value: null, isNat: false });
+    }
+  }
+  paintRollHero();
 
   hero.classList.remove('roll-pulse');
   void hero.offsetWidth;
@@ -192,14 +274,8 @@ function renderRollResult(faceNumber, modIdRaw) {
 }
 
 function resetRollHero() {
-  const hero = document.getElementById('rollHero');
-  const numEl = document.getElementById('rollResultNumber');
-  const labelEl = document.getElementById('rollResultLabel');
-  if (!hero || !numEl || !labelEl) return;
-  hero.classList.add('roll-hero-empty');
-  numEl.classList.remove('roll-hero-nat');
-  numEl.textContent = '—';
-  labelEl.textContent = 'AWAITING ROLL';
+  rollHeroSegments = [];
+  paintRollHero();
 }
 
 function renderResultBanner() {
@@ -222,10 +298,17 @@ function renderResultBanner() {
 // the full name (via title). Drop to 5 if a future name stops fitting.
 const TWO_MOD_NAME_CHARS = 6;
 
+const ENEMY_BUFF_DISPLAY_NAME = {
+  enemy_buff_poison: 'POISON',
+  enemy_buff_wrath: 'WRATH',
+  enemy_buff_drain: 'DRAIN',
+  enemy_buff_seal: 'SEAL'
+};
+
 function modDisplayName(modId) {
   if (modId === 'NAT_ONE' || modId === 'ENEMY_NAT_ONE') return 'NAT 1';
   if (modId === 'NAT_TWENTY' || modId === 'ENEMY_NAT_TWENTY') return 'NAT 20';
-  if (modId === 'enemy_buff_poison') return 'POISON';
+  if (ENEMY_BUFF_DISPLAY_NAME[modId]) return ENEMY_BUFF_DISPLAY_NAME[modId];
   const mod = gameState.config.mods[modId];
   return mod ? mod.name : modId;
 }
@@ -283,6 +366,30 @@ function faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount) {
   return text;
 }
 
+// The square's own name / weight / trigger count / Bound line, in front of
+// whatever faceHoverText() already says. Reads state only.
+function faceTitleText(face, showTriggerCounts, isPlayerDie) {
+  const parts = [];
+  if (face.modId === null) {
+    parts.push('Blank');
+  } else if (face.modId2) {
+    parts.push(modDisplayName(face.modId) + ' + ' + modDisplayName(face.modId2));
+  } else {
+    parts.push(modDisplayName(face.modId));
+  }
+  parts.push('weight ' + face.weight);
+  if (showTriggerCounts && face.modId !== null) {
+    const modData = face.modData || {};
+    const count1 = modData.triggerCount || 0;
+    parts.push(face.modId2
+      ? 'triggered ' + count1 + ' / ' + (modData.triggerCount2 || 0) + ' times this run'
+      : 'triggered ' + count1 + ' times this run');
+  }
+  if (isBoundFace(face)) parts.push('Bound');
+  if (isPlayerDie && isFaceSealed(face.number)) parts.push('Sealed');
+  return parts.join(' · ');
+}
+
 // Per-container "committed" roll signature — lets a re-render triggered
 // by something other than an actual new roll redraw the rolled row
 // without restarting its flash animation. Commit is deferred to a
@@ -320,6 +427,10 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
   // shows "SEALED"; one queued to seal next round shows "SEALED NEXT
   // ROUND" with no dimming (still fully loaded/rollable this round).
   const isPlayerDie = showTriggerBadges;
+
+  // The player's own die reads as one horizontal row of squares, face 1 at
+  // the left; every other container keeps the vertical row list.
+  const isHorizontal = (containerId === 'playerDieList' || containerId === 'dieActionDieList');
 
   const tracksRolledFace = (containerId === 'playerDieList' || containerId === 'dieActionDieList' || containerId === 'enemyDieList');
   const isEnemyContainer = containerId === 'enemyDieList';
@@ -512,6 +623,25 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     row.appendChild(btn);
     row.appendChild(modWrap);
 
+    // The horizontal face row's own one-line caption under each square.
+    // Everything it does not have room for is in the square's title.
+    if (isHorizontal) {
+      const caption = document.createElement('div');
+      caption.className = 'die-face-caption';
+      if (isPlayerDie && isFaceSealed(face.number)) {
+        caption.textContent = 'SEALED';
+      } else if (isPlayerDie && gameState.player.sealNextRound.indexOf(face.number) !== -1) {
+        caption.textContent = 'SEALED NEXT ROUND';
+      } else if (face.modId === 'NAT_ONE' || face.modId === 'ENEMY_NAT_ONE') {
+        caption.textContent = 'NAT 1';
+      } else if (face.modId === 'NAT_TWENTY' || face.modId === 'ENEMY_NAT_TWENTY') {
+        caption.textContent = 'NAT 20';
+      } else {
+        caption.textContent = face.weight;
+      }
+      row.appendChild(caption);
+    }
+
     let pickEligible = false;
     if (pickConfig) {
       pickEligible = !!pickConfig.isEligible(face);
@@ -550,8 +680,11 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     }
 
     // Native title, in addition to the .hover-tip above — every face-btn
-    // carries one, so a blank still reads on hover even with no mod.
-    btn.title = hoverText || ('Blank: rolls for ' + GAME_CONFIG.BLANK_ROLL_BLOCK + ' block.');
+    // carries one, so a blank still reads on hover even with no mod. This
+    // is where the name, weight, trigger count and Bound badge stay
+    // readable once the horizontal row stops printing them beside the square.
+    btn.title = faceTitleText(face, showTriggerBadges, isPlayerDie) +
+      ' — ' + (hoverText || ('Blank: rolls for ' + GAME_CONFIG.BLANK_ROLL_BLOCK + ' block.'));
 
     container.appendChild(row);
   });
@@ -572,11 +705,53 @@ let lastPlayerHp = null;
 // carries the primary label, #enemyIntentLabel the wind-up round's own
 // live "damage taken / breakAt" counter (recomputed fresh every render
 // from windupStartHp vs current hp) — empty for every other kind.
+// One inline SVG per intent kind, 40px, stroke only. The kind word itself
+// is the icon's title and aria-label — the panel prints only the number.
+const INTENT_ICON_SHAPES = {
+  ATTACK: '<line x1="50" y1="8" x2="50" y2="88"/><line x1="26" y1="62" x2="74" y2="62"/><line x1="40" y1="84" x2="60" y2="84"/>',
+  CHARGE: '<polyline points="60,8 34,50 50,50 40,92 68,46 52,46 60,8"/>',
+  RELEASE: '<polyline points="60,8 34,50 50,50 40,92 68,46 52,46 60,8"/><line x1="12" y1="50" x2="88" y2="50"/>',
+  AFFLICT: '<path d="M50 8 C 70 40 80 56 80 66 A 30 30 0 0 1 20 66 C 20 56 30 40 50 8 Z"/>',
+  BROKEN: '<polyline points="60,8 34,50 50,50 40,92 68,46 52,46 60,8"/>'
+};
+
+function renderIntentIcon(kindWord) {
+  const el = document.getElementById('enemyIntentIcon');
+  if (!el) return;
+  if (!kindWord || !INTENT_ICON_SHAPES[kindWord]) {
+    el.innerHTML = '';
+    el.removeAttribute('aria-label');
+    el.removeAttribute('title');
+    return;
+  }
+  el.setAttribute('aria-label', kindWord);
+  el.setAttribute('title', kindWord);
+  el.innerHTML = '<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="7" ' +
+    'stroke-linecap="square" stroke-linejoin="miter"><title>' + kindWord + '</title>' +
+    INTENT_ICON_SHAPES[kindWord] + '</svg>';
+}
+
+// Which icon this round's intent wears, independent of whatever text a
+// genuine enemy Nat puts in #enemyIntentValue.
+function intentKindWord(enemy) {
+  const entry = enemy.currentEntry;
+  if (!entry) return null;
+  if (entry.kind === 'attack') return 'ATTACK';
+  if (entry.kind === 'afflict') return 'AFFLICT';
+  if (entry.kind === 'charge') {
+    if (enemy.chargeStage === 'windup') return 'CHARGE';
+    if (enemy.chargeBroken) return 'BROKEN';
+    return 'RELEASE';
+  }
+  return null;
+}
+
 function renderEnemyIntent() {
   const enemy = gameState.enemy;
   const entry = enemy.currentEntry;
   const valueEl = document.getElementById('enemyIntentValue');
   const labelEl = document.getElementById('enemyIntentLabel');
+  renderIntentIcon(intentKindWord(enemy));
   // A genuine enemy Nat this round overrides whatever the pattern's own
   // intent text would otherwise show, for the rest of this round.
   if (gameState.turn.enemyRollOutcome === 'nat_twenty') {
@@ -598,31 +773,31 @@ function renderEnemyIntent() {
   }
   if (!entry) {
     valueEl.textContent = '—';
-    labelEl.textContent = '—';
+    labelEl.textContent = '';
     valueEl.title = '';
     return;
   }
   if (entry.kind === 'attack') {
-    valueEl.textContent = 'ATTACK ' + entry.rolledValue;
+    valueEl.textContent = entry.rolledValue;
     labelEl.textContent = '';
     valueEl.title = 'Attack: deals ' + entry.rolledValue + ' damage this round. Block lowers it.';
   } else if (entry.kind === 'charge') {
     if (enemy.chargeStage === 'windup') {
-      valueEl.textContent = 'CHARGE → ' + entry.release;
+      valueEl.textContent = entry.release;
       const taken = Math.max(0, enemy.windupStartHp - enemy.hp);
-      labelEl.textContent = taken + ' / ' + entry.breakAt;
+      labelEl.textContent = 'break ' + taken + ' / ' + entry.breakAt;
       valueEl.title = 'Charge: deals no damage this round. Next round the release deals ' + entry.release + '. If it takes ' + entry.breakAt + ' damage this round, the Charge breaks and the release deals nothing.';
     } else if (enemy.chargeBroken) {
       valueEl.textContent = 'BROKEN';
       labelEl.textContent = '';
       valueEl.title = 'The Charge broke this round. The release deals nothing.';
     } else {
-      valueEl.textContent = 'RELEASE ' + entry.release;
+      valueEl.textContent = entry.release;
       labelEl.textContent = '';
       valueEl.title = 'Release: deals ' + entry.release + ' damage this round. Block lowers it.';
     }
   } else if (entry.kind === 'afflict') {
-    valueEl.textContent = 'AFFLICT ' + entry.stacks;
+    valueEl.textContent = entry.stacks;
     labelEl.textContent = '';
     valueEl.title = 'Afflict: deals no damage. Applies ' + entry.stacks + ' stacks of poison to the player.';
   }
@@ -648,13 +823,17 @@ function renderStats() {
   }
   renderEnemyIntent();
   document.getElementById('enemyPoisonValue').textContent = gameState.enemy.poisonStacks;
-  document.getElementById('enemyBuffsValue').textContent = gameState.enemy.activeBuffs.length ? gameState.enemy.activeBuffs.join(', ') : '—';
-  document.getElementById('enemyActiveValue').textContent = '—';
+  // Every loaded face on this enemy's own die, named with its face number.
+  const loadedBuffs = gameState.enemy.die.faces
+    .filter(function(f) { return f.modId !== null; })
+    .map(function(f) { return modDisplayName(f.modId) + ' ' + f.number; });
+  document.getElementById('enemyBuffsValue').textContent = loadedBuffs.length ? loadedBuffs.join(', ') : '—';
+  document.getElementById('enemyActiveValue').textContent = gameState.enemy.activeBuffs.length ? gameState.enemy.activeBuffs.join(', ') : '—';
   const wrathLine = document.getElementById('enemyWrathLine');
   if (wrathLine) {
     if (gameState.enemy.wrath > 0) {
       wrathLine.style.display = '';
-      document.getElementById('enemyWrathValue').textContent = 'WRATH +' + gameState.enemy.wrath;
+      document.getElementById('enemyWrathValue').textContent = '+' + gameState.enemy.wrath;
       document.getElementById('enemyWrathValue').title = 'Wrath: each Attack deals this much more.';
     } else {
       wrathLine.style.display = 'none';
@@ -680,6 +859,7 @@ function renderStats() {
   const playerDebuffsEl = document.getElementById('playerDebuffsValue');
   playerDebuffsEl.textContent = playerDebuffs.length ? playerDebuffs.join(', ') : '—';
   playerDebuffsEl.title = 'Poison: at the start of each round, every ' + GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK + ' block still held removes 1 stack of poison. Then poison deals 1 damage per stack, ignoring block, and loses 1 stack.';
+  renderStatusRows(playerDebuffsEl.title);
   document.getElementById('playerDeckValue').textContent = gameState.player.deck.length;
   document.getElementById('playerDiscardValue').textContent = gameState.player.discard.length;
 
@@ -694,6 +874,131 @@ function renderStats() {
     flashElement('playerHpValue', 'fx-pop-red');
   }
   lastPlayerHp = gameState.player.hp;
+}
+
+// One 28px square per state present on that side, each carrying the same
+// sentence its own stat line already uses as a title.
+function renderStatusRows(poisonTitle) {
+  function icon(row, text, className, title) {
+    const el = document.createElement('div');
+    el.className = 'status-icon ' + className;
+    el.textContent = text;
+    el.title = title;
+    row.appendChild(el);
+  }
+
+  const playerRow = document.getElementById('playerStatusRow');
+  if (playerRow) {
+    playerRow.innerHTML = '';
+    if (gameState.player.poisonStacks > 0) {
+      icon(playerRow, 'P' + gameState.player.poisonStacks, 'status-poison', poisonTitle);
+    }
+    if (gameState.player.penitenceActive) {
+      icon(playerRow, 'PN', 'status-penitence', NAT_DESCRIPTION.NAT_ONE + ' (' + gameState.player.penitenceTurnsRemaining + ' turn(s) left)');
+    }
+    if (gameState.player.drainNextRound > 0) {
+      icon(playerRow, 'D' + gameState.player.drainNextRound, 'status-drain', 'Drain: ' + gameState.player.drainNextRound + ' less soul at the start of next round.');
+    }
+    if (gameState.turn.sealedFaces.length > 0) {
+      icon(playerRow, 'S', 'status-seal', 'Sealed: face ' + gameState.turn.sealedFaces.join(', ') + ' counts as blank this round.');
+    }
+  }
+
+  const enemyRow = document.getElementById('enemyStatusRow');
+  if (enemyRow) {
+    enemyRow.innerHTML = '';
+    if (gameState.enemy.poisonStacks > 0) {
+      icon(enemyRow, 'P' + gameState.enemy.poisonStacks, 'status-poison', 'Poison: deals 1 damage per stack at the start of its round, then loses 1 stack.');
+    }
+    if (gameState.enemy.wrath > 0) {
+      icon(enemyRow, 'W' + gameState.enemy.wrath, 'status-wrath', 'Wrath: each Attack deals this much more.');
+    }
+  }
+}
+
+// Placeholders for art that does not exist yet — /art/ is empty.
+function renderArtBoxes() {
+  const enemyBox = document.getElementById('enemyArtBox');
+  if (enemyBox) {
+    enemyBox.textContent = (gameState.enemy.name ? gameState.enemy.name.toUpperCase() + ' ' : '') + 'ART';
+  }
+}
+
+// No gold mechanic exists in V1; the field is read if it is ever added.
+function renderTopBarTokens() {
+  const goldEl = document.getElementById('goldValue');
+  if (!goldEl) return;
+  goldEl.textContent = 'GOLD ' + (gameState.run.gold === undefined ? '—' : gameState.run.gold);
+}
+
+// ---------- DIE ICONS ----------
+// One outline per die size: 20 faces a hexagon d20, 12 a pentagon, 6 a
+// square. Shape follows GAME_CONFIG.DIE_SIZE, never a bare literal.
+
+const DIE_ICON_SHAPES = {
+  20: '<polygon points="50,6 88,28 88,72 50,94 12,72 12,28"/>' +
+      '<polygon points="50,26 76,70 24,70"/>' +
+      '<line x1="50" y1="6" x2="50" y2="26"/><line x1="88" y1="28" x2="50" y2="26"/>' +
+      '<line x1="12" y1="28" x2="50" y2="26"/><line x1="88" y1="72" x2="76" y2="70"/>' +
+      '<line x1="12" y1="72" x2="24" y2="70"/><line x1="50" y1="94" x2="50" y2="70"/>',
+  12: '<polygon points="50,8 91,38 76,88 24,88 9,38"/>' +
+      '<polygon points="50,30 71,45 63,70 37,70 29,45"/>' +
+      '<line x1="50" y1="8" x2="50" y2="30"/><line x1="91" y1="38" x2="71" y2="45"/>' +
+      '<line x1="76" y1="88" x2="63" y2="70"/><line x1="24" y1="88" x2="37" y2="70"/>' +
+      '<line x1="9" y1="38" x2="29" y2="45"/>',
+  6: '<rect x="12" y="12" width="76" height="76"/><rect x="32" y="32" width="36" height="36"/>' +
+     '<line x1="12" y1="12" x2="32" y2="32"/><line x1="88" y1="12" x2="68" y2="32"/>' +
+     '<line x1="88" y1="88" x2="68" y2="68"/><line x1="12" y1="88" x2="32" y2="68"/>'
+};
+
+function dieIconSvg(dieSize, colourVar) {
+  const shape = DIE_ICON_SHAPES[dieSize] || DIE_ICON_SHAPES[20];
+  return '<svg viewBox="0 0 100 100" fill="none" stroke="' + colourVar + '" stroke-width="3">' + shape + '</svg>';
+}
+
+// Which identity colour the number inside the player's own d20 wears.
+function playerDieIconColour() {
+  const outcome = gameState.turn.rollOutcome;
+  if (outcome === 'nat_twenty' || outcome === 'nat_one') return 'var(--nat)';
+  if (outcome === 'mod') return 'var(--player-mod)';
+  return 'var(--blank)';
+}
+
+function renderDieIcons() {
+  const playerEl = document.getElementById('playerDieIcon');
+  if (playerEl) {
+    const rolled = gameState.turn.rolledFaceNumber;
+    playerEl.innerHTML = '<div class="die-icon-wrap">' + dieIconSvg(GAME_CONFIG.DIE_SIZE.PLAYER, 'var(--text)') +
+      '<div class="die-icon-number" style="color:' + playerDieIconColour() + '">' +
+      (rolled === null ? '' : rolled) + '</div></div>';
+    playerEl.title = 'Your die: d' + GAME_CONFIG.DIE_SIZE.PLAYER +
+      (rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.');
+  }
+
+  const enemyEl = document.getElementById('enemyDieIcon');
+  if (!enemyEl) return;
+  // D-29 — a normal with no die shows an empty outline, never a fake die.
+  if (!gameState.enemy.hasDie || !gameState.enemy.die.faces.length) {
+    enemyEl.innerHTML = '<div class="die-icon-empty"></div>';
+    enemyEl.title = 'This enemy carries no die.';
+    return;
+  }
+  const size = gameState.enemy.die.faces.length;
+  const rolled = gameState.turn.enemyRolledFaceNumber;
+  const outcome = gameState.turn.enemyRollOutcome;
+  let word = '';
+  let wordColour = 'var(--enemy-mod)';
+  if (outcome === 'nat_twenty') { word = 'NAT 20'; wordColour = 'var(--nat)'; }
+  else if (outcome === 'nat_one') { word = 'NAT 1'; wordColour = 'var(--nat)'; }
+  else if (rolled !== null) {
+    const face = gameState.enemy.die.faces[rolled - 1];
+    if (face && face.modId !== null) word = modDisplayName(face.modId);
+  }
+  enemyEl.innerHTML = '<div class="die-icon-wrap">' + dieIconSvg(size, 'var(--enemy-mod)') +
+    '<div class="die-icon-number" style="color:var(--enemy-mod)">' + (rolled === null ? '' : rolled) + '</div></div>' +
+    '<div class="die-icon-side"><div style="color:' + wordColour + '">' + word + '</div>' +
+    '<div style="color:var(--muted)">d' + size + '</div></div>';
+  enemyEl.title = 'Enemy die: d' + size + (rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.');
 }
 
 const CARD_EFFECT_TEXT = {
@@ -830,6 +1135,10 @@ function renderCardButtons() {
     costEl.className = 'hand-card-cost';
     costEl.textContent = cost;
 
+    // Placeholder for card art that does not exist yet — /art/ is empty.
+    const artEl = document.createElement('span');
+    artEl.className = 'hand-card-art';
+
     const nameEl = document.createElement('span');
     nameEl.className = 'hand-card-name';
     nameEl.textContent = card.name;
@@ -839,6 +1148,7 @@ function renderCardButtons() {
     effectEl.textContent = getCardEffectText(cardId);
 
     btn.appendChild(costEl);
+    btn.appendChild(artEl);
     btn.appendChild(nameEl);
     btn.appendChild(effectEl);
 
@@ -1032,9 +1342,6 @@ function renderDieActionPanel() {
   const row = document.createElement('div');
   row.className = 'die-action-row';
 
-  // Shown while choosing a mod to load or a face to strengthen, not on
-  // the initial Load/Strengthen/Skip menu.
-  let showDiePreview = false;
   // Set only for load_pick_face/strengthen_pick_face — passed to
   // renderDieList() below so the die rows themselves become the picker.
   let pickConfig = null;
@@ -1065,7 +1372,6 @@ function renderDieActionPanel() {
 
   } else if (dieActionStep === 'load_pick_mod') {
     title.textContent = 'Choose a mod to load';
-    showDiePreview = true;
 
     if (dieActionMods.length === 0) {
       const none = document.createElement('div');
@@ -1093,7 +1399,6 @@ function renderDieActionPanel() {
     // valid target — blank faces and already-loaded faces are both
     // eligible together, always.
     title.textContent = 'Choose a face for ' + gameState.config.mods[dieActionChosenModId].name;
-    showDiePreview = true;
     pickConfig = {
       isEligible: function(f) {
         return f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && !f.modId2;
@@ -1104,7 +1409,6 @@ function renderDieActionPanel() {
 
   } else if (dieActionStep === 'strengthen_pick_face') {
     title.textContent = 'Choose a face to strengthen';
-    showDiePreview = true;
     pickConfig = {
       isEligible: function(f) {
         if (f.number === 1) return false;
@@ -1118,24 +1422,20 @@ function renderDieActionPanel() {
 
   panel.appendChild(title);
 
-  if (showDiePreview) {
-    const dieContainer = document.createElement('div');
-    dieContainer.className = 'die-col player-die';
-    dieContainer.id = 'dieActionDieList';
-    const dieTitle = document.createElement('div');
-    dieTitle.className = 'panel-title';
-    dieTitle.textContent = 'YOUR DIE';
-    dieContainer.appendChild(dieTitle);
+  // The player sees one die at every step of this panel, the opening
+  // Load/Strengthen/Skip menu included.
+  const dieContainer = document.createElement('div');
+  dieContainer.className = 'die-col player-die die-col-h';
+  dieContainer.id = 'dieActionDieList';
 
-    const dieWrap = document.createElement('div');
-    dieWrap.className = 'die-action-die-preview';
-    dieWrap.appendChild(dieContainer);
-    panel.appendChild(dieWrap);
+  const dieWrap = document.createElement('div');
+  dieWrap.className = 'die-action-die-preview';
+  dieWrap.appendChild(dieContainer);
+  panel.appendChild(dieWrap);
 
-    // Must run after dieContainer is attached to the live document
-    // (renderDieList looks it up by id).
-    renderDieList('dieActionDieList', gameState.die.faces, null, pickConfig);
-  }
+  // Must run after dieContainer is attached to the live document
+  // (renderDieList looks it up by id).
+  renderDieList('dieActionDieList', gameState.die.faces, null, pickConfig);
 
   panel.appendChild(row);
 }

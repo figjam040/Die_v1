@@ -76,7 +76,7 @@ async function shoot(page, name) {
   if (compareMode) rotatePreviousSet();
 
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1600, height: 1080 } });
+  const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   const consoleErrors = [];
   const pageErrors = [];
   page.on('console', function(msg) { if (msg.type() === 'error') consoleErrors.push(msg.text()); });

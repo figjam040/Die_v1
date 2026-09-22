@@ -950,3 +950,24 @@ Item D: CLAUDE.md's standing sections (everything above CONFIRMED WORKING) trimm
 Item E: tests/guardrails.test.js — plain Node, no browser — fails when CLAUDE.md passes 80,000 bytes, a CONFIRMED WORKING line passes 300 characters, CURRENT SUBSTAGE holds more than one build, a code file's comment share passes its ceiling, a comment names a build number, or a stray file sits in tests/ or the repo root. tests/run-all.js runs it first, then every other tests/*.test.js in name order; package.json's `npm test` runs that.
 
 Verification: facts 111/111, mods 40/40, build141 22/22, build142 22/22, new guardrails 19/19. Screenshot diff (vs the prior build's set): map 0%, fight 0.174%, die_action 4.781%, card_reward 4.161%, dev_drawer 4.789% — the three panels showing real content (offered mods/cards, log lines) vary with unseeded Math.random() in the screenshot script itself, not with this build's comment-only edits; map and fight, reached before any such roll, matched almost exactly.
+
+---
+
+## Stage 2.71 (BUILD 144)
+
+Stage 2.71 (BUILD 144) — skin pass, no number, mechanic or layout change.
+
+Fonts: two self-hosted OFL font files added under fonts/ (PressStart2P-Regular.ttf, VT323-Regular.ttf, both from the google/fonts repo), declared via two new @font-face rules. --game-font is now 'Press Start 2P' (everywhere it already applied); a new --game-font-2 is 'VT323', used by the body (17px default), #log and #buildStamp. No var(--game-font) size needed reducing — a Playwright overflow scan (scrollWidth/scrollHeight vs clientWidth/clientHeight) across the map, fight, die action, card reward and dev drawer screens found nothing above its box. A two-mod die row's line-box height did grow under the new fonts (VT323's own metrics, inherited by the unstyled `.die-mod-pair` wrapper); fixed with an explicit font-family/font-size/line-height/height on that one class, not a layout change.
+
+Palette: --bg/--panel-bg/--enemy-panel-bg/--player-panel-bg to #000000, --text to #e8e4d0, --muted to #6b6b6b, --line/--enemy-border/--player-border to #2a2a2a; --nat/--player-mod/--enemy-mod/--blank/--phase-color untouched. Every button now black background, 2px solid border, no border-radius; #endTurnBtn is the one filled button (var(--text) fill, black text); #startGameBtn's border/text is var(--enemy-mod). #enemyHpValue/#playerHpValue render in var(--enemy-mod), #playerBlockValue in var(--player-mod), stat labels in --text.
+
+Log toggle: gameState.ui (new, { logOpen: false }) plus updateUi() alongside the other five state helpers. #logToggleBtn (top bar, right of Copy Run Record) flips it; .app is one column with #log hidden when closed, 1fr 380px with #log shown when open. Default closed on every fresh page load; holds across the map, a fight, and New Run within the same page load.
+
+Phase badge: #phaseBadge now shows the phase name with underscores replaced by spaces (CARD PHASE, not CARD_PHASE); the CSS class name driving its colour is unchanged.
+
+Motion: every eased/linear transition and animation timing function in index.html is now steps(2) or steps(3); every duration is unchanged from before this build.
+
+Also: every .face-btn and hand card now carries a native `title` (a blank face reads "Blank: rolls for 2 block." when it has no other hover text) — the existing custom `.hover-tip` overlay is untouched, this is additive.
+
+Verification: facts 111/111, mods 40/40, build141 22/22, build142 22/22, guardrails 19/19 (its repo-root allow-list gained `fonts`), new tests/build144.test.js 13/13. Screenshot diff (vs the prior build's set): large across all five screens (42-60%), expected from the palette/font overhaul — 0 console errors, 0 page errors.
+- BUILD 145 — layout pass, fight screen and map: horizontal face row 1 to 20, d20 and enemy die icons, intent icon, art/gold/relic placeholders, portrait cards, map restyle, new SCREEN LAYOUT standing section. No number or mechanic changed. Full write-up in CLAUDE.md's CURRENT SUBSTAGE until the next build moves it here.

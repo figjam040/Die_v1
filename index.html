@@ -52,6 +52,7 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
+    overflow: hidden;
   }
 
   .app {
@@ -65,219 +66,106 @@
     grid-template-columns: 1fr 380px;
   }
 
-  /* ---------- BUILD STAMP ---------- */
+  /* ---------- BAND A — TOP BAR ---------- */
+
+  .top-bar {
+    height: 58px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 24px;
+  }
+
+  .top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
 
   #buildStamp {
     flex-shrink: 0;
     font-family: var(--game-font-2);
-    font-size: 10px;
-    line-height: 13px;
-    color: #9c8a63;
-    padding: 2px 4px;
+    font-size: 15px;
+    line-height: 16px;
+    color: var(--muted);
   }
 
-  /* ---------- LEFT COLUMN ---------- */
+  .top-bar-tokens {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #goldValue {
+    width: 84px;
+    height: 26px;
+    border: 2px solid #3a3a3a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--game-font-2);
+    font-size: 18px;
+    line-height: 1;
+    color: var(--muted);
+  }
+
+  #relicRow {
+    display: flex;
+    gap: 4px;
+  }
+
+  .relic-slot {
+    width: 26px;
+    height: 26px;
+    border: 2px solid #3a3a3a;
+  }
+
+  .top-bar-centre {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-family: var(--game-font);
+    font-size: 13px;
+  }
+
+  #actStamp { color: var(--text); }
+
+  .top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .top-bar-right button {
+    height: 30px;
+  }
+
+  /* ---------- PLAY COLUMN ---------- */
 
   .left-col {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 8px;
+    padding: 16px 24px 14px;
     overflow-y: auto;
-    border-right: 1px solid var(--line);
     height: 100%;
+    width: 100%;
+    max-width: 1600px;
+    min-width: min(1280px, 100%);
+    margin: 0 auto;
   }
 
-  /* flex-shrink:0 so this wrapper always takes its content's natural
-     height (children's own min-heights, e.g. .combat-panel's 436px) — a
-     shrunk wrapper here would let its content overflow underneath
-     .controls-row. .left-col's own overflow-y:auto scrolls any excess. */
+  /* min-height is band B's own 220px art boxes plus band C and band D:
+     a panel opening below shrinks band B's slack first, and once that is
+     gone .left-col scrolls rather than this box spilling over itself. */
   #fightScreen {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    flex-shrink: 0;
-  }
-
-  /* Map screen, shown between slots. Reuses .panel/.panel-title and the
-     same visual language the die action/card reward panels use — no new
-     colour palette. Structure: [START] [fork] [lanes: 2 rows of
-     node-connector-node-connector-node] [merge] [BOSS], centred as one
-     flex row; the fork/merge each hold one vertical line stretched
-     (align-self:stretch) to match .map-lanes' own height. */
-  #mapScreen {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  #mapScreen .panel-title {
-    align-self: flex-start;
-  }
-
-  .map-composition {
-    display: flex;
-    align-items: stretch;
-    justify-content: center;
-    gap: 0;
-    margin: 18px 0;
-  }
-
-  .map-start-node,
-  .map-node-opening,
-  .map-node-boss {
-    align-self: center;
-  }
-
-  .map-node-opening { margin-right: 20px; }
-  .map-node-boss { margin-left: 20px; }
-
-  .map-fork, .map-merge {
-    position: relative;
-    width: 20px;
-    flex-shrink: 0;
-  }
-
-  /* Stays neutral always — structurally shared by both lanes. Which lane
-     is committed/abandoned is carried by the stubs and connectors below. */
-  .map-fork::before, .map-merge::before {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: var(--line);
-    transform: translateX(-50%);
-  }
-
-  .map-lanes {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 26px;
-  }
-
-  .map-lane {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 0;
-  }
-
-  /* Connects this row to the shared fork (left) / merge (right) line. */
-  .map-lane::before,
-  .map-lane::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    width: 20px;
-    height: 2px;
-    background: var(--line);
-    transform: translateY(-50%);
-  }
-  .map-lane::before { left: -20px; }
-  .map-lane::after { right: -20px; }
-
-  .map-lane-committed::before,
-  .map-lane-committed::after { background: var(--nat); }
-
-  .map-lane-abandoned::before,
-  .map-lane-abandoned::after { background: var(--muted); opacity: 0.6; }
-
-  .map-connector {
-    width: 20px;
-    height: 2px;
-    background: var(--line);
-    flex-shrink: 0;
-  }
-  .map-connector-committed { background: var(--nat); }
-  .map-connector-abandoned { background: var(--muted); opacity: 0.6; }
-
-  .map-node {
-    font-family: var(--game-font);
-    font-size: 13px;
-    height: 44px;
-    padding: 0 16px;
-    border: 1px solid var(--line);
-    color: var(--muted);
-    background: var(--panel-bg);
-    min-width: 74px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    z-index: 1;
-  }
-
-  .map-node-completed {
-    color: var(--blank);
-    border-color: var(--blank);
-  }
-  .map-node-completed::before { content: '✓ '; }
-
-  .map-node-current {
-    color: var(--nat);
-    border: 2px solid var(--nat);
-    cursor: pointer;
-  }
-  .map-node-current:hover {
-    background: var(--nat);
-    color: #1a1500;
-  }
-
-  .map-node-choice {
-    color: var(--nat);
-    border: 1px dashed var(--nat);
-    cursor: pointer;
-  }
-  .map-node-choice:hover {
-    background: var(--nat);
-    color: #1a1500;
-  }
-
-  .map-node-inert {
-    color: var(--muted);
-    opacity: 0.45;
-    cursor: default;
-  }
-
-  /* DEV ONLY — jump target for a node the run hasn't reached yet. */
-  .map-node-dev-jump {
-    color: var(--muted);
-    border: 1px dotted var(--muted);
-    opacity: 0.75;
-    cursor: pointer;
-  }
-  .map-node-dev-jump:hover {
-    background: var(--muted);
-    color: #0a0a0f;
-  }
-
-  .map-die-preview-row {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    gap: 28px;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--line);
-  }
-
-  #bossPreview, #mapPlayerPreview, #elitePreview {
-    font-size: 13px;
-    color: var(--text);
-    line-height: 1.8;
-  }
-
-  #bossDiePreviewList, #mapPlayerDieList, #eliteDiePreviewList {
-    max-width: 260px;
-  }
-
-  /* A single hairline divider between the two die groups. */
-  .map-die-preview-divider {
-    align-self: stretch;
-    width: 1px;
-    background: var(--line);
+    flex: 1 1 auto;
+    min-height: 546px;
+    overflow: hidden;
   }
 
   .panel {
@@ -285,16 +173,6 @@
     border: 1px solid var(--line);
     padding: 8px;
   }
-
-  .combat-panel {
-    padding: 14px;
-    flex: 1;
-    /* Prevents flex from compressing below content, overflowing into #handRow. */
-    min-height: 436px;
-  }
-
-  #enemyPanel { background: var(--enemy-panel-bg); border-color: var(--enemy-border); }
-  #playerPanel { background: var(--player-panel-bg); border-color: var(--player-border); }
 
   .panel-title {
     color: var(--white);
@@ -305,14 +183,372 @@
     font-family: var(--game-font);
   }
 
-  .combat-panel { display: flex; align-items: flex-start; gap: 28px; }
-  .combat-panel .die-col { flex: 1.1; min-width: 0; display: flex; flex-direction: column; }
-  .combat-panel .stats-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  /* ---------- BAND B — ART PLACEHOLDERS AND THE INTENT ---------- */
 
-  .combat-panel.combat-panel-no-die { justify-content: center; }
-  .combat-panel.combat-panel-no-die .stats-col { flex: 0 1 320px; }
+  .band-b {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
 
-  /* Die face lists */
+  .band-b-right {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+  }
+
+  .art-box {
+    width: 340px;
+    height: 220px;
+    flex-shrink: 0;
+    border: 2px solid #2a2a2a;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-family: var(--game-font);
+    font-size: 11px;
+    line-height: 1.6;
+    color: #3a3a3a;
+  }
+
+  .intent-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .intent-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  #enemyIntentIcon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    color: var(--nat);
+  }
+
+  #enemyIntentIcon svg { width: 40px; height: 40px; display: block; }
+
+  #enemyIntentValue {
+    font-family: var(--game-font);
+    font-size: 26px;
+    font-weight: bold;
+    line-height: 1;
+    color: var(--nat);
+    white-space: nowrap;
+  }
+
+  #enemyIntentLabel {
+    font-family: var(--game-font-2);
+    font-size: 22px;
+    line-height: 1;
+    color: var(--phase-color);
+    text-align: center;
+  }
+
+  /* ---------- BAND C — STATS, HAND, END TURN ---------- */
+
+  .band-c {
+    height: 208px;
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: 300px 1fr 300px;
+    align-items: end;
+    gap: 16px;
+  }
+
+  .side-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    min-width: 0;
+    background: var(--panel-bg);
+  }
+
+  #enemyPanel { background: var(--enemy-panel-bg); }
+  #playerPanel { background: var(--player-panel-bg); }
+
+  .side-title {
+    font-family: var(--game-font);
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  #enemyNameValue {
+    font-family: var(--game-font-2);
+    font-size: 26px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .stat-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .stat-label {
+    font-family: var(--game-font);
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--text);
+  }
+
+  .stat-value {
+    font-family: var(--game-font);
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--text);
+  }
+
+  #enemyHpValue, #playerHpValue { color: var(--enemy-mod); }
+  #playerBlockValue { color: var(--player-mod); }
+  #playerSoulValue { color: var(--blank); }
+  #enemyWrathValue { color: var(--enemy-mod); }
+
+  .status-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    min-height: 0;
+  }
+
+  .status-icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border: 2px solid currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--game-font);
+    font-size: 9px;
+    line-height: 1;
+  }
+
+  .status-poison, .status-wrath { color: var(--enemy-mod); }
+  .status-penitence { color: var(--nat); }
+  .status-drain { color: var(--player-mod); }
+  .status-seal { color: var(--muted); }
+
+  .side-note {
+    font-family: var(--game-font-2);
+    font-size: 22px;
+    line-height: 1.05;
+    color: var(--blank);
+  }
+
+  .side-note-label {
+    font-family: var(--game-font-2);
+    font-size: 22px;
+    line-height: 1.05;
+    color: var(--muted);
+  }
+
+  .band-c-mid {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  /* ---------- HAND ROW ---------- */
+
+  .hand-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .hand-card-el {
+    position: relative;
+    width: 130px;
+    height: 196px;
+    flex: 0 1 130px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    background: #000;
+    border: 2px solid var(--player-mod);
+    color: var(--player-mod);
+    font-family: var(--game-font);
+    padding: 8px 6px;
+    cursor: pointer;
+    transition: transform 150ms steps(3), border-color 150ms steps(3);
+  }
+
+  .hand-card-el:hover:not(:disabled) { transform: translateY(-3px); }
+  .hand-card-el:disabled { cursor: not-allowed; }
+  .hand-card-el.unaffordable { opacity: 0.4; }
+
+  .hand-card-art {
+    width: 100%;
+    height: 88px;
+    flex-shrink: 0;
+    border: 2px solid #1a1a1a;
+  }
+
+  .hand-card-cost {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    border: 2px solid var(--player-mod);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 1;
+  }
+
+  .hand-card-name {
+    font-size: 11px;
+    font-weight: bold;
+    line-height: 1.4;
+    text-align: center;
+  }
+
+  .hand-card-effect {
+    font-family: var(--game-font-2);
+    font-size: 18px;
+    line-height: 1.05;
+    color: var(--blank);
+    text-align: center;
+    margin-top: auto;
+    overflow: hidden;
+  }
+
+  /* ---------- BAND D — DIE ICONS, ROLL STAGE, FACE ROW ---------- */
+
+  .band-d {
+    height: 118px;
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: 180px 1fr 180px;
+    align-items: center;
+    gap: 0;
+  }
+
+  .band-d-mid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  #playerDieIcon, #enemyDieIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  #enemyDieIcon { justify-content: flex-end; }
+
+  .die-icon-wrap {
+    position: relative;
+    width: 104px;
+    height: 104px;
+    flex-shrink: 0;
+  }
+
+  .die-icon-wrap svg { width: 104px; height: 104px; display: block; }
+
+  .die-icon-number {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--game-font);
+    font-size: 22px;
+    font-weight: bold;
+  }
+
+  .die-icon-side {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    font-family: var(--game-font-2);
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .die-icon-empty {
+    width: 104px;
+    height: 104px;
+    flex-shrink: 0;
+    border: 2px solid #2a2a2a;
+  }
+
+  /* ---------- ROLL STAGE ---------- */
+
+  .roll-hero {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  .roll-hero-number {
+    font-family: var(--game-font);
+    font-weight: bold;
+    font-size: 17px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .roll-hero-number.roll-hero-nat,
+  .roll-hero-label.roll-hero-nat { color: var(--nat); }
+
+  .roll-hero-label {
+    font-family: var(--game-font);
+    font-size: 15px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--player-mod);
+  }
+
+  .roll-hero.roll-hero-empty .roll-hero-number,
+  .roll-hero.roll-hero-empty .roll-hero-label { color: var(--muted); }
+
+  .roll-hero-count { color: var(--muted); margin-left: 4px; }
+
+  @keyframes rollPulse {
+    from { transform: scale(1.18); opacity: 0.55; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .roll-hero.roll-pulse .roll-hero-number {
+    animation: rollPulse 180ms steps(3);
+  }
+
+  /* ---------- DIE FACE LISTS ---------- */
 
   .die-row {
     display: flex;
@@ -474,144 +710,94 @@
     border-color: var(--enemy-mod);
   }
 
-  /* Stat blocks */
+  /* ---------- HORIZONTAL FACE ROW (face 1 left, face 20 right) ---------- */
+  /* Rows are built face 20 first, so row-reverse puts face 1 at the left
+     without reordering the DOM anything else keys off. */
 
-  .stat-line {
+  .die-col-h {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    font-size: 16px;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .stat-line:last-child { border-bottom: none; }
-
-  .stat-label { color: var(--text); font-family: var(--game-font); font-weight: bold; }
-  .stat-value { color: var(--text); font-weight: bold; font-family: var(--game-font); }
-
-  /* Hero stats — HP, Block, Soul, Intent: large at-a-glance readouts */
-
-  .hero-stats {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 4px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .stat-hero {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 11px 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .stat-hero:last-child { border-bottom: none; }
-
-  .stat-icon {
-    font-size: 50px;
-    width: 58px;
-    text-align: center;
-    flex-shrink: 0;
-    line-height: 1;
-    color: var(--muted);
-  }
-
-  .stat-hero-main {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .stat-hero-value {
-    display: inline-block;
-    font-size: 50px;
-    font-weight: bold;
-    font-family: var(--game-font);
-    color: var(--white);
-    line-height: 1;
-  }
-
-  .stat-hero-sublabel {
-    font-size: 13px;
-    font-family: var(--game-font);
-    letter-spacing: 0.5px;
-    color: var(--blank);
-    margin-top: 6px;
-  }
-
-  #enemyHpValue, #playerHpValue { color: var(--enemy-mod); }
-  #playerBlockValue { color: var(--player-mod); }
-
-  /* Middle strip — centrepiece roll result */
-
-  .mid-strip {
-    background: var(--panel-bg);
-    border: 1px solid var(--line);
-    padding: 11px 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 7px;
-    flex-shrink: 0;
-  }
-
-  .mid-strip-top {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .round-chip {
-    font-family: var(--game-font);
-    font-size: 12px;
-    letter-spacing: 1px;
-    color: var(--blank);
-  }
-
-  .round-chip span { color: var(--text); font-weight: bold; }
-
-  .roll-hero {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    flex-direction: row-reverse;
     justify-content: center;
-    padding: 4px 0 1px;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+    width: 100%;
   }
 
-  .roll-hero-number {
-    font-family: var(--game-font);
-    font-weight: bold;
-    font-size: 72px;
+  .die-col-h .die-row {
+    flex: 0 1 56px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
+  }
+
+  .die-col-h .face-btn {
+    align-self: auto;
+    width: 100%;
+    min-width: 0;
+    aspect-ratio: 1 / 1;
+    border-width: 2px;
+  }
+
+  /* The mod name, weight, trigger count and Bound badge stay in the DOM;
+     each square's own title carries the same words. */
+  .die-col-h .die-mod-wrap { display: none; }
+
+  .die-face-caption {
+    font-family: var(--game-font-2);
+    font-size: 17px;
     line-height: 1;
-    color: var(--white);
+    color: var(--blank);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
   }
 
-  .roll-hero-number.roll-hero-nat { color: var(--nat); }
-
-  .roll-hero-label {
-    font-family: var(--game-font);
-    font-size: 16px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-top: 4px;
+  .die-col-h .die-row-rolled,
+  .die-col-h .die-row-rolled-flash {
+    transform: none;
+    background: none;
   }
 
-  .roll-hero.roll-hero-empty .roll-hero-number,
-  .roll-hero.roll-hero-empty .roll-hero-label {
-    color: var(--line);
+  .die-col-h .die-row-rolled .face-btn,
+  .die-col-h .die-row-rolled-flash .face-btn {
+    background: var(--text);
+    border-color: var(--text);
+    color: #000;
   }
 
-  @keyframes rollPulse {
-    from { transform: scale(1.18); opacity: 0.55; }
-    to { transform: scale(1); opacity: 1; }
+  @keyframes faceRolledFlash {
+    0% { background: var(--nat); border-color: var(--nat); }
+    100% { background: var(--text); border-color: var(--text); }
   }
 
-  .roll-hero.roll-pulse .roll-hero-number {
-    animation: rollPulse 180ms steps(3);
+  .die-col-h .die-row-rolled-flash .face-btn {
+    animation: faceRolledFlash 500ms steps(3);
   }
+
+  @keyframes faceBlankFlash {
+    0% { background: var(--blank); color: #000; }
+    100% { background: #000; color: var(--blank); }
+  }
+
+  .die-col-h .die-row-rolled-blank-flash { animation: none; }
+  .die-col-h .die-row-rolled-blank-flash .face-btn {
+    animation: faceBlankFlash 500ms steps(3);
+  }
+
+  .die-col-h .die-row .hover-tip {
+    top: auto;
+    bottom: 100%;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    margin: 0 0 6px 0;
+    text-align: center;
+  }
+
+  /* ---------- PHASE BADGE AND RESULT BANNER ---------- */
 
   .phase-badge {
     display: inline-block;
@@ -661,77 +847,7 @@
   .result-banner.result-win { color: #fbbf24; }
   .result-banner.result-loss { color: #dc2626; }
 
-  /* Hand row — cards, not buttons */
-
-  .hand-row {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 10px;
-    padding: 16px 4px;
-    flex-shrink: 0;
-  }
-
-  .hand-card-el {
-    position: relative;
-    flex: 1 1 0;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    background: var(--panel-bg);
-    border: 1px solid var(--line);
-    color: var(--player-mod);
-    font-family: var(--game-font);
-    padding: 16px 8px;
-    min-height: 100px;
-    cursor: pointer;
-    transition: transform 150ms steps(3), border-color 150ms steps(3);
-  }
-
-  .hand-card-el:hover:not(:disabled) {
-    border-color: var(--player-mod);
-    transform: translateY(-3px);
-  }
-
-  .hand-card-el:disabled {
-    cursor: not-allowed;
-  }
-
-  .hand-card-el.unaffordable {
-    opacity: 0.4;
-  }
-
-  .hand-card-cost {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--line);
-    color: var(--white);
-    font-size: 12px;
-    font-weight: bold;
-  }
-
-  .hand-card-name {
-    font-size: 17px;
-    font-weight: bold;
-    letter-spacing: 0.5px;
-    text-align: center;
-  }
-
-  .hand-card-effect {
-    font-size: 12px;
-    color: var(--muted);
-    text-align: center;
-  }
-
-  /* Card-play / HP feedback — all under 400ms, no input blocking */
+  /* ---------- CARD-PLAY / HP FEEDBACK ---------- */
 
   @keyframes fxShake {
     0% { transform: translateX(0); }
@@ -764,16 +880,9 @@
 
   .fx-pop-blue { animation: fxPopBlue 300ms steps(3); }
 
-  /* Player-facing post-fight die action screen (Load / Strengthen / Skip) */
+  /* ---------- PANELS OVER THE PLAY AREA ---------- */
 
-  #dieActionPanel {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    align-items: center;
-    border-color: var(--nat);
-  }
-
+  #dieActionPanel,
   #cardRewardPanel {
     display: flex;
     flex-direction: column;
@@ -830,15 +939,11 @@
   .die-action-die-preview {
     display: flex;
     justify-content: center;
-    margin-bottom: 14px;
+    width: 100%;
+    margin: 22px 0 14px;
   }
 
-  /* min-width prevents the flex context from clipping the longest mod name. */
-  #dieActionDieList {
-    max-width: 260px;
-    width: 100%;
-    min-width: 220px;
-  }
+  #dieActionDieList { width: 100%; }
 
   .hover-tip {
     position: absolute;
@@ -853,12 +958,12 @@
     background: var(--panel-bg);
     border: 1px solid var(--line);
     color: var(--text);
-    font-family: 'Consolas', 'Courier New', monospace;
-    font-size: 11px;
+    font-family: var(--game-font-2);
+    font-size: 17px;
     font-weight: normal;
     text-align: center;
     white-space: normal;
-    line-height: 1.4;
+    line-height: 1.15;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -940,19 +1045,193 @@
     animation: enemyNatPulse 600ms steps(3);
   }
 
-  /* Controls */
+  /* ---------- MAP SCREEN ---------- */
+
+  #mapScreen {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #mapScreen .panel-title {
+    align-self: flex-start;
+    font-size: 20px;
+  }
+
+  .map-composition {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0;
+    margin: 18px 0;
+  }
+
+  .map-start-node,
+  .map-node-opening,
+  .map-node-boss {
+    align-self: center;
+  }
+
+  .map-node-opening { margin-right: 20px; }
+  .map-node-boss { margin-left: 20px; }
+
+  .map-fork, .map-merge {
+    position: relative;
+    width: 20px;
+    flex-shrink: 0;
+  }
+
+  /* Stays neutral always — structurally shared by both lanes. Which lane
+     is committed/abandoned is carried by the stubs and connectors below. */
+  .map-fork::before, .map-merge::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--line);
+    transform: translateX(-50%);
+  }
+
+  .map-lanes {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 26px;
+  }
+
+  .map-lane {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* Connects this row to the shared fork (left) / merge (right) line. */
+  .map-lane::before,
+  .map-lane::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 20px;
+    height: 2px;
+    background: var(--line);
+    transform: translateY(-50%);
+  }
+  .map-lane::before { left: -20px; }
+  .map-lane::after { right: -20px; }
+
+  .map-lane-committed::before,
+  .map-lane-committed::after { background: var(--nat); }
+
+  .map-lane-abandoned::before,
+  .map-lane-abandoned::after { background: var(--muted); opacity: 0.6; }
+
+  .map-connector {
+    width: 20px;
+    height: 2px;
+    background: var(--line);
+    flex-shrink: 0;
+  }
+  .map-connector-committed { background: var(--nat); }
+  .map-connector-abandoned { background: var(--muted); opacity: 0.6; }
+
+  .map-node {
+    font-family: var(--game-font);
+    font-size: 11px;
+    line-height: 1.4;
+    width: 70px;
+    height: 70px;
+    padding: 0 3px;
+    border: 2px solid var(--line);
+    color: var(--muted);
+    background: var(--panel-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .map-node-completed {
+    color: var(--blank);
+    border-color: var(--blank);
+  }
+  .map-node-completed::before { content: '✓ '; }
+
+  .map-node-current {
+    color: var(--nat);
+    border: 2px solid var(--nat);
+    cursor: pointer;
+  }
+  .map-node-current:hover {
+    background: var(--nat);
+    color: #1a1500;
+  }
+
+  .map-node-choice {
+    color: var(--nat);
+    border: 2px dashed var(--nat);
+    cursor: pointer;
+  }
+  .map-node-choice:hover {
+    background: var(--nat);
+    color: #1a1500;
+  }
+
+  .map-node-inert {
+    color: var(--muted);
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  /* DEV ONLY — jump target for a node the run hasn't reached yet. */
+  .map-node-dev-jump {
+    color: var(--muted);
+    border: 2px dotted var(--muted);
+    opacity: 0.75;
+    cursor: pointer;
+  }
+  .map-node-dev-jump:hover {
+    background: var(--muted);
+    color: #0a0a0f;
+  }
+
+  .map-die-preview-row {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 28px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  #bossPreview, #mapPlayerPreview, #elitePreview {
+    font-family: var(--game-font-2);
+    font-size: 20px;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  #bossDiePreviewList, #mapPlayerDieList, #eliteDiePreviewList {
+    max-width: 260px;
+  }
+
+  /* A single hairline divider between the two die groups. */
+  .map-die-preview-divider {
+    align-self: stretch;
+    width: 1px;
+    background: var(--line);
+  }
+
+  /* ---------- CONTROLS ---------- */
 
   .controls-row {
     display: flex;
     flex-direction: column;
     gap: 8px;
-  }
-
-  .controls-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 18px;
-    padding: 6px 0;
   }
 
   button {
@@ -969,11 +1248,14 @@
   button:hover { color: var(--white); border-color: var(--muted); }
 
   #endTurnBtn {
+    width: 150px;
+    height: 56px;
+    flex-shrink: 0;
     font-family: var(--game-font);
-    font-size: 17px;
+    font-size: 15px;
     font-weight: bold;
     letter-spacing: 0.5px;
-    padding: 16px 40px;
+    padding: 0;
     background: var(--text);
     color: #000000;
     border-color: var(--text);
@@ -996,19 +1278,6 @@
     color: var(--white);
     background: var(--enemy-mod);
     border-color: var(--enemy-mod);
-  }
-
-  .top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-right: 8px;
-  }
-
-  .top-bar-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
   }
 
   #inspector {
@@ -1056,9 +1325,10 @@
 
   /* DEV ONLY — remove before any real release. */
   #devChromeToggleBtn {
-    align-self: flex-start;
-    color: var(--muted);
+    color: #3a3a3a;
+    border-color: #3a3a3a;
     letter-spacing: 0.5px;
+    text-transform: uppercase;
   }
 
   #devChrome {
@@ -1176,8 +1446,8 @@
     padding: 8px 10px;
     white-space: pre-wrap;
     font-family: var(--game-font-2);
-    font-size: 11px;
-    line-height: 15px;
+    font-size: 15px;
+    line-height: 17px;
   }
 
   #log div {
@@ -1206,17 +1476,47 @@
 </head>
 <body>
 
+<!-- BAND A — build stamp and the gold/relic placeholders, the act/round/
+     phase readout, and the four screen-level buttons. -->
 <div class="top-bar">
   <div class="top-bar-left">
-    <div id="buildStamp">DIE V1 — STAGE 2.71<br>BUILD <span id="buildStampNumber"></span></div>
-    <!-- Player-facing, not dev chrome — sits beside the build stamp. -->
+    <div>
+      <div id="buildStamp">DIE V1 — STAGE 2.72 BUILD <span id="buildStampNumber"></span></div>
+      <div class="top-bar-tokens">
+        <!-- No gold mechanic exists in V1; this reads gameState.run.gold if
+             that field is ever added, and an em dash until then. -->
+        <div id="goldValue">GOLD —</div>
+        <div id="relicRow">
+          <div class="relic-slot"></div>
+          <div class="relic-slot"></div>
+          <div class="relic-slot"></div>
+          <div class="relic-slot"></div>
+          <div class="relic-slot"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="top-bar-centre">
+    <span id="actStamp"></span>
+    <span>ROUND <span id="roundValue">1</span></span>
+    <span class="phase-badge phase-start_of_turn" id="phaseBadge">START OF TURN</span>
+    <span id="resultBanner" class="result-banner" style="display:none;"></span>
+  </div>
+
+  <div class="top-bar-right">
+    <!-- DEV ONLY — master toggle for every piece of dev chrome. Closed on
+         every page load; closed also makes the two dev inputs outside
+         #devChrome (die-face force rolls, map dev-jump nodes) inert. -->
+    <button id="devChromeToggleBtn">Dev Tools ▸</button>
+    <!-- Player-facing, not dev chrome. -->
     <button id="copyRunRecordBtn">Copy Run Record</button>
     <!-- Display-only toggle for #log/.right-col; gameState.ui.logOpen, never the run record. -->
     <button id="logToggleBtn">LOG ▸</button>
+    <!-- One misclick must not discard a live run; confirm-before-reset
+         lives in its click handler. -->
+    <button id="startGameBtn">New Run</button>
   </div>
-  <!-- Own corner, own danger styling — one misclick must not discard a
-       live run; confirm-before-reset lives in its click handler. -->
-  <button id="startGameBtn">New Run</button>
 </div>
 
 <div class="app">
@@ -1228,111 +1528,72 @@
     <div class="panel" id="mapScreen" style="display:none;"></div>
 
     <div id="fightScreen">
-    <!-- Act number on the fight screen, mirroring the map's own title. -->
-    <div class="panel-title" id="actStamp"></div>
 
-    <div class="panel combat-panel" id="enemyPanel">
-      <div class="die-col enemy-die" id="enemyDieList">
-        <div class="panel-title">ENEMY DIE</div>
-        <div class="die-row nat-one"><button class="face-btn">1</button><span class="die-mod">NAT 1</span></div>
-        <div class="die-row"><button class="face-btn">2</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">3</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">4</button><span class="die-mod">—</span></div>
-        <div class="die-row loaded"><button class="face-btn">5</button><span class="die-mod">POISON</span></div>
-        <div class="die-row"><button class="face-btn">6</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">7</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">8</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">9</button><span class="die-mod">—</span></div>
-        <div class="die-row loaded"><button class="face-btn">10</button><span class="die-mod">POISON</span></div>
-        <div class="die-row"><button class="face-btn">11</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">12</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">13</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">14</button><span class="die-mod">—</span></div>
-        <div class="die-row loaded"><button class="face-btn">15</button><span class="die-mod">POISON</span></div>
-        <div class="die-row"><button class="face-btn">16</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">17</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">18</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">19</button><span class="die-mod">—</span></div>
-        <div class="die-row nat-twenty"><button class="face-btn">20</button><span class="die-mod">NAT 20</span></div>
-      </div>
-      <div class="stats-col enemy-stats">
-        <!-- Text set by refreshInspector() from gameState.enemy.id — a
-             skull mark for a boss, star for an elite, no mark for normal. -->
-        <div class="panel-title" id="enemyPanelTitle">ENEMY</div>
-        <!-- The enemy's own designed identity name, distinct from the ENEMY/ELITE/BOSS title above. -->
-        <div class="stat-line" id="enemyNameLine"><span class="stat-label">Name</span><span class="stat-value" id="enemyNameValue">—</span></div>
-        <div class="hero-stats">
-          <div class="stat-hero"><span class="stat-icon">♥</span><span class="stat-hero-value" id="enemyHpValue">— / —</span></div>
-          <div class="stat-hero">
-            <span class="stat-icon">⚔</span>
-            <div class="stat-hero-main">
-              <span class="stat-hero-value" id="enemyIntentValue">—</span>
-              <span class="stat-hero-sublabel" id="enemyIntentLabel">—</span>
+      <div class="band-b">
+        <div class="art-box" id="playerArtBox">ORDAINED ART</div>
+        <div class="band-b-right">
+          <div class="intent-block">
+            <div class="intent-top">
+              <span id="enemyIntentIcon"></span>
+              <span id="enemyIntentValue">—</span>
             </div>
+            <div id="enemyIntentLabel"></div>
           </div>
+          <div class="art-box" id="enemyArtBox">ART</div>
         </div>
-        <div class="stat-line"><span class="stat-label">Poison Stacks</span><span class="stat-value" id="enemyPoisonValue">—</span></div>
-        <div class="stat-line"><span class="stat-label">Loaded buffs</span><span class="stat-value" id="enemyBuffsValue">—</span></div>
-        <div class="stat-line"><span class="stat-label">Active this turn</span><span class="stat-value" id="enemyActiveValue">—</span></div>
-        <!-- Shown only while gameState.enemy.wrath > 0. -->
-        <div class="stat-line" id="enemyWrathLine" style="display:none;"><span class="stat-value" id="enemyWrathValue">—</span></div>
-        <!-- Pontifex's own panel line, shown only for that boss. -->
-        <div class="stat-line" id="enemyReadLine" style="display:none;"><span class="stat-value" id="enemyReadValue">—</span></div>
       </div>
-    </div>
 
-    <div class="mid-strip">
-      <div class="mid-strip-top">
-        <span class="round-chip">ROUND <span id="roundValue">1</span></span>
-        <span class="phase-badge phase-start_of_turn" id="phaseBadge">START_OF_TURN</span>
-        <span id="resultBanner" class="result-banner" style="display:none;"></span>
-      </div>
-      <div class="roll-hero roll-hero-empty" id="rollHero">
-        <div class="roll-hero-number" id="rollResultNumber">—</div>
-        <div class="roll-hero-label" id="rollResultLabel">AWAITING ROLL</div>
-      </div>
-    </div>
-
-    <div class="panel combat-panel" id="playerPanel">
-      <div class="die-col player-die" id="playerDieList">
-        <div class="panel-title">PLAYER DIE</div>
-        <div class="die-row nat-one"><button class="face-btn">1</button><span class="die-mod">NAT 1</span></div>
-        <div class="die-row"><button class="face-btn">2</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">3</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">4</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">5</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">6</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">7</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">8</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">9</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">10</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">11</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">12</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">13</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">14</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">15</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">16</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">17</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">18</button><span class="die-mod">—</span></div>
-        <div class="die-row"><button class="face-btn">19</button><span class="die-mod">—</span></div>
-        <div class="die-row nat-twenty"><button class="face-btn">20</button><span class="die-mod">NAT 20</span></div>
-      </div>
-      <div class="stats-col player-stats">
-        <div class="panel-title">PLAYER</div>
-        <div class="hero-stats">
-          <div class="stat-hero"><span class="stat-icon">♥</span><span class="stat-hero-value" id="playerHpValue">— / —</span></div>
-          <div class="stat-hero"><span class="stat-icon">🛡</span><span class="stat-hero-value" id="playerBlockValue">—</span></div>
-          <div class="stat-hero"><span class="stat-icon">💧</span><span class="stat-hero-value" id="playerSoulValue">— / —</span></div>
+      <div class="band-c">
+        <div class="side-col" id="playerPanel">
+          <div class="side-title">ORDAINED</div>
+          <div class="stat-row"><span class="stat-label">HP:</span><span class="stat-value" id="playerHpValue">— / —</span></div>
+          <div class="stat-row"><span class="stat-label">BL:</span><span class="stat-value" id="playerBlockValue">—</span></div>
+          <div class="stat-row"><span class="stat-label">SOUL:</span><span class="stat-value" id="playerSoulValue">— / —</span></div>
+          <div class="status-row" id="playerStatusRow"></div>
+          <div class="side-note-label">Active debuffs <span class="side-note" id="playerDebuffsValue">—</span></div>
+          <!-- Shown only while gameState.player.drainNextRound > 0. -->
+          <div class="side-note" id="playerDrainLine" style="display:none;"><span id="playerDrainValue">—</span></div>
+          <div class="side-note">DECK <span id="playerDeckValue">—</span> DISCARD <span id="playerDiscardValue">—</span></div>
         </div>
-        <div class="stat-line"><span class="stat-label">Active debuffs</span><span class="stat-value" id="playerDebuffsValue">—</span></div>
-        <!-- Shown only while gameState.player.drainNextRound > 0. -->
-        <div class="stat-line" id="playerDrainLine" style="display:none;"><span class="stat-value" id="playerDrainValue">—</span></div>
-        <div class="stat-line"><span class="stat-label">Deck</span><span class="stat-value" id="playerDeckValue">—</span></div>
-        <div class="stat-line"><span class="stat-label">Discard</span><span class="stat-value" id="playerDiscardValue">—</span></div>
-      </div>
-    </div>
 
-    <div class="hand-row" id="handRow"></div>
+        <div class="band-c-mid">
+          <div class="hand-row" id="handRow"></div>
+          <button id="endTurnBtn">End Turn</button>
+        </div>
+
+        <div class="side-col" id="enemyPanel">
+          <!-- Text set by refreshInspector() from gameState.enemy.id — a
+               skull mark for a boss, star for an elite, no mark for normal. -->
+          <div class="side-title" id="enemyPanelTitle">ENEMY</div>
+          <div id="enemyNameLine"><span id="enemyNameValue">—</span></div>
+          <div class="stat-row"><span class="stat-label">HP:</span><span class="stat-value" id="enemyHpValue">— / —</span></div>
+          <!-- Shown only while gameState.enemy.wrath > 0. -->
+          <div class="stat-row" id="enemyWrathLine" style="display:none;"><span class="stat-label">WRATH:</span><span class="stat-value" id="enemyWrathValue">—</span></div>
+          <!-- Pontifex's own panel line, shown only for that boss. -->
+          <div class="side-note" id="enemyReadLine" style="display:none;"><span id="enemyReadValue">—</span></div>
+          <div class="status-row" id="enemyStatusRow"></div>
+          <!-- Stacks of poison also read off the enemy status row's own P icon. -->
+          <span id="enemyPoisonValue" style="display:none;">—</span>
+          <div class="side-note-label">Loaded buffs <span class="side-note" id="enemyBuffsValue">—</span></div>
+          <div class="side-note-label">Active this turn <span class="side-note" id="enemyActiveValue">—</span></div>
+        </div>
+      </div>
+
+      <div class="band-d">
+        <div id="playerDieIcon"></div>
+        <div class="band-d-mid">
+          <div class="roll-hero roll-hero-empty" id="rollHero">
+            <span class="roll-hero-number" id="rollResultNumber"></span>
+            <span class="roll-hero-label" id="rollResultLabel">AWAITING ROLL</span>
+          </div>
+          <div class="die-col player-die die-col-h" id="playerDieList"></div>
+        </div>
+        <div id="enemyDieIcon"></div>
+      </div>
+
+      <!-- Kept in the DOM and still rendered every frame; what it holds is
+           now read off #enemyBuffsValue and #enemyDieIcon. -->
+      <div class="die-col enemy-die" id="enemyDieList" style="display:none;"></div>
 
     </div><!-- /#fightScreen -->
 
@@ -1346,15 +1607,6 @@
     <div class="panel" id="riteScreenPanel" style="display:none;"></div>
 
     <div class="controls-row">
-      <div class="controls-buttons">
-        <button id="endTurnBtn">End Turn</button>
-      </div>
-      <!-- DEV ONLY — master toggle for every piece of dev chrome. Closed on
-           every page load; closed also makes the two dev inputs outside
-           this container (die-face force rolls, map dev-jump nodes) inert.
-           Remove before any real release. -->
-      <button id="devChromeToggleBtn">Dev Tools ▸</button>
-
       <div id="devChrome">
 
       <div id="inspector">
