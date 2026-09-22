@@ -110,6 +110,11 @@ const gameState = {
     cards: {},
     mods: {},
     cardPool: {}
+  },
+
+  // Display-only flags, never part of the run record.
+  ui: {
+    logOpen: false
   }
 
 };
@@ -157,6 +162,13 @@ function updateRun(changes, silent) {
 function updateRunRecord(changes, silent) {
   Object.assign(gameState.runRecord, changes);
   if (!silent) logStateChange('updateRunRecord', changes);
+  refreshInspector();
+}
+
+// Display-only flags (gameState.ui) — never part of the run record.
+function updateUi(changes, silent) {
+  Object.assign(gameState.ui, changes);
+  if (!silent) logStateChange('updateUi', changes);
   refreshInspector();
 }
 

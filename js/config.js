@@ -46,7 +46,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 143,
+  BUILD: 144,
 
   PLAYER_MAX_HP: 70,
   PLAYER_MAX_SOUL: 3,

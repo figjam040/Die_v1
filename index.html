@@ -4,12 +4,24 @@
 <meta charset="UTF-8">
 <title>Die V1</title>
 <style>
+  @font-face {
+    font-family: 'Press Start 2P';
+    src: url('fonts/PressStart2P-Regular.ttf') format('truetype');
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: 'VT323';
+    src: url('fonts/VT323-Regular.ttf') format('truetype');
+    font-display: swap;
+  }
+
   :root {
-    --bg: #0a0a0f;
+    --bg: #000000;
     --panel-bg: #000000;
-    --line: #1a1a1a;
-    --text: #c8c8c8;
-    --muted: #5a5a5a;
+    --line: #2a2a2a;
+    --text: #e8e4d0;
+    --muted: #6b6b6b;
     --white: #f4f4f4;
 
     --nat: #fbbf24;
@@ -19,12 +31,13 @@
 
     --phase-color: #a88a5a;
 
-    --enemy-panel-bg: #241111;
-    --player-panel-bg: #11152b;
-    --enemy-border: #5a2424;
-    --player-border: #26315a;
+    --enemy-panel-bg: #000000;
+    --player-panel-bg: #000000;
+    --enemy-border: #2a2a2a;
+    --player-border: #2a2a2a;
 
-    --game-font: 'Bahnschrift', 'Arial Narrow', 'Segoe UI Semibold', 'Franklin Gothic Medium', Arial, sans-serif;
+    --game-font: 'Press Start 2P', 'Courier New', monospace;
+    --game-font-2: 'VT323', 'Courier New', monospace;
   }
 
   * { box-sizing: border-box; }
@@ -32,10 +45,10 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'Consolas', 'Courier New', monospace;
+    font-family: var(--game-font-2);
     margin: 0;
     padding: 0;
-    font-size: 11px;
+    font-size: 17px;
     display: flex;
     flex-direction: column;
     height: 100vh;
@@ -43,16 +56,20 @@
 
   .app {
     display: grid;
-    grid-template-columns: 1fr 420px;
+    grid-template-columns: 1fr;
     flex: 1;
     min-height: 0;
+  }
+
+  .app.log-open {
+    grid-template-columns: 1fr 380px;
   }
 
   /* ---------- BUILD STAMP ---------- */
 
   #buildStamp {
     flex-shrink: 0;
-    font-family: 'Consolas', 'Courier New', monospace;
+    font-family: var(--game-font-2);
     font-size: 10px;
     line-height: 13px;
     color: #9c8a63;
@@ -355,6 +372,7 @@
     font-family: var(--game-font);
     font-weight: bold;
     font-size: 16px;
+    line-height: 1;
     color: var(--blank);
   }
 
@@ -373,8 +391,12 @@
      truncation; the full name is available via a native title tooltip. */
   .die-mod-pair {
     min-width: 0;
+    height: 17px;
     overflow: hidden;
     white-space: nowrap;
+    font-family: var(--game-font);
+    font-size: 16px;
+    line-height: 1;
   }
 
   .die-mod-pair .die-mod {
@@ -393,6 +415,7 @@
     display: inline-block;
     vertical-align: middle;
     font-size: 14px;
+    line-height: 1;
     margin-left: 2px;
   }
 
@@ -400,6 +423,7 @@
     font-family: var(--game-font);
     font-weight: bold;
     font-size: 14px;
+    line-height: 1;
     color: var(--blank);
     flex-shrink: 0;
   }
@@ -463,7 +487,7 @@
 
   .stat-line:last-child { border-bottom: none; }
 
-  .stat-label { color: var(--blank); font-family: var(--game-font); font-weight: bold; }
+  .stat-label { color: var(--text); font-family: var(--game-font); font-weight: bold; }
   .stat-value { color: var(--text); font-weight: bold; font-family: var(--game-font); }
 
   /* Hero stats — HP, Block, Soul, Intent: large at-a-glance readouts */
@@ -516,6 +540,9 @@
     color: var(--blank);
     margin-top: 6px;
   }
+
+  #enemyHpValue, #playerHpValue { color: var(--enemy-mod); }
+  #playerBlockValue { color: var(--player-mod); }
 
   /* Middle strip — centrepiece roll result */
 
@@ -583,7 +610,7 @@
   }
 
   .roll-hero.roll-pulse .roll-hero-number {
-    animation: rollPulse 180ms ease-out;
+    animation: rollPulse 180ms steps(3);
   }
 
   .phase-badge {
@@ -660,7 +687,7 @@
     padding: 16px 8px;
     min-height: 100px;
     cursor: pointer;
-    transition: transform 150ms ease, border-color 150ms ease;
+    transition: transform 150ms steps(3), border-color 150ms steps(3);
   }
 
   .hand-card-el:hover:not(:disabled) {
@@ -714,28 +741,28 @@
     100% { transform: translateX(0); }
   }
 
-  #enemyPanel.fx-shake { animation: fxShake 300ms ease-in-out; }
+  #enemyPanel.fx-shake { animation: fxShake 300ms steps(3); }
 
   @keyframes fxPulseBlue {
     0% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.55); }
     100% { box-shadow: 0 0 0 12px rgba(96, 165, 250, 0); }
   }
 
-  #playerPanel.fx-pulse-blue { animation: fxPulseBlue 350ms ease-out; }
+  #playerPanel.fx-pulse-blue { animation: fxPulseBlue 350ms steps(3); }
 
   @keyframes fxPopRed {
     0% { transform: scale(1.3); color: #f87171; }
     100% { transform: scale(1); color: var(--white); }
   }
 
-  .fx-pop-red { animation: fxPopRed 300ms ease-out; }
+  .fx-pop-red { animation: fxPopRed 300ms steps(3); }
 
   @keyframes fxPopBlue {
     0% { transform: scale(1.3); color: #60a5fa; }
     100% { transform: scale(1); color: var(--white); }
   }
 
-  .fx-pop-blue { animation: fxPopBlue 300ms ease-out; }
+  .fx-pop-blue { animation: fxPopBlue 300ms steps(3); }
 
   /* Player-facing post-fight die action screen (Load / Strengthen / Skip) */
 
@@ -775,7 +802,7 @@
     font-family: var(--game-font);
     font-size: 14px;
     padding: 10px 18px;
-    border: 1px solid var(--nat);
+    border: 2px solid var(--nat);
     color: var(--nat);
     background: var(--panel-bg);
   }
@@ -888,7 +915,7 @@
   .die-row-rolled-flash {
     transform: translateX(6px);
     background: rgba(251, 191, 36, 0.14);
-    animation: dieRowRolledFlash 500ms ease-out;
+    animation: dieRowRolledFlash 500ms steps(3);
   }
 
   /* Blanks are ~70% of rolls and must not read as an event: a quiet dim
@@ -899,7 +926,7 @@
   }
 
   .die-row-rolled-blank-flash {
-    animation: dieRowRolledBlankPulse 500ms ease-out;
+    animation: dieRowRolledBlankPulse 500ms steps(3);
   }
 
   /* On a genuine enemy Nat, the rolled row pulses three times over 600ms,
@@ -910,7 +937,7 @@
   }
 
   .die-row-enemy-nat-pulse {
-    animation: enemyNatPulse 600ms ease-in-out;
+    animation: enemyNatPulse 600ms steps(3);
   }
 
   /* Controls */
@@ -929,9 +956,10 @@
   }
 
   button {
-    background: var(--panel-bg);
+    background: #000000;
     color: var(--text);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
+    border-radius: 0;
     padding: 4px 10px;
     font-family: inherit;
     font-size: 11px;
@@ -946,6 +974,9 @@
     font-weight: bold;
     letter-spacing: 0.5px;
     padding: 16px 40px;
+    background: var(--text);
+    color: #000000;
+    border-color: var(--text);
   }
 
   #endTurnBtn:disabled {
@@ -957,14 +988,14 @@
     font-family: inherit;
     font-size: 11px;
     padding: 4px 10px;
-    color: #dc2626;
-    border-color: #dc2626;
+    color: var(--enemy-mod);
+    border-color: var(--enemy-mod);
   }
 
   #startGameBtn:hover {
     color: var(--white);
-    background: #dc2626;
-    border-color: #dc2626;
+    background: var(--enemy-mod);
+    border-color: var(--enemy-mod);
   }
 
   .top-bar {
@@ -1128,10 +1159,14 @@
   /* ---------- RIGHT COLUMN — LOG ---------- */
 
   .right-col {
-    display: flex;
+    display: none;
     flex-direction: column;
     height: 100%;
     min-height: 0;
+  }
+
+  .app.log-open .right-col {
+    display: flex;
   }
 
   #log {
@@ -1140,6 +1175,7 @@
     overflow-y: auto;
     padding: 8px 10px;
     white-space: pre-wrap;
+    font-family: var(--game-font-2);
     font-size: 11px;
     line-height: 15px;
   }
@@ -1172,9 +1208,11 @@
 
 <div class="top-bar">
   <div class="top-bar-left">
-    <div id="buildStamp">DIE V1 — STAGE 2.70<br>BUILD <span id="buildStampNumber"></span></div>
+    <div id="buildStamp">DIE V1 — STAGE 2.71<br>BUILD <span id="buildStampNumber"></span></div>
     <!-- Player-facing, not dev chrome — sits beside the build stamp. -->
     <button id="copyRunRecordBtn">Copy Run Record</button>
+    <!-- Display-only toggle for #log/.right-col; gameState.ui.logOpen, never the run record. -->
+    <button id="logToggleBtn">LOG ▸</button>
   </div>
   <!-- Own corner, own danger styling — one misclick must not discard a
        live run; confirm-before-reset lives in its click handler. -->

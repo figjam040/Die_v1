@@ -235,6 +235,8 @@ function factsBlockLineRange(src) {
 
   await runTest('The repo root holds only the allowed files and folders', async () => {
     const allowed = ['.git', 'CLAUDE.md', 'HISTORY.md', 'index.html', 'package.json', 'package-lock.json', '.gitignore', 'js', 'tests',
+      // fonts/ — the two self-hosted OFL font files the skin pass added.
+      'fonts',
       // git-ignored working folders, documented in CLAUDE.md's PROJECT section or .gitignore
       'node_modules', 'backups', 'Archive', 'test-results', 'verify', 'verify_prev',
       'register_backup.json', 'run_record_master.csv', '.nojekyll', 'art', 'audio'];

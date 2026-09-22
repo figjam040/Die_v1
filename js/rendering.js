@@ -65,6 +65,12 @@ function refreshInspector() {
   contentEl.textContent = JSON.stringify(gameState, null, 2);
   const actStampEl = document.getElementById('actStamp');
   if (actStampEl) { actStampEl.textContent = 'ACT ' + gameState.run.actNumber; }
+  const appEl = document.querySelector('.app');
+  const logToggleBtn = document.getElementById('logToggleBtn');
+  if (appEl && logToggleBtn) {
+    appEl.classList.toggle('log-open', gameState.ui.logOpen);
+    logToggleBtn.textContent = gameState.ui.logOpen ? 'LOG ▾' : 'LOG ▸';
+  }
   renderRegistryInspector();
   renderStats();
   renderCardButtons();
@@ -150,7 +156,7 @@ function renderPhaseBadge() {
   const badge = document.getElementById('phaseBadge');
   if (!badge) return;
   const phase = gameState.turn.phase;
-  badge.textContent = phase;
+  badge.textContent = phase.replace(/_/g, ' ');
   badge.className = 'phase-badge phase-' + phase.toLowerCase();
 }
 
@@ -543,6 +549,10 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       row.appendChild(tip);
     }
 
+    // Native title, in addition to the .hover-tip above — every face-btn
+    // carries one, so a blank still reads on hover even with no mod.
+    btn.title = hoverText || ('Blank: rolls for ' + GAME_CONFIG.BLANK_ROLL_BLOCK + ' block.');
+
     container.appendChild(row);
   });
 }
@@ -814,6 +824,7 @@ function renderCardButtons() {
     const btn = document.createElement('button');
     btn.className = 'hand-card-el' + (affordable ? '' : ' unaffordable');
     btn.disabled = !active;
+    btn.title = card.name + ' — ' + getCardEffectText(cardId);
 
     const costEl = document.createElement('span');
     costEl.className = 'hand-card-cost';

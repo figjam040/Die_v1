@@ -16,7 +16,7 @@ config.js is the one constants file, loaded first, before state.js. Every tunabl
 All eleven files share one global lexical scope, the same way one giant inline `<script>` block would. The only eager trigger anywhere in the codebase is `window.addEventListener('DOMContentLoaded', init)` in bootstrap.js — nothing calls a game function at parse time, so cross-file references are safe regardless of script tag order.
 
 File: C:\Users\figja\Die_v1\index.html (loads the eleven js/ files above).
-Open in browser to test. Double-click index.html only — never through a local server. /audio/ and /art/ exist as empty asset folders; nothing currently populates them — see AUDIO MODULE.
+Open in browser to test. Double-click index.html only — never through a local server. /audio/ and /art/ exist as empty asset folders; nothing currently populates them — see AUDIO MODULE. /fonts/ holds the game's two self-hosted OFL font files (Press Start 2P, VT323), loaded by index.html's own @font-face rules.
 
 tests/facts.test.js — a plain Node script (this project has no test runner installed, only the raw `playwright` library), run via `node tests/facts.test.js`. Asserts every F-number against GAME_CONFIG and against the running gameState/DOM after a fresh New Run, entering the opening fight or dev-jumping to the elite/boss where a fact needs live combat state. A mismatch between a documented fact and the live value is a failing test. Not loaded by index.html.
 
@@ -746,23 +746,26 @@ Documentation cleanup, 21 Sep 2026, no build number — CURRENT SUBSTAGE write-u
 Stage 2.68 (BUILD 141) — three items: the poison answer (block-vs-poison, F33), enemy intent patterns (Attack/Charge/Afflict, F34), and enemy dice of any size with Wrath/Drain/Seal (F35). All three kept — 111/111 facts, 40/40 mods, 22/22 new tests/build141.test.js tests passed; KI-26 answered.
 Stage 2.69 (BUILD 142) — seven items, all kept: the Seal-never-wears-off fix, act 1 HP by position, all fifteen designed enemies (F36/F37), the enemy Nat sound/visual (KI-22 answered), Hosanna and Threnody reworked (F38). 111/111 facts, 40/40 mods, 22/22 build141, 22/22 new build142 tests.
 Stage 2.70 (BUILD 143) — anti-bloat: comment rule applied to js/ and index.html, CLAUDE.md trimmed, stray files removed, guardrail tests added. No behaviour change. 111/111 facts, 40/40 mods, 22/22 build141, 22/22 build142, 19/19 guardrails.
+Stage 2.71 (BUILD 144) — skin pass: black palette, Press Start 2P/VT323 fonts, log toggle default closed, phase badge no underscores, stepped motion; no number/mechanic/layout change. 111/111 facts, 40/40 mods, 22/22 build141, 22/22 build142, 19/19 guardrails, 13/13 build144.
 
 ---
 
 # CURRENT SUBSTAGE
 
-Stage 2.70 (BUILD 143) — anti-bloat (D-84), five items, no behaviour change.
+Stage 2.71 (BUILD 144) — skin pass, no number, mechanic or layout change.
 
-Item A: stray files removed from tests/ (every screenshot .png, four one-off scripts, two abandoned baseline files) and the repo root (cp3-build-prompts-v2.txt). tests/ now holds only facts/mods/build141/build142/guardrails test files plus screenshots.js/pngdiff.js/autoplay.js/run-all.js.
+Fonts: two self-hosted OFL font files added under fonts/ (PressStart2P-Regular.ttf, VT323-Regular.ttf, both from the google/fonts repo), declared via two new @font-face rules. --game-font is now 'Press Start 2P' (everywhere it already applied); a new --game-font-2 is 'VT323', used by the body (17px default), #log and #buildStamp. No var(--game-font) size needed reducing — a Playwright overflow scan (scrollWidth/scrollHeight vs clientWidth/clientHeight) across the map, fight, die action, card reward and dev drawer screens found nothing above its box. A two-mod die row's line-box height did grow under the new fonts (VT323's own metrics, inherited by the unstyled `.die-mod-pair` wrapper); fixed with an explicit font-family/font-size/line-height/height on that one class, not a layout change.
 
-Item B: the comment rule applied to all eleven js/ files, verified with an AST-diff tool (acorn, position-stripped) confirming SAME for every file — only comments/whitespace changed. Comment share fell well under each file's ceiling (config.js under 50%, every other file under 30%).
+Palette: --bg/--panel-bg/--enemy-panel-bg/--player-panel-bg to #000000, --text to #e8e4d0, --muted to #6b6b6b, --line/--enemy-border/--player-border to #2a2a2a; --nat/--player-mod/--enemy-mod/--blank/--phase-color untouched. Every button now black background, 2px solid border, no border-radius; #endTurnBtn is the one filled button (var(--text) fill, black text); #startGameBtn's border/text is var(--enemy-mod). #enemyHpValue/#playerHpValue render in var(--enemy-mod), #playerBlockValue in var(--player-mod), stat labels in --text.
 
-Item C: the same rule applied to index.html's HTML and CSS comments, verified with a comment-stripping text-diff tool confirming SAME. Comment share fell from 49% to under 15%.
+Log toggle: gameState.ui (new, { logOpen: false }) plus updateUi() alongside the other five state helpers. #logToggleBtn (top bar, right of Copy Run Record) flips it; .app is one column with #log hidden when closed, 1fr 380px with #log shown when open. Default closed on every fresh page load; holds across the map, a fight, and New Run within the same page load.
 
-Item D: CLAUDE.md's standing sections (everything above CONFIRMED WORKING) trimmed to what is true now — every heading kept in order, every LAW/rule sentence kept word for word, build-number narrative and "what a past build did" removed.
+Phase badge: #phaseBadge now shows the phase name with underscores replaced by spaces (CARD PHASE, not CARD_PHASE); the CSS class name driving its colour is unchanged.
 
-Item E: tests/guardrails.test.js — plain Node, no browser — fails when CLAUDE.md passes 80,000 bytes, a CONFIRMED WORKING line passes 300 characters, CURRENT SUBSTAGE holds more than one build, a code file's comment share passes its ceiling, a comment names a build number, or a stray file sits in tests/ or the repo root. tests/run-all.js runs it first, then every other tests/*.test.js in name order; package.json's `npm test` runs that.
+Motion: every eased/linear transition and animation timing function in index.html is now steps(2) or steps(3); every duration is unchanged from before this build.
 
-Verification: facts 111/111, mods 40/40, build141 22/22, build142 22/22, new guardrails 19/19. Screenshot diff (vs the prior build's set): map 0%, fight 0.174%, die_action 4.781%, card_reward 4.161%, dev_drawer 4.789% — the three panels showing real content (offered mods/cards, log lines) vary with unseeded Math.random() in the screenshot script itself, not with this build's comment-only edits; map and fight, reached before any such roll, matched almost exactly.
+Also: every .face-btn and hand card now carries a native `title` (a blank face reads "Blank: rolls for 2 block." when it has no other hover text) — the existing custom `.hover-tip` overlay is untouched, this is additive.
+
+Verification: facts 111/111, mods 40/40, build141 22/22, build142 22/22, guardrails 19/19 (its repo-root allow-list gained `fonts`), new tests/build144.test.js 13/13. Screenshot diff (vs the prior build's set): large across all five screens (42-60%), expected from the palette/font overhaul — 0 console errors, 0 page errors.
 
 Full write-ups for earlier builds: HISTORY.md.

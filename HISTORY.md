@@ -936,3 +936,17 @@ Screenshot diff (node tests/screenshots.js --compare, vs the true BUILD 141 set)
 Full write-ups for earlier builds: HISTORY.md.
 
 BUILD 143 removed the build story from code comments, index.html comments and CLAUDE.md's standing sections. The full earlier text is in git at commit f4a5c30.
+
+Stage 2.70 (BUILD 143) — anti-bloat (D-84), five items, no behaviour change.
+
+Item A: stray files removed from tests/ (every screenshot .png, four one-off scripts, two abandoned baseline files) and the repo root (cp3-build-prompts-v2.txt). tests/ now holds only facts/mods/build141/build142/guardrails test files plus screenshots.js/pngdiff.js/autoplay.js/run-all.js.
+
+Item B: the comment rule applied to all eleven js/ files, verified with an AST-diff tool (acorn, position-stripped) confirming SAME for every file — only comments/whitespace changed. Comment share fell well under each file's ceiling (config.js under 50%, every other file under 30%).
+
+Item C: the same rule applied to index.html's HTML and CSS comments, verified with a comment-stripping text-diff tool confirming SAME. Comment share fell from 49% to under 15%.
+
+Item D: CLAUDE.md's standing sections (everything above CONFIRMED WORKING) trimmed to what is true now — every heading kept in order, every LAW/rule sentence kept word for word, build-number narrative and "what a past build did" removed.
+
+Item E: tests/guardrails.test.js — plain Node, no browser — fails when CLAUDE.md passes 80,000 bytes, a CONFIRMED WORKING line passes 300 characters, CURRENT SUBSTAGE holds more than one build, a code file's comment share passes its ceiling, a comment names a build number, or a stray file sits in tests/ or the repo root. tests/run-all.js runs it first, then every other tests/*.test.js in name order; package.json's `npm test` runs that.
+
+Verification: facts 111/111, mods 40/40, build141 22/22, build142 22/22, new guardrails 19/19. Screenshot diff (vs the prior build's set): map 0%, fight 0.174%, die_action 4.781%, card_reward 4.161%, dev_drawer 4.789% — the three panels showing real content (offered mods/cards, log lines) vary with unseeded Math.random() in the screenshot script itself, not with this build's comment-only edits; map and fight, reached before any such roll, matched almost exactly.

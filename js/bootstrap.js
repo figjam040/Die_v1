@@ -73,6 +73,13 @@ document.getElementById('devChromeToggleBtn').addEventListener('click', function
   refreshInspector();
 });
 
+// Player-facing display toggle for the log panel; gameState.ui.logOpen is
+// a display flag only, never part of the run record.
+document.getElementById('logToggleBtn').addEventListener('click', function() {
+  log('[CLICK] LOG toggle');
+  updateUi({ logOpen: !gameState.ui.logOpen });
+});
+
 document.getElementById('devPauseBeforeRollCheckbox').addEventListener('change', function() {
   devPauseBeforeFirstRoll = this.checked;
   log('[DEV] pause before first roll: ' + (devPauseBeforeFirstRoll ? 'on' : 'off'));
