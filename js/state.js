@@ -51,7 +51,8 @@ const gameState = {
     pontifexDoubleAttackThisRound: false,
     name: 'test_enemy',
     natOneFiredThisFight: false,
-    buffPoisonStacks: GAME_CONFIG.ENEMY_BUFF_POISON_STACKS
+    buffPoisonStacks: GAME_CONFIG.ENEMY_BUFF_POISON_STACKS,
+    aweStacks: 0
   },
 
   die: {

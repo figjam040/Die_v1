@@ -976,6 +976,27 @@ function assertNoErrors(page) {
     await page.close();
   });
 
+  await runTest(browser, 'Dread: applies 4 stacks of awe', async (browser) => {
+    const page = await freshFightPage(browser);
+    const before = await page.evaluate(() => gameState.enemy.aweStacks);
+    await triggerMod(page, 'dread');
+    const after = await page.evaluate(() => gameState.enemy.aweStacks);
+    assert.strictEqual(after - before, 4, 'expected exactly +4 stacks of awe');
+    assertNoErrors(page);
+    await page.close();
+  });
+
+  await runTest(browser, 'Genuflect: 6 block, applies 3 stacks of awe', async (browser) => {
+    const page = await freshFightPage(browser);
+    const before = await page.evaluate(() => ({ block: gameState.player.block, awe: gameState.enemy.aweStacks }));
+    await triggerMod(page, 'genuflect');
+    const after = await page.evaluate(() => ({ block: gameState.player.block, awe: gameState.enemy.aweStacks }));
+    assert.strictEqual(after.block - before.block, 6, 'expected exactly +6 block');
+    assert.strictEqual(after.awe - before.awe, 3, 'expected exactly +3 stacks of awe');
+    assertNoErrors(page);
+    await page.close();
+  });
+
   await browser.close();
 
   const failed = results.filter(r => !r.pass);

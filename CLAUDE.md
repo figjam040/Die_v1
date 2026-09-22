@@ -85,6 +85,7 @@ If you are writing gameState.anything = x outside a helper function, stop.
 Mods trigger. Never fire. Never activate. Always trigger.
 Soul is the resource spent on cards. Never energy.
 A loaded face has a mod. A blank face does not.
+Status: stacks of poison, stacks of awe. Never a bare number of either.
 
 ---
 
@@ -352,7 +353,7 @@ Cards live in config.cards. Not config.mods.
 
 # CARDS
 
-Thirty-nine cards defined in total: the three Ring 0 cards the run always starts with, plus the reward pool (config.cardPool) the reward screen draws its three offered options from. Both live in the same config.cards object; cardPool holds references to the same objects, not copies.
+Forty-three cards defined in total: the three Ring 0 cards the run always starts with, plus the reward pool (config.cardPool) the reward screen draws its three offered options from. Both live in the same config.cards object; cardPool holds references to the same objects, not copies.
 
 Ring 0 — the starting deck (5 Strike, 4 Ward, 1 Rite, 10 cards):
 Strike — 1 soul, attack — 5 damage.
@@ -511,7 +512,7 @@ Die mods live in config.mods. Not config.cards.
 
 # MODS
 
-Twenty-five mods, all in config.mods. Consecrate is excluded from the reward pool because it is already loaded on the Ordained's starting die (see CLASS OBJECT STRUCTURE); the other twenty-four are reward-eligible, each carrying a tier ('common'/'uncommon'/'rare') and a tags list. See MOD_DESCRIPTION (rendering.js) for the live, plain-text description of every mod — that table is the source a player reads from.
+Twenty-seven mods, all in config.mods. Consecrate is excluded from the reward pool because it is already loaded on the Ordained's starting die (see CLASS OBJECT STRUCTURE); the other twenty-six are reward-eligible, each carrying a tier ('common'/'uncommon'/'rare') and a tags list. See MOD_DESCRIPTION (rendering.js) for the live, plain-text description of every mod — that table is the source a player reads from.
 
 Consecrate (anchor) — +2 soul this turn; each card played this turn also generates 3 block, turn-scoped.
 Fervour — registers a turn-scoped DAMAGE_MULTIPLIER listener that doubles damage tagged 'attack' only (poison ticks are untouched). The first and only mod that uses the multiplier stage of the pipeline.
@@ -521,7 +522,7 @@ Ordain — 10 damage, then permanently adds 1 weight to the specific face it tri
 Elevation — 10 damage; the face directly above the triggering face (faceNumber + 1) permanently gains +1 weight, but only if that face is loaded and is not face GAME_CONFIG.DIE_SIZE.PLAYER (20). If the face above is blank or is face 20, only the 10 damage happens — no weight write, no error. Like Ordain, the weight write goes through the shared strengthenFace() (pipeline.js) — the only place any face's weight is ever written.
 Anthem — 6 damage, plus 4 per point of weight on its own face (weight 1 -> 10, weight 2 -> 14, weight 3 -> 18). Reuses dealDamage() tagged 'attack' and gameState.turn.rolledFaceWeight (Covenant's own read). Reads weight only; writes nothing.
 
-The other reward-eligible mods (Smite, Penance, Offering, Blight, Virulence, Sanctuary, Largesse, Tithe, Congregation, Cope, Anathema, Thurible, Magnificat, Unison, Accord, Kinship, Concord, Herald) each have a plain, direct effect described in MOD_DESCRIPTION — see that table rather than duplicating the numbers here.
+The other reward-eligible mods (Smite, Penance, Offering, Blight, Virulence, Sanctuary, Largesse, Tithe, Congregation, Cope, Anathema, Thurible, Magnificat, Unison, Accord, Kinship, Concord, Herald, Dread, Genuflect) each have a plain, direct effect described in MOD_DESCRIPTION — see that table rather than duplicating the numbers here.
 
 ---
 
@@ -685,7 +686,7 @@ ENEMY BLOCK — the right 300px column of the stats band (228px tall, 300px / ha
 
 PLAYER BLOCK — the left 300px column of the same band. ORDAINED, HP with #playerHpValue, BL with #playerBlockValue, SOUL with #playerSoulValue, then #playerStatusRow on the same icon rule: P plus stacks of poison in --enemy-mod, PN for Penitence in --nat, D plus the amount for Drain in --player-mod, S for a Seal in --muted. Then #playerDebuffsValue, #playerDrainLine when it applies, and DECK #playerDeckValue DISCARD #playerDiscardValue.
 
-HAND ROW — #handRow, centred in the stats band's middle column, cards 144 by 216px, 2px --player-mod border: cost badge top right, a 100px art placeholder, the name at 12px var(--game-font), the effect text at 20px var(--game-font-2). Unaffordable cards sit at opacity 0.4; every card carries its name and effect as a title. #endTurnBtn (128 by 44px) sits immediately right of the last card, vertically centred on the hand row (align-self: center).
+HAND ROW — #handRow, centred in the stats band's middle column, cards 144 by 216px, 2px --player-mod border: cost badge top right, a 100px art placeholder, the name at 12px var(--game-font), the effect text at 20px var(--game-font-2). Unaffordable cards sit at opacity 0.4; every card carries its name and effect as a title. #endTurnBtn (128 by 44px) sits immediately right of the last card, vertically centred on the hand row (align-self: center). Every hand card's art placeholder and every card in the card reward panel holds an img child, src art/cards/<id>.png, pixelated and object-fit contain, hidden with an empty box on load failure — no art files ship in this build.
 
 DIE COLUMN (now the face row) — #playerDieList, the bottom band's middle column, twenty squares in one horizontal row, face 1 at the left and face 20 at the right (D-10 as amended 22 Sep 2026). Each square is a .face-btn capped at 56px, square by aspect-ratio, shrinking together when the column is narrower, 8px gap, 2px border: blank faces --line with a --blank number, loaded faces --player-mod, faces 1 and 20 --nat. The rolled face fills --text with a black number and holds for the round — a blank roll holds the same way a loaded roll does, its own flash class on the roll itself then the plain sustained look for the rest of the round; a hopped face takes the same look; a sealed face keeps its own colour at opacity 0.5. Under each square, 17px var(--game-font-2) --blank: the weight as a bare number, NAT 1 / NAT 20 on those two faces, SEALED or SEALED NEXT ROUND on a sealed one. Each square's title reads "Blight · weight 1 · triggered 2 times this run · Bound" then the existing hover sentence. Rows are still built face 20 first and flipped by flex-direction: row-reverse, so nothing that indexes the row list changes; .die-mod-wrap (mod names, ×N weight, trigger-count badges, Bound badge) stays in the DOM, hidden, and is what those words are read from. The dev force-roll click and its hover state are unchanged. #enemyDieList stays in the DOM, display:none, still rendered every frame — its content reads off #enemyBuffsValue and the die icons instead.
 
@@ -723,12 +724,15 @@ Stage 2.72 (BUILD 145) — layout pass: horizontal face row 1 to 20, die icons, 
 Stage 2.73 (BUILD 146) — CLAUDE.md trim, window scaling, End Turn/hand-card resize, intent icon hover sentence, character art loading. No number or mechanic changed. 111 facts, 40 mods, 22/22 build141/142, 19 guardrails, 13 build144, 23 build145, 11 build146.
 Stage 2.74 (BUILD 147) — intent hover box, console filter narrowed to art/, blank rolled face holds like a loaded one, die icon number gets a black backing. No number or mechanic changed. 111 facts, 40 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9 build144-147.
 Stage 2.75 (BUILD 148) — KI-28 Charge break now counts the release round's poison tick, run transcript, log Play/All views, log full screen, zoom-block check (none found). 111 facts, 40 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11 build144-148.
+Stage 2.76 (BUILD 149) — the awe status, Dread, Genuflect, Kneel, Compline, Tremendum, Mysterium, card art loading. 111 facts, 42 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11/15 build144-149.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.75 (BUILD 148) — five independent items, no number or mechanic changed except item 5's own bug fix. (1) KI-28: phase-machine.js's START_OF_TURN now calls advanceEnemyIntentForRound() after both poison ticks and the enemy-death check, not before — so a Charge's break check counts the release round's own poison tick, per F34; the pipeline.js comment and F34's wording (CLAUDE.md, config.js header) now describe the true order. (2) Run transcript: gameState.run.transcript (plain-text lines, last run only, mirrored to localStorage under dieRunTranscript by the one shared appendTranscript()) records FIGHT/round/WON-LOST/reward lines as they happen — see RUN RECORD. (3) Log Play/All views: gameState.ui.logView, a #logViewToggleBtn, and CSS hiding `.log-state`/`.log-listener` lines in Play view (still written to the DOM). (4) Log full screen: while gameState.ui.logOpen, .right-col is a fixed, inset:0 overlay over the whole viewport (24px padding, black background, VT323 22px) with its own #logCloseBtn — the fight keeps rendering underneath. (5) Confirmed no viewport meta, keydown, wheel or touch-action rule blocks the browser's own zoom; applyScale() already composes with it via window.innerWidth/innerHeight.
+Stage 2.76 (BUILD 149) — three independent items, no existing number or mechanic changed. (1) The awe status: gameState.enemy.aweStacks, 0 at fight start, set through the one shared applyAwe(stacks) (js/cards-mods.js); decays by 1 at START_OF_TURN, in the same place the enemy's own poison ticks and before advanceEnemyIntentForRound(); in ENEMY_ACT_PHASE (js/phase-machine.js), an Attack's damage (Wrath already applied) is lowered by the enemy's stacks of awe, floored at 0, before block — a Charge release, Afflict and a Nat are untouched. Shown as an A-badge (`.status-awe`, --tag-awe purple) beside stacks of poison in #enemyStatusRow, and appended to the Attack intent's hover sentence. (2) The awe cluster: two mods (Dread, common, applies 4 stacks of awe; Genuflect, uncommon, 6 block + 3 stacks of awe) and four cards (Kneel, common, applies 3; Compline, common, 4 block + 2; Tremendum, uncommon, 4 damage + 2 per stack of awe on the enemy, capped at 12; Mysterium, rare, 3 damage per stack of awe, capped at 12, stacks unchanged), all tagged 'awe', all loadable/offerable exactly like any other mod or card — mod pool 25 to 27, reward pool 36 to 40. (3) Card art loading: attachCardArtImg() (js/rendering.js) gives every hand card's art placeholder and every card reward button an img child, src art/cards/<id>.png, pixelated and object-fit contain; a load failure hides the img, leaving an empty box. art/cards/ (with .gitkeep) is new; no image files ship in this build.
+
+Verification: guardrails 19/19, facts 111/111, mods 42/42, build141 22/22, build142 22/22, build144 13/13, build145 23/23, build146 11/11, build147 9/9, build148 11/11, new tests/build149.test.js 15/15.
 
 Full write-ups for earlier builds: HISTORY.md.

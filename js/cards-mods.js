@@ -80,6 +80,16 @@ function playCard(handIndex) {
   checkWinNow();
 }
 
+// ---------- AWE ----------
+
+// The one setter for gameState.enemy.aweStacks — every mod/card that
+// applies awe calls this instead of writing the field directly.
+function applyAwe(stacks) {
+  const newStacks = gameState.enemy.aweStacks + stacks;
+  updateEnemy({ aweStacks: newStacks });
+  log('[AWE] applied ' + stacks + ' stacks of awe, now ' + newStacks + ' stacks of awe');
+}
+
 // ---------- INIT ----------
 
 function init() {
@@ -617,6 +627,44 @@ function init() {
     }
   };
 
+  // ---------- AWE CARDS ----------
+  // Kneel, Compline, Tremendum, Mysterium — all read/apply
+  // gameState.enemy.aweStacks via applyAwe() (cards-mods.js).
+
+  gameState.config.cards['kneel'] = {
+    id: 'kneel', name: 'Kneel', soulCost: 1, type: 'utility', classRestriction: null, tier: 'common', tags: ['awe'],
+    effect: function(gameState) {
+      applyAwe(3);
+    }
+  };
+
+  gameState.config.cards['compline'] = {
+    id: 'compline', name: 'Compline', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: ['awe'],
+    effect: function(gameState) {
+      const block = dealBlock(4, 'compline');
+      applyAwe(2);
+      log('[CARD] compline: ' + block + ' block');
+    }
+  };
+
+  gameState.config.cards['tremendum'] = {
+    id: 'tremendum', name: 'Tremendum', soulCost: 1, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['awe'],
+    effect: function(gameState) {
+      const rawDamage = Math.min(12, 4 + 2 * gameState.enemy.aweStacks);
+      const damage = dealDamage('enemy', rawDamage, 'attack', 'tremendum');
+      log('[CARD] tremendum: ' + damage + ' damage');
+    }
+  };
+
+  gameState.config.cards['mysterium'] = {
+    id: 'mysterium', name: 'Mysterium', soulCost: 0, type: 'attack', classRestriction: null, tier: 'rare', tags: ['awe'],
+    effect: function(gameState) {
+      const rawDamage = Math.min(12, 3 * gameState.enemy.aweStacks);
+      const damage = dealDamage('enemy', rawDamage, 'attack', 'mysterium');
+      log('[CARD] mysterium: ' + damage + ' damage, stacks of awe unchanged');
+    }
+  };
+
   gameState.config.cardPool = {
     rebuke: gameState.config.cards['rebuke'],
     censure: gameState.config.cards['censure'],
@@ -653,7 +701,11 @@ function init() {
     reverberation: gameState.config.cards['reverberation'],
     kyrie: gameState.config.cards['kyrie'],
     novena: gameState.config.cards['novena'],
-    canticle: gameState.config.cards['canticle']
+    canticle: gameState.config.cards['canticle'],
+    kneel: gameState.config.cards['kneel'],
+    compline: gameState.config.cards['compline'],
+    tremendum: gameState.config.cards['tremendum'],
+    mysterium: gameState.config.cards['mysterium']
   };
 
   // Ordained class
@@ -1333,6 +1385,33 @@ function init() {
       }
       grantBoundToFace(target.number);
       log('[MOD] herald: ' + damage + ' damage, face ' + target.number + ' granted Bound for the fight');
+    }
+  };
+
+  // ---------- AWE PIECES ----------
+  // Dread, Genuflect (mods); Kneel, Compline, Tremendum, Mysterium (cards,
+  // defined with the rest of the card pool above). All six use applyAwe()
+  // (cards-mods.js) — the one setter for gameState.enemy.aweStacks.
+
+  gameState.config.mods['dread'] = {
+    id: 'dread',
+    name: 'Dread',
+    tier: 'common',
+    tags: ['awe'],
+    effect: function() {
+      applyAwe(4);
+    }
+  };
+
+  gameState.config.mods['genuflect'] = {
+    id: 'genuflect',
+    name: 'Genuflect',
+    tier: 'uncommon',
+    tags: ['awe'],
+    effect: function() {
+      const block = dealBlock(6, 'genuflect');
+      applyAwe(3);
+      log('[MOD] genuflect: ' + block + ' block');
     }
   };
 

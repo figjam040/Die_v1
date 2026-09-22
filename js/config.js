@@ -27,8 +27,8 @@
 // F18 (BUILD 142) intent: opening 4–12, normals 6–18, elite 10–18, boss 10–20 — every enemy acts from a pattern (F36, F37)
 // F19 enemy buff applies 3 stacks of poison (act 1), scaled per act to 4 (act 2) and 5 (act 3) · F20 (BUILD 142) act 1 elite (Lector) buff faces 3 and 9, both poison, 12-sided, no Nat faces · F21 (BUILD 142) act 1 boss (Hierophant) buff faces 5, 10, 15, all poison, plus Nat 20 and Nat 1
 // F22 enemy Nat 20 every loaded buff triggers, ascending, repeatable · F23 enemy Nat 1 attack cancelled, self-applies a flat 5 stacks of poison, once per fight
-// F24 mods 25 (checkpoint 3, the remaining Bound pieces, BUILD 134: 2 new — Concord, Herald; 24 offerable plus Consecrate, tiers 12 common/8 uncommon/4 rare), each asserted by tests/mods.test.js
-// F25 cards 36 (checkpoint 3, the remaining Bound pieces, BUILD 134: 3 new — Kyrie, Novena, Canticle; tiers 18 common/12 uncommon/6 rare), each asserted by tests/facts.test.js
+// F24 mods 27 (BUILD 149: +Dread, Genuflect; 26 offerable plus Consecrate, tiers 13/9/4), each asserted by tests/mods.test.js
+// F25 cards 40 (BUILD 149: +Kneel, Compline, Tremendum, Mysterium; tiers 20/13/7), each asserted by tests/facts.test.js
 // F26 files under /js/: eleven — config, state, listener-registry, audio, pipeline, cards-mods, run-and-map, phase-machine, rendering, dev-tools, bootstrap
 // F27 pitch chains cap 8, reset at START_OF_TURN
 // F28 (corrected BUILD 102 — see paste-back) sound duration ceiling 200 ms holds for every frequent sound (roll, card plays, damage, block, end turn, mod trigger, die action, card reward, fight_start_normal/elite); nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it — all six are rare, at most once per fight-ending event, boss fight, or Nat roll, measured live via tests/facts.test.js, not just the two Nat sounds the fact previously named
@@ -42,11 +42,12 @@
 // F31 (BUILD 125, corrected BUILD 142) three acts; per-act enemy HP multiplier 1.0/1.4/1.9, applied at enemy creation (buildAct()) with Math.ceil; the intent multiplier 1.0/1.2/1.45 no longer scales a pattern's own numbers (BUILD 142) — it sets only the enemy buff's poison-stack amount, the same way (also Math.ceil, also fixed at enemy creation); the enemy Nat 1 self-poison stays a flat, unscaled amount
 // F32 (BUILD 125) beating the act 1 or act 2 boss grants a card reward and one die reward, exactly like any other fight win; the act 3 boss is VICTORY with no reward (D-22)
 // F40 (BUILD 143) npm test runs every test file; guardrails.test.js fails on CLAUDE.md size, CONFIRMED WORKING line length, stale CURRENT SUBSTAGE, comment share, a build number in a comment, or a stray file
+// F41 (BUILD 149) stacks of awe lower an Attack's damage to no less than 0, after Wrath, then decay by 1 at START_OF_TURN
 // ============================================================
 
 const GAME_CONFIG = {
 
-  BUILD: 148,
+  BUILD: 149,
 
   PLAYER_MAX_HP: 70,
   PLAYER_MAX_SOUL: 3,

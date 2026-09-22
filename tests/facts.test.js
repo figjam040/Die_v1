@@ -286,17 +286,17 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.close();
   });
 
-  await runTest('F24 mods 20', async () => {
+  await runTest('F24 mods 27', async () => {
     const page = await freshPage(browser);
     const n = await page.evaluate(() => Object.keys(gameState.config.mods).length);
-    specOnlyEqual(n, 25, 'F24: twenty-five real mods (documented fact — the mod pool is a single, self-declared source, no independent oracle to check its count against)');
+    specOnlyEqual(n, 27, 'F24: twenty-seven real mods (documented fact — the mod pool is a single, self-declared source, no independent oracle to check its count against)');
     await page.close();
   });
 
-  await runTest('F25 cards 33 (reward pool)', async () => {
+  await runTest('F25 cards 40 (reward pool)', async () => {
     const page = await freshPage(browser);
     const n = await page.evaluate(() => Object.keys(gameState.config.cardPool).length);
-    specOnlyEqual(n, 36, 'F25: thirty-six reward-pool cards (documented fact — a single, self-declared source, no independent oracle to check its count against)');
+    specOnlyEqual(n, 40, 'F25: forty reward-pool cards (documented fact — a single, self-declared source, no independent oracle to check its count against)');
     await page.close();
   });
 
@@ -858,7 +858,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     // other real mod is on no face at all this run.
     assert.strictEqual(counts.elevation, 0, 'a mod never loaded this run must still appear, at 0, not be missing from the object');
     assert.ok(Object.prototype.hasOwnProperty.call(counts, 'elevation'), 'the key itself must exist, not just read as undefined');
-    assert.strictEqual(Object.keys(counts).length, 25, 'expected all twenty-five real mods present, every one of them, loaded or not');
+    assert.strictEqual(Object.keys(counts).length, 27, 'expected all twenty-seven real mods present, every one of them, loaded or not');
     await page.close();
   });
 
@@ -1027,7 +1027,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       const missing = modIds.filter(function(id) { return !MOD_DESCRIPTION[id]; });
       return { total: modIds.length, missing: missing };
     });
-    assert.strictEqual(v.total, 25, 'expected twenty-five real mods');
+    assert.strictEqual(v.total, 27, 'expected twenty-seven real mods');
     assert.deepStrictEqual(v.missing, [], 'every mod must have a MOD_DESCRIPTION entry: missing ' + JSON.stringify(v.missing));
     await page.close();
   });
@@ -1282,13 +1282,13 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page); // #dieActionPanel/dieActionStep exist regardless of screen, but this matches every other die-action test's setup
     const seventeenLoadedMods = ['fervour', 'sanctuary', 'virulence', 'smite', 'blight', 'elevation', 'zeal', 'offering', 'anthem', 'ordain', 'largesse', 'tithe', 'congregation', 'cope', 'anathema', 'thurible', 'magnificat'];
-    const secondSlotMods = ['unison', 'accord', 'kinship', 'concord', 'herald'];
+    const secondSlotMods = ['unison', 'accord', 'kinship', 'concord', 'herald', 'dread', 'genuflect'];
     await page.evaluate(({ modIds, secondSlotModIds }) => {
       const newFaces = gameState.die.faces.slice();
       // Faces 2-9, 11-19 (0-indexed 1-8, 10-18) — seventeen blank faces,
       // every face except 1 (NAT_ONE), 10 (consecrate, the anchor) and 20
-      // (NAT_TWENTY). The first five of those also take a modId2, to fit
-      // all twenty-two loaded mods onto seventeen faces.
+      // (NAT_TWENTY). The first seven of those also take a modId2, to fit
+      // all twenty-four loaded mods onto seventeen faces.
       const targetIndices = [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18];
       targetIndices.forEach(function(idx, i) {
         newFaces[idx] = Object.assign({}, newFaces[idx], { modId: modIds[i] });
@@ -1353,7 +1353,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       // BUILD 133 — checkpoint 3, Bound engine.
       unison: 'common', accord: 'common', kinship: 'common',
       // BUILD 134 — checkpoint 3, the remaining Bound pieces.
-      concord: 'uncommon', herald: 'rare'
+      concord: 'uncommon', herald: 'rare',
+      // BUILD 149 — the awe cluster.
+      dread: 'common', genuflect: 'uncommon'
     });
     await liveBrowser.close();
   });
@@ -1379,7 +1381,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       // BUILD 132 — checkpoint 3, trigger a face outside a roll (prompt D).
       threnody: 'uncommon', reverberation: 'rare',
       // BUILD 134 — checkpoint 3, the remaining Bound pieces.
-      kyrie: 'common', canticle: 'uncommon', novena: 'rare'
+      kyrie: 'common', canticle: 'uncommon', novena: 'rare',
+      // BUILD 149 — the awe cluster.
+      kneel: 'common', compline: 'common', tremendum: 'uncommon', mysterium: 'rare'
     });
     await liveBrowser.close();
   });
@@ -1407,8 +1411,8 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       const cardTotals = tally(Object.keys(gameState.config.cardPool), function(id) { return gameState.config.cardPool[id].tier || null; });
       return { modTotals: modTotals, cardTotals: cardTotals };
     });
-    assert.deepStrictEqual(totals.modTotals, { common: 12, uncommon: 8, rare: 4 }, 'offerable mods must be 12 common, 8 uncommon, 4 rare (Consecrate excluded, it carries no tier)');
-    assert.deepStrictEqual(totals.cardTotals, { common: 18, uncommon: 12, rare: 6 }, 'reward cards must be 18 common, 12 uncommon, 6 rare');
+    assert.deepStrictEqual(totals.modTotals, { common: 13, uncommon: 9, rare: 4 }, 'offerable mods must be 13 common, 9 uncommon, 4 rare (Consecrate excluded, it carries no tier)');
+    assert.deepStrictEqual(totals.cardTotals, { common: 20, uncommon: 13, rare: 7 }, 'reward cards must be 20 common, 13 uncommon, 7 rare');
     await liveBrowser.close();
   });
 
@@ -1555,7 +1559,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       // BUILD 133 — checkpoint 3, Bound engine.
       unison: ['bound'], accord: ['bound'], kinship: ['bound', 'poison'],
       // BUILD 134 — checkpoint 3, the remaining Bound pieces.
-      concord: ['bound', 'soul'], herald: ['bound']
+      concord: ['bound', 'soul'], herald: ['bound'],
+      // BUILD 149 — the awe cluster.
+      dread: ['awe'], genuflect: ['awe']
     });
     await liveBrowser.close();
   });
@@ -1587,7 +1593,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       // BUILD 132 — checkpoint 3, trigger a face outside a roll (prompt D).
       threnody: ['growth'], reverberation: ['mass'],
       // BUILD 134 — checkpoint 3, the remaining Bound pieces.
-      kyrie: ['bound'], novena: ['bound'], canticle: ['bound']
+      kyrie: ['bound'], novena: ['bound'], canticle: ['bound'],
+      // BUILD 149 — the awe cluster.
+      kneel: ['awe'], compline: ['awe'], tremendum: ['awe'], mysterium: ['awe']
     });
     await liveBrowser.close();
   });
@@ -2380,7 +2388,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       const missing = poolIds.filter(function(id) { return !CARD_EFFECT_TEXT[id]; });
       return { total: poolIds.length, missing: missing };
     });
-    assert.strictEqual(v.total, 36, 'expected thirty-six reward-pool cards');
+    assert.strictEqual(v.total, 40, 'expected forty reward-pool cards');
     assert.deepStrictEqual(v.missing, [], 'every reward-pool card must have a CARD_EFFECT_TEXT entry: missing ' + JSON.stringify(v.missing));
     await liveBrowser.close();
   });

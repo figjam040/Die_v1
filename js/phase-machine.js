@@ -109,6 +109,12 @@ function runPhase(phase) {
       return;
     }
 
+    if (gameState.enemy.aweStacks > 0) {
+      const aweRemaining = gameState.enemy.aweStacks - 1;
+      updateEnemy({ aweStacks: aweRemaining });
+      log('[AWE] ' + aweRemaining + ' stacks of awe remaining');
+    }
+
     // Enemies act from a repeating pattern of 1-4 intents — see
     // advanceEnemyIntentForRound() (pipeline.js). Runs after the enemy's own
     // poison tick above so a Charge's break check counts that tick (KI-28).
@@ -220,7 +226,12 @@ function runPhase(phase) {
       actionSummary = 'afflict ' + stacks;
       advanceEnemyPattern();
     } else {
-      const intent = entry ? entry.rolledValue : 0;
+      const rolledIntent = entry ? entry.rolledValue : 0;
+      const aweStacks = gameState.enemy.aweStacks;
+      const intent = aweStacks > 0 ? Math.max(0, rolledIntent - aweStacks) : rolledIntent;
+      if (aweStacks > 0) {
+        log('[ENEMY] attack ' + rolledIntent + ' lowered by ' + aweStacks + ' stacks of awe to ' + intent);
+      }
       const rawDamage = Math.max(0, intent - block);
       const blockedAmount = Math.min(intent, block);
       if (blockedAmount > 0) {

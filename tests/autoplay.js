@@ -183,7 +183,7 @@ const CSV_HEADER = 'build,dieRewardRule,riteHeal,seed,lane,facesAtBoss,faceListA
 // rather than being inserted into that order. assertEveryLoadableModIsRanked()
 // below only requires every loadable mod appear exactly once, not in any
 // particular position, so this satisfies it without guessing a rank.
-const LOAD_PRIORITY = ['fervour', 'sanctuary', 'virulence', 'smite', 'blight', 'elevation', 'zeal', 'offering', 'anthem', 'ordain', 'penance', 'vigil', 'largesse', 'tithe', 'congregation', 'cope', 'anathema', 'thurible', 'magnificat', 'unison', 'accord', 'kinship', 'concord', 'herald'];
+const LOAD_PRIORITY = ['fervour', 'sanctuary', 'virulence', 'smite', 'blight', 'elevation', 'zeal', 'offering', 'anthem', 'ordain', 'penance', 'vigil', 'largesse', 'tithe', 'congregation', 'cope', 'anathema', 'thurible', 'magnificat', 'unison', 'accord', 'kinship', 'concord', 'herald', 'dread', 'genuflect'];
 
 function ensureCsvHeader() {
   if (!fs.existsSync(CSV_PATH)) {

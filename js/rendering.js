@@ -792,7 +792,9 @@ function renderEnemyIntent() {
   }
   if (entry.kind === 'attack') {
     labelEl.textContent = '';
-    setValue(entry.rolledValue, 'Attack: deals ' + entry.rolledValue + ' damage this round. Block lowers it.');
+    const aweStacks = gameState.enemy.aweStacks;
+    const aweNote = aweStacks > 0 ? ', lowered by ' + aweStacks + ' stacks of awe' : '';
+    setValue(entry.rolledValue, 'Attack: deals ' + entry.rolledValue + ' damage this round' + aweNote + '. Block lowers it.');
   } else if (entry.kind === 'charge') {
     if (enemy.chargeStage === 'windup') {
       const taken = Math.max(0, enemy.windupStartHp - enemy.hp);
@@ -921,6 +923,9 @@ function renderStatusRows(poisonTitle) {
     if (gameState.enemy.wrath > 0) {
       icon(enemyRow, 'W' + gameState.enemy.wrath, 'status-wrath', 'Wrath: each Attack deals this much more.');
     }
+    if (gameState.enemy.aweStacks > 0) {
+      icon(enemyRow, 'A' + gameState.enemy.aweStacks, 'status-awe', 'Awe: lowers this enemy\'s next Attack by this many stacks, then loses 1 stack at the start of its round.');
+    }
   }
 }
 
@@ -938,6 +943,19 @@ function setArtImage(imgId, labelId, src, labelText) {
     img.onerror = function() { img.style.display = 'none'; label.style.display = ''; };
     img.src = src;
   }
+}
+
+// Card art — art/cards/ is empty, no image files ship in this build. A
+// missing file leaves the img hidden and the box empty, no label, since a
+// card's own name/text already sit outside this box.
+function attachCardArtImg(container, cardId) {
+  const img = document.createElement('img');
+  img.className = 'card-art-img';
+  img.alt = '';
+  img.onerror = function() { img.style.display = 'none'; };
+  img.src = 'art/cards/' + cardId + '.png';
+  container.appendChild(img);
+  return img;
 }
 
 function renderArtBoxes() {
@@ -1065,7 +1083,11 @@ const CARD_EFFECT_TEXT = {
   reverberation: 'The face you rolled triggers again. On a 1 or 20: 6 block instead',
   kyrie: '5 damage, 10 if the rolled face has Bound',
   novena: 'every Bound face triggers',
-  canticle: '6 block. The face you rolled gains Bound for this fight'
+  canticle: '6 block. The face you rolled gains Bound for this fight',
+  kneel: 'applied 3 stacks of awe',
+  compline: '4 block, applied 2 stacks of awe',
+  tremendum: '4 damage + 2 per stack of awe on the enemy, max 12',
+  mysterium: '3 damage per stack of awe on the enemy, max 12, stacks of awe unchanged'
 };
 
 // Every site that draws a card's effect text calls this instead of
@@ -1105,7 +1127,9 @@ const MOD_DESCRIPTION = {
   accord: '10 block. Bound',
   kinship: 'applied 4 stacks of poison. Bound',
   concord: '+1 soul, 3 block. Bound',
-  herald: '6 damage. One other random loaded face gains Bound for this fight. Bound'
+  herald: '6 damage. One other random loaded face gains Bound for this fight. Bound',
+  dread: 'applied 4 stacks of awe',
+  genuflect: '6 block, applied 3 stacks of awe'
 };
 
 const NAT_DESCRIPTION = {
@@ -1161,6 +1185,7 @@ function renderCardButtons() {
     // Placeholder for card art that does not exist yet — /art/ is empty.
     const artEl = document.createElement('span');
     artEl.className = 'hand-card-art';
+    attachCardArtImg(artEl, cardId);
 
     const nameEl = document.createElement('span');
     nameEl.className = 'hand-card-name';
@@ -1534,6 +1559,10 @@ function renderCardRewardPanel() {
     const card = gameState.config.cardPool[cardId];
     const btn = document.createElement('button');
     btn.textContent = card.name + ' (' + card.soulCost + ')';
+    const artEl = document.createElement('span');
+    artEl.className = 'card-reward-art';
+    attachCardArtImg(artEl, cardId);
+    btn.appendChild(artEl);
     const tip = document.createElement('span');
     tip.className = 'hover-tip';
     tip.textContent = getCardEffectText(cardId);
