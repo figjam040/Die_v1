@@ -33,7 +33,9 @@ async function freshPage(browser, viewport) {
   const pageErrors = [];
   const consoleErrors = [];
   page.on('pageerror', (err) => pageErrors.push(err.message));
-  page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+  // location().url carries the failing resource's own path — msg.text()
+  // itself never includes it for a "Failed to load resource" line.
+  page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push({ text: msg.text(), url: msg.location().url || '' }); });
   page.on('dialog', function(d) { d.accept(); });
   await page.goto(FILE_URL);
   await page.waitForFunction(() => typeof gameState !== 'undefined' && gameState.run.screen === 'map');
@@ -173,17 +175,22 @@ async function enterOpeningFight(page) {
   // ITEM (e) — intent icon hover
   // ---------------------------------------------------------------
 
-  await runTest("Item e: #enemyIntentIcon's title equals #enemyIntentValue's title and is not just the kind word", async () => {
+  // BUILD 147 replaced the native title tooltip with a .hover-tip box
+  // (see tests/build147.test.js) — this assertion now checks the same
+  // "full sentence, not just the kind word" guarantee through that box.
+  await runTest("Item e: #enemyIntentIcon's hover text equals #enemyIntentValue's hover text and is not just the kind word", async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     const v = await page.evaluate(() => {
-      const iconTitle = document.getElementById('enemyIntentIcon').getAttribute('title');
-      const valueTitle = document.getElementById('enemyIntentValue').title;
+      const iconTip = document.querySelector('#enemyIntentIcon .hover-tip').textContent;
+      const valueTip = document.querySelector('#enemyIntentValue .hover-tip').textContent;
       const kindWord = document.getElementById('enemyIntentIcon').getAttribute('aria-label');
-      return { iconTitle, valueTitle, kindWord };
+      const noTitle = !document.getElementById('enemyIntentIcon').hasAttribute('title') && !document.getElementById('enemyIntentValue').hasAttribute('title');
+      return { iconTip, valueTip, kindWord, noTitle };
     });
-    assert.strictEqual(v.iconTitle, v.valueTitle, 'icon title must equal value title, got "' + v.iconTitle + '" vs "' + v.valueTitle + '"');
-    assert.notStrictEqual(v.iconTitle, v.kindWord, 'the icon title must be the full sentence, not just the kind word "' + v.kindWord + '"');
+    assert.strictEqual(v.iconTip, v.valueTip, 'icon hover text must equal value hover text, got "' + v.iconTip + '" vs "' + v.valueTip + '"');
+    assert.notStrictEqual(v.iconTip, v.kindWord, 'the icon hover text must be the full sentence, not just the kind word "' + v.kindWord + '"');
+    assert.strictEqual(v.noTitle, true, 'neither element should carry a native title attribute');
     await page.close();
   });
 
@@ -194,22 +201,38 @@ async function enterOpeningFight(page) {
   await runTest('Item f: enemy/player art img src and the no-file fallback', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
+    // Real art files now ship (art/*.png) — both imgs load successfully.
     await page.waitForFunction(() => {
-      const img = document.getElementById('enemyArtImg');
-      return img.getAttribute('data-art-src') === 'art/verger.png';
+      const e = document.getElementById('enemyArtImg');
+      const p = document.getElementById('playerArtImg');
+      return e.naturalWidth > 0 && p.naturalWidth > 0;
     });
-    // The image genuinely has no file to load — wait for its own error event.
-    await page.waitForFunction(() => document.getElementById('enemyArtImg').style.display === 'none');
-    const v = await page.evaluate(() => ({
+    const loaded = await page.evaluate(() => ({
       enemySrc: document.getElementById('enemyArtImg').src,
-      enemyImgHidden: document.getElementById('enemyArtImg').style.display === 'none',
-      enemyLabelVisible: document.getElementById('enemyArtLabel').style.display !== 'none',
-      playerSrc: document.getElementById('playerArtImg').src
+      playerSrc: document.getElementById('playerArtImg').src,
+      enemyImgVisible: document.getElementById('enemyArtImg').style.display !== 'none',
+      enemyLabelHidden: document.getElementById('enemyArtLabel').style.display === 'none',
+      playerImgVisible: document.getElementById('playerArtImg').style.display !== 'none',
+      playerLabelHidden: document.getElementById('playerArtLabel').style.display === 'none'
     }));
-    assert.ok(v.enemySrc.endsWith('art/verger.png'), 'expected enemy art src to end with art/verger.png, got ' + v.enemySrc);
-    assert.strictEqual(v.enemyImgHidden, true, 'the enemy art img must be hidden when no file exists');
-    assert.strictEqual(v.enemyLabelVisible, true, 'the enemy art label must be visible when no file exists');
-    assert.ok(v.playerSrc.endsWith('art/ordained.png'), 'expected player art src to end with art/ordained.png, got ' + v.playerSrc);
+    assert.ok(loaded.enemySrc.endsWith('art/verger.png'), 'expected enemy art src to end with art/verger.png, got ' + loaded.enemySrc);
+    assert.ok(loaded.playerSrc.endsWith('art/ordained.png'), 'expected player art src to end with art/ordained.png, got ' + loaded.playerSrc);
+    assert.strictEqual(loaded.enemyImgVisible, true, 'the enemy art img must be visible once loaded');
+    assert.strictEqual(loaded.enemyLabelHidden, true, 'the enemy art label must be hidden once loaded');
+    assert.strictEqual(loaded.playerImgVisible, true, 'the player art img must be visible once loaded');
+    assert.strictEqual(loaded.playerLabelHidden, true, 'the player art label must be hidden once loaded');
+
+    // Now test the fallback directly, by forcing a missing file.
+    await page.evaluate(() => {
+      document.getElementById('enemyArtImg').src = 'art/no-such-file.png';
+    });
+    await page.waitForFunction(() => document.getElementById('enemyArtImg').style.display === 'none');
+    const fallback = await page.evaluate(() => ({
+      enemyImgHidden: document.getElementById('enemyArtImg').style.display === 'none',
+      enemyLabelVisible: document.getElementById('enemyArtLabel').style.display !== 'none'
+    }));
+    assert.strictEqual(fallback.enemyImgHidden, true, 'the enemy art img must be hidden when its file fails to load');
+    assert.strictEqual(fallback.enemyLabelVisible, true, 'the enemy art label must be visible when its file fails to load');
     await page.close();
   });
 
@@ -221,11 +244,10 @@ async function enterOpeningFight(page) {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.waitForTimeout(300);
-    // The art-loading feature (item 8) deliberately ships no art/*.png
-    // files this build — the browser's own "resource not found" console
-    // line for #playerArtImg/#enemyArtImg is the expected fallback path,
-    // not a bug, so it is excluded here.
-    const realConsoleErrors = page._consoleErrors.filter((m) => m.indexOf('Failed to load resource') === -1);
+    // A missing art/*.png is the expected fallback path, not a bug —
+    // excluded only when the resource path is under art/. Any other
+    // "resource not found" (a script, font, audio file) still fails.
+    const realConsoleErrors = page._consoleErrors.filter((m) => !(m.text.indexOf('Failed to load resource') !== -1 && m.url.indexOf('art/') !== -1)).map((m) => m.text);
     assert.deepStrictEqual(page._pageErrors, [], 'page errors: ' + page._pageErrors.join('; '));
     assert.deepStrictEqual(realConsoleErrors, [], 'console errors: ' + realConsoleErrors.join('; '));
     await page.close();

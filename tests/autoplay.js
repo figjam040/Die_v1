@@ -229,13 +229,16 @@ async function freshPage(browser, seed) {
   const errors = [];
   page.on('dialog', function(d) { d.accept(); });
   page.on('pageerror', function(err) { errors.push('pageerror: ' + err.message); });
-  // Art loading (BUILD 146) deliberately ships no art/*.png files yet —
-  // the browser's own "resource not found" line for #playerArtImg/
-  // #enemyArtImg is the expected fallback path, not a bug.
+  // A missing art/*.png (e.g. an enemy with no portrait yet) is the
+  // expected fallback path, not a bug — dropped only when the resource
+  // path is under art/. Any other "resource not found" (a script, font,
+  // audio file) still fails the test. The failing URL lives on
+  // msg.location().url, never in msg.text() itself.
   page.on('console', function(msg) {
-    if (msg.type() === 'error' && msg.text().indexOf('Failed to load resource') === -1) {
-      errors.push('console: ' + msg.text());
-    }
+    if (msg.type() !== 'error') return;
+    const text = msg.text();
+    const isArtFailure = text.indexOf('Failed to load resource') !== -1 && (msg.location().url || '').indexOf('art/') !== -1;
+    if (!isArtFailure) errors.push('console: ' + text);
   });
   await page.addInitScript(installSeededRandom, seed);
   await page.goto(FILE_URL);

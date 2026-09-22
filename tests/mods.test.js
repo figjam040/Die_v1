@@ -33,10 +33,16 @@ async function freshFightPage(browser) {
   const page = await browser.newPage();
   const consoleErrors = [];
   const pageErrors = [];
-  // Art loading (BUILD 146) deliberately ships no art/*.png files yet —
-  // the browser's own "resource not found" line for #playerArtImg/
-  // #enemyArtImg is the expected fallback path, not a bug.
-  page.on('console', msg => { if (msg.type() === 'error' && msg.text().indexOf('Failed to load resource') === -1) consoleErrors.push(msg.text()); });
+  // A missing art/*.png (e.g. an enemy with no portrait yet) is the
+  // expected fallback path, not a bug — dropped only when the resource
+  // path is under art/. Any other "resource not found" (a script, font,
+  // audio file) still fails the test. The failing URL lives on
+  // msg.location().url, never in msg.text() itself.
+  page.on('console', msg => {
+    if (msg.type() !== 'error') return;
+    const isArtFailure = msg.text().indexOf('Failed to load resource') !== -1 && (msg.location().url || '').indexOf('art/') !== -1;
+    if (!isArtFailure) consoleErrors.push(msg.text());
+  });
   page.on('pageerror', err => pageErrors.push(err.message));
   await page.goto(FILE_URL);
   await page.waitForFunction(() => typeof gameState !== 'undefined' && gameState.run.screen === 'map');

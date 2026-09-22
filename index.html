@@ -239,6 +239,7 @@
   }
 
   #enemyIntentIcon {
+    position: relative;
     width: 40px;
     height: 40px;
     flex-shrink: 0;
@@ -247,7 +248,14 @@
 
   #enemyIntentIcon svg { width: 40px; height: 40px; display: block; }
 
+  #enemyIntentIcon:hover .hover-tip,
+  #enemyIntentValue:hover .hover-tip {
+    opacity: 1;
+    visibility: visible;
+  }
+
   #enemyIntentValue {
+    position: relative;
     font-family: var(--game-font);
     font-size: 26px;
     font-weight: bold;
@@ -492,8 +500,13 @@
     align-items: center;
     justify-content: center;
     font-family: var(--game-font);
-    font-size: 22px;
+    font-size: 26px;
     font-weight: bold;
+  }
+
+  .die-icon-number-text {
+    background: #000000;
+    padding: 4px;
   }
 
   .die-icon-side {
@@ -1490,7 +1503,7 @@
 <div class="top-bar">
   <div class="top-bar-left">
     <div>
-      <div id="buildStamp">DIE V1 — STAGE 2.72 BUILD <span id="buildStampNumber"></span></div>
+      <div id="buildStamp">DIE V1 — STAGE 2.74 BUILD <span id="buildStampNumber"></span></div>
       <div class="top-bar-tokens">
         <!-- No gold mechanic exists in V1; this reads gameState.run.gold if
              that field is ever added, and an em dash until then. -->

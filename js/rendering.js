@@ -491,10 +491,12 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     // The rolled-face highlight. isNewRollThisRender picks the animated
     // -flash class only on the render right after an actual new roll;
     // later re-renders of the same roll get the plain sustained class.
-    // Blanks have no sustained class — once flashed, nothing more.
+    // A blank rolled face holds the same way a loaded one does (D-10):
+    // its own flash class on the new-roll render, then die-row-rolled
+    // on every later render of that round.
     if (tracksRolledFace && trackedRolledFaceNumber === face.number) {
       if (trackedRollOutcome === 'blank') {
-        if (isNewRollThisRender) { row.classList.add('die-row-rolled-blank-flash'); }
+        row.classList.add(isNewRollThisRender ? 'die-row-rolled-blank-flash' : 'die-row-rolled');
       } else {
         row.classList.add(isNewRollThisRender ? 'die-row-rolled-flash' : 'die-row-rolled');
       }
@@ -721,15 +723,14 @@ function renderIntentIcon(kindWord, sentence) {
   if (!kindWord || !INTENT_ICON_SHAPES[kindWord]) {
     el.innerHTML = '';
     el.removeAttribute('aria-label');
-    el.removeAttribute('title');
     return;
   }
-  const titleText = sentence || kindWord;
+  const tipText = sentence || kindWord;
   el.setAttribute('aria-label', kindWord);
-  el.setAttribute('title', titleText);
   el.innerHTML = '<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="7" ' +
-    'stroke-linecap="square" stroke-linejoin="miter"><title>' + titleText + '</title>' +
-    INTENT_ICON_SHAPES[kindWord] + '</svg>';
+    'stroke-linecap="square" stroke-linejoin="miter">' +
+    INTENT_ICON_SHAPES[kindWord] + '</svg>' +
+    '<span class="hover-tip">' + tipText + '</span>';
 }
 
 // Which icon this round's intent wears, independent of whatever text a
@@ -753,13 +754,17 @@ function renderEnemyIntent() {
   const valueEl = document.getElementById('enemyIntentValue');
   const labelEl = document.getElementById('enemyIntentLabel');
   const kindWord = intentKindWord(enemy);
+  // Both the number's own hover box and the icon's hover box carry the
+  // same sentence — the game-font .hover-tip box, never a native title.
+  function setValue(text, sentence) {
+    valueEl.innerHTML = String(text) + '<span class="hover-tip">' + (sentence || '') + '</span>';
+    renderIntentIcon(kindWord, sentence);
+  }
   // A genuine enemy Nat this round overrides whatever the pattern's own
   // intent text would otherwise show, for the rest of this round.
   if (gameState.turn.enemyRollOutcome === 'nat_twenty') {
-    valueEl.textContent = 'NAT 20';
     labelEl.textContent = '';
-    valueEl.title = 'Nat 20: every loaded buff triggers this round.';
-    renderIntentIcon(kindWord, valueEl.title);
+    setValue('NAT 20', 'Nat 20: every loaded buff triggers this round.');
     return;
   }
   if (gameState.turn.enemyRollOutcome === 'nat_one') {
@@ -768,44 +773,34 @@ function renderEnemyIntent() {
     // would be wrong, so only the cancelling (default/Hierophant) case
     // gets that wording.
     const cancels = gameState.enemy.name !== 'Cardinal' && gameState.enemy.name !== 'Pontifex';
-    valueEl.textContent = cancels ? 'CANCELLED — NAT 1' : 'NAT 1';
     labelEl.textContent = '';
-    valueEl.title = 'Nat 1: a designed effect happens instead of this round\'s own intent.';
-    renderIntentIcon(kindWord, valueEl.title);
+    setValue(cancels ? 'CANCELLED — NAT 1' : 'NAT 1', 'Nat 1: a designed effect happens instead of this round\'s own intent.');
     return;
   }
   if (!entry) {
-    valueEl.textContent = '—';
     labelEl.textContent = '';
-    valueEl.title = '';
-    renderIntentIcon(kindWord, valueEl.title);
+    setValue('—', '');
     return;
   }
   if (entry.kind === 'attack') {
-    valueEl.textContent = entry.rolledValue;
     labelEl.textContent = '';
-    valueEl.title = 'Attack: deals ' + entry.rolledValue + ' damage this round. Block lowers it.';
+    setValue(entry.rolledValue, 'Attack: deals ' + entry.rolledValue + ' damage this round. Block lowers it.');
   } else if (entry.kind === 'charge') {
     if (enemy.chargeStage === 'windup') {
-      valueEl.textContent = entry.release;
       const taken = Math.max(0, enemy.windupStartHp - enemy.hp);
       labelEl.textContent = 'break ' + taken + ' / ' + entry.breakAt;
-      valueEl.title = 'Charge: deals no damage this round. Next round the release deals ' + entry.release + '. If it takes ' + entry.breakAt + ' damage this round, the Charge breaks and the release deals nothing.';
+      setValue(entry.release, 'Charge: deals no damage this round. Next round the release deals ' + entry.release + '. If it takes ' + entry.breakAt + ' damage this round, the Charge breaks and the release deals nothing.');
     } else if (enemy.chargeBroken) {
-      valueEl.textContent = 'BROKEN';
       labelEl.textContent = '';
-      valueEl.title = 'The Charge broke this round. The release deals nothing.';
+      setValue('BROKEN', 'The Charge broke this round. The release deals nothing.');
     } else {
-      valueEl.textContent = entry.release;
       labelEl.textContent = '';
-      valueEl.title = 'Release: deals ' + entry.release + ' damage this round. Block lowers it.';
+      setValue(entry.release, 'Release: deals ' + entry.release + ' damage this round. Block lowers it.');
     }
   } else if (entry.kind === 'afflict') {
-    valueEl.textContent = entry.stacks;
     labelEl.textContent = '';
-    valueEl.title = 'Afflict: deals no damage. Applies ' + entry.stacks + ' stacks of poison to the player.';
+    setValue(entry.stacks, 'Afflict: deals no damage. Applies ' + entry.stacks + ' stacks of poison to the player.');
   }
-  renderIntentIcon(kindWord, valueEl.title);
 }
 
 function renderStats() {
@@ -990,7 +985,7 @@ function renderDieIcons() {
     const rolled = gameState.turn.rolledFaceNumber;
     playerEl.innerHTML = '<div class="die-icon-wrap">' + dieIconSvg(GAME_CONFIG.DIE_SIZE.PLAYER, 'var(--text)') +
       '<div class="die-icon-number" style="color:' + playerDieIconColour() + '">' +
-      (rolled === null ? '' : rolled) + '</div></div>';
+      (rolled === null ? '' : '<span class="die-icon-number-text">' + rolled + '</span>') + '</div></div>';
     playerEl.title = 'Your die: d' + GAME_CONFIG.DIE_SIZE.PLAYER +
       (rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.');
   }
@@ -1015,7 +1010,7 @@ function renderDieIcons() {
     if (face && face.modId !== null) word = modDisplayName(face.modId);
   }
   enemyEl.innerHTML = '<div class="die-icon-wrap">' + dieIconSvg(size, 'var(--enemy-mod)') +
-    '<div class="die-icon-number" style="color:var(--enemy-mod)">' + (rolled === null ? '' : rolled) + '</div></div>' +
+    '<div class="die-icon-number" style="color:var(--enemy-mod)">' + (rolled === null ? '' : '<span class="die-icon-number-text">' + rolled + '</span>') + '</div></div>' +
     '<div class="die-icon-side"><div style="color:' + wordColour + '">' + word + '</div>' +
     '<div style="color:var(--muted)">d' + size + '</div></div>';
   enemyEl.title = 'Enemy die: d' + size + (rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.');

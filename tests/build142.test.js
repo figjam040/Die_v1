@@ -539,13 +539,19 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   });
 
   await runTest('Item D-b: the intent text shows on a forced Nat 20 and on a forced Nat 1', async () => {
+    // BUILD 147 nests a .hover-tip child inside #enemyIntentValue, so
+    // textContent alone now includes that sentence too — read only the
+    // element's own direct text nodes, the visible number/word.
+    const readVisibleText = () => Array.from(document.getElementById('enemyIntentValue').childNodes)
+      .filter((n) => n.nodeType === 3).map((n) => n.textContent).join('');
+
     const page = await freshPage(browser);
     await page.evaluate(() => { devJumpToSlot('boss', null); });
     await page.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
     await page.evaluate(() => { forcePlayerRoll(2); });
     await advanceUntilPhase(page, 'ENEMY_ROLL_PHASE');
     await page.evaluate(() => { forceEnemyRoll(20); refreshInspector(); });
-    const nat20Text = await page.evaluate(() => document.getElementById('enemyIntentValue').textContent);
+    const nat20Text = await page.evaluate(readVisibleText);
     assert.strictEqual(nat20Text, 'NAT 20');
     await page.close();
 
@@ -555,7 +561,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page2.evaluate(() => { forcePlayerRoll(2); });
     await advanceUntilPhase(page2, 'ENEMY_ROLL_PHASE');
     await page2.evaluate(() => { forceEnemyRoll(1); refreshInspector(); });
-    const nat1Text = await page2.evaluate(() => document.getElementById('enemyIntentValue').textContent);
+    const nat1Text = await page2.evaluate(readVisibleText);
     assert.ok(nat1Text.indexOf('NAT 1') !== -1, 'expected the intent text to name Nat 1, got: ' + nat1Text);
     await page2.close();
   });

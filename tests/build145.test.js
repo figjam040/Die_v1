@@ -202,8 +202,13 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
     const v = await page.evaluate(() => {
       updateEnemy({ pattern: [{ kind: 'charge', release: 27, breakAt: 15 }], patternIndex: 0, forcedNextIntent: null });
       runPhase('START_OF_TURN');
+      // BUILD 147 nests a .hover-tip child inside #enemyIntentValue, so
+      // textContent alone now includes that sentence too — read only the
+      // element's own direct text nodes, the visible number.
+      const visibleValue = Array.from(document.getElementById('enemyIntentValue').childNodes)
+        .filter((n) => n.nodeType === 3).map((n) => n.textContent).join('');
       return {
-        value: document.getElementById('enemyIntentValue').textContent,
+        value: visibleValue,
         label: document.getElementById('enemyIntentLabel').textContent,
         aria: document.getElementById('enemyIntentIcon').getAttribute('aria-label')
       };

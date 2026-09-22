@@ -244,15 +244,23 @@ async function enterOpeningFight(page) {
       { kind: 'charge', release: 24, breakAt: 15 },
       { kind: 'afflict', stacks: 4 }
     ];
+    // BUILD 147 replaced the native title tooltip with a .hover-tip box
+    // (see tests/build147.test.js) — read that box's text instead.
     for (const k of kinds) {
       await page.evaluate((kk) => { updateEnemy({ pattern: [kk], patternIndex: 0 }); runPhase('START_OF_TURN'); }, k);
-      const v = await page.evaluate(() => ({ value: document.getElementById('enemyIntentValue').textContent, title: document.getElementById('enemyIntentValue').title }));
+      const v = await page.evaluate(() => ({
+        value: document.getElementById('enemyIntentValue').textContent,
+        title: (document.querySelector('#enemyIntentValue .hover-tip') || {}).textContent
+      }));
       assert.ok(v.value && v.value.length > 0, 'label must not be empty for ' + k.kind);
       assert.ok(v.title && v.title.length > 0, 'hover must not be empty for ' + k.kind);
       if (k.kind === 'charge') {
         // also check the release/broken labels
         await page.evaluate(() => { runPhase('ENEMY_ACT_PHASE'); runPhase('START_OF_TURN'); });
-        const v2 = await page.evaluate(() => ({ value: document.getElementById('enemyIntentValue').textContent, title: document.getElementById('enemyIntentValue').title }));
+        const v2 = await page.evaluate(() => ({
+          value: document.getElementById('enemyIntentValue').textContent,
+          title: (document.querySelector('#enemyIntentValue .hover-tip') || {}).textContent
+        }));
         assert.ok(v2.value && v2.value.length > 0, 'release/broken label must not be empty');
         assert.ok(v2.title && v2.title.length > 0, 'release/broken hover must not be empty');
       }
