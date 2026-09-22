@@ -715,7 +715,7 @@ const INTENT_ICON_SHAPES = {
   BROKEN: '<polyline points="60,8 34,50 50,50 40,92 68,46 52,46 60,8"/>'
 };
 
-function renderIntentIcon(kindWord) {
+function renderIntentIcon(kindWord, sentence) {
   const el = document.getElementById('enemyIntentIcon');
   if (!el) return;
   if (!kindWord || !INTENT_ICON_SHAPES[kindWord]) {
@@ -724,10 +724,11 @@ function renderIntentIcon(kindWord) {
     el.removeAttribute('title');
     return;
   }
+  const titleText = sentence || kindWord;
   el.setAttribute('aria-label', kindWord);
-  el.setAttribute('title', kindWord);
+  el.setAttribute('title', titleText);
   el.innerHTML = '<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="7" ' +
-    'stroke-linecap="square" stroke-linejoin="miter"><title>' + kindWord + '</title>' +
+    'stroke-linecap="square" stroke-linejoin="miter"><title>' + titleText + '</title>' +
     INTENT_ICON_SHAPES[kindWord] + '</svg>';
 }
 
@@ -751,13 +752,14 @@ function renderEnemyIntent() {
   const entry = enemy.currentEntry;
   const valueEl = document.getElementById('enemyIntentValue');
   const labelEl = document.getElementById('enemyIntentLabel');
-  renderIntentIcon(intentKindWord(enemy));
+  const kindWord = intentKindWord(enemy);
   // A genuine enemy Nat this round overrides whatever the pattern's own
   // intent text would otherwise show, for the rest of this round.
   if (gameState.turn.enemyRollOutcome === 'nat_twenty') {
     valueEl.textContent = 'NAT 20';
     labelEl.textContent = '';
     valueEl.title = 'Nat 20: every loaded buff triggers this round.';
+    renderIntentIcon(kindWord, valueEl.title);
     return;
   }
   if (gameState.turn.enemyRollOutcome === 'nat_one') {
@@ -769,12 +771,14 @@ function renderEnemyIntent() {
     valueEl.textContent = cancels ? 'CANCELLED — NAT 1' : 'NAT 1';
     labelEl.textContent = '';
     valueEl.title = 'Nat 1: a designed effect happens instead of this round\'s own intent.';
+    renderIntentIcon(kindWord, valueEl.title);
     return;
   }
   if (!entry) {
     valueEl.textContent = '—';
     labelEl.textContent = '';
     valueEl.title = '';
+    renderIntentIcon(kindWord, valueEl.title);
     return;
   }
   if (entry.kind === 'attack') {
@@ -801,6 +805,7 @@ function renderEnemyIntent() {
     labelEl.textContent = '';
     valueEl.title = 'Afflict: deals no damage. Applies ' + entry.stacks + ' stacks of poison to the player.';
   }
+  renderIntentIcon(kindWord, valueEl.title);
 }
 
 function renderStats() {
@@ -917,11 +922,26 @@ function renderStatusRows(poisonTitle) {
 }
 
 // Placeholders for art that does not exist yet — /art/ is empty.
-function renderArtBoxes() {
-  const enemyBox = document.getElementById('enemyArtBox');
-  if (enemyBox) {
-    enemyBox.textContent = (gameState.enemy.name ? gameState.enemy.name.toUpperCase() + ' ' : '') + 'ART';
+// A loaded image hides its box's text label; a failed load (onerror —
+// no art files ship in this build) hides the image and shows the label.
+function setArtImage(imgId, labelId, src, labelText) {
+  const img = document.getElementById(imgId);
+  const label = document.getElementById(labelId);
+  if (!img || !label) return;
+  label.textContent = labelText;
+  if (img.getAttribute('data-art-src') !== src) {
+    img.setAttribute('data-art-src', src);
+    img.onload = function() { img.style.display = 'block'; label.style.display = 'none'; };
+    img.onerror = function() { img.style.display = 'none'; label.style.display = ''; };
+    img.src = src;
   }
+}
+
+function renderArtBoxes() {
+  setArtImage('playerArtImg', 'playerArtLabel', 'art/ordained.png', 'ORDAINED ART');
+  const enemyName = gameState.enemy.name;
+  setArtImage('enemyArtImg', 'enemyArtLabel', 'art/' + (enemyName || '').toLowerCase() + '.png',
+    (enemyName ? enemyName.toUpperCase() + ' ' : '') + 'ART');
 }
 
 // No gold mechanic exists in V1; the field is read if it is ever added.
@@ -1896,4 +1916,12 @@ function renderMapScreen() {
   // text names the real number too.
   renderDieList('eliteDiePreviewList', eliteEnemy.die.faces, null, null, eliteEnemy.buffPoisonStacks, eliteEnemy.name, eliteEnemy.wrathPerTrigger);
   renderDieList('bossDiePreviewList', bossEnemy.die.faces, null, null, bossEnemy.buffPoisonStacks, bossEnemy.name, bossEnemy.wrathPerTrigger);
+}
+
+// Fits the fight/map screen to the window: shrinks below the 1600x900
+// design size, grows above it, capped at 2x so a very large monitor
+// doesn't blow up text past readable size.
+function applyScale() {
+  const scale = Math.min(2, Math.max(1, 1.1 * Math.min(window.innerWidth / 1600, window.innerHeight / 900)));
+  document.documentElement.style.zoom = String(scale);
 }

@@ -33,7 +33,10 @@ async function freshFightPage(browser) {
   const page = await browser.newPage();
   const consoleErrors = [];
   const pageErrors = [];
-  page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+  // Art loading (BUILD 146) deliberately ships no art/*.png files yet —
+  // the browser's own "resource not found" line for #playerArtImg/
+  // #enemyArtImg is the expected fallback path, not a bug.
+  page.on('console', msg => { if (msg.type() === 'error' && msg.text().indexOf('Failed to load resource') === -1) consoleErrors.push(msg.text()); });
   page.on('pageerror', err => pageErrors.push(err.message));
   await page.goto(FILE_URL);
   await page.waitForFunction(() => typeof gameState !== 'undefined' && gameState.run.screen === 'map');

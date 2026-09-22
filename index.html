@@ -42,6 +42,14 @@
 
   * { box-sizing: border-box; }
 
+  /* height:100% (not 100vh) so the window-scaling zoom (applyScale(),
+     rendering.js) shrinks this chain the same way it already shrinks
+     percentage-based widths — vh units stay tied to the true device
+     viewport and ignore a zoomed ancestor, which overflows the window. */
+  html {
+    height: 100%;
+  }
+
   body {
     background: var(--bg);
     color: var(--text);
@@ -51,7 +59,7 @@
     font-size: 17px;
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100%;
     overflow: hidden;
   }
 
@@ -259,7 +267,7 @@
   /* ---------- BAND C — STATS, HAND, END TURN ---------- */
 
   .band-c {
-    height: 208px;
+    height: 228px;
     flex-shrink: 0;
     display: grid;
     grid-template-columns: 300px 1fr 300px;
@@ -271,7 +279,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 3px;
+    gap: 10px;
     min-width: 0;
     background: var(--panel-bg);
   }
@@ -379,9 +387,9 @@
 
   .hand-card-el {
     position: relative;
-    width: 130px;
-    height: 196px;
-    flex: 0 1 130px;
+    width: 144px;
+    height: 216px;
+    flex: 0 1 144px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -401,7 +409,7 @@
 
   .hand-card-art {
     width: 100%;
-    height: 88px;
+    height: 100px;
     flex-shrink: 0;
     border: 2px solid #1a1a1a;
   }
@@ -424,7 +432,7 @@
   }
 
   .hand-card-name {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: bold;
     line-height: 1.4;
     text-align: center;
@@ -432,7 +440,7 @@
 
   .hand-card-effect {
     font-family: var(--game-font-2);
-    font-size: 18px;
+    font-size: 20px;
     line-height: 1.05;
     color: var(--blank);
     text-align: center;
@@ -1248,11 +1256,12 @@
   button:hover { color: var(--white); border-color: var(--muted); }
 
   #endTurnBtn {
-    width: 150px;
-    height: 56px;
+    width: 128px;
+    height: 44px;
     flex-shrink: 0;
+    align-self: center;
     font-family: var(--game-font);
-    font-size: 15px;
+    font-size: 11px;
     font-weight: bold;
     letter-spacing: 0.5px;
     padding: 0;
@@ -1530,7 +1539,10 @@
     <div id="fightScreen">
 
       <div class="band-b">
-        <div class="art-box" id="playerArtBox">ORDAINED ART</div>
+        <div class="art-box" id="playerArtBox">
+          <img id="playerArtImg" style="display:none; max-width:100%; max-height:100%; object-fit:contain; image-rendering:pixelated;">
+          <span id="playerArtLabel">ORDAINED ART</span>
+        </div>
         <div class="band-b-right">
           <div class="intent-block">
             <div class="intent-top">
@@ -1539,7 +1551,10 @@
             </div>
             <div id="enemyIntentLabel"></div>
           </div>
-          <div class="art-box" id="enemyArtBox">ART</div>
+          <div class="art-box" id="enemyArtBox">
+            <img id="enemyArtImg" style="display:none; max-width:100%; max-height:100%; object-fit:contain; image-rendering:pixelated;">
+            <span id="enemyArtLabel">ART</span>
+          </div>
         </div>
       </div>
 

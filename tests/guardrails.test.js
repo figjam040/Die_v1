@@ -237,9 +237,11 @@ function factsBlockLineRange(src) {
     const allowed = ['.git', 'CLAUDE.md', 'HISTORY.md', 'index.html', 'package.json', 'package-lock.json', '.gitignore', 'js', 'tests',
       // fonts/ — the two self-hosted OFL font files the skin pass added.
       'fonts',
+      // art/ — character art the art-loading pass added, PROJECT section.
+      'art',
       // git-ignored working folders, documented in CLAUDE.md's PROJECT section or .gitignore
       'node_modules', 'backups', 'Archive', 'test-results', 'verify', 'verify_prev',
-      'register_backup.json', 'run_record_master.csv', '.nojekyll', 'art', 'audio'];
+      'register_backup.json', 'run_record_master.csv', '.nojekyll', 'audio'];
     const entries = fs.readdirSync(ROOT);
     const offenders = entries.filter(function(f) { return allowed.indexOf(f) === -1; });
     assert.strictEqual(offenders.length, 0, 'unexpected entries in repo root: ' + offenders.join(', '));

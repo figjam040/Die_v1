@@ -1352,5 +1352,8 @@ function init() {
   log('[INIT] gameState initialised');
   log('[INIT COMPLETE] ————————————————————————');
 
+  applyScale();
+  window.addEventListener('resize', applyScale);
+
   startNewRun();
 }

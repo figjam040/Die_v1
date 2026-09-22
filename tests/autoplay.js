@@ -229,7 +229,14 @@ async function freshPage(browser, seed) {
   const errors = [];
   page.on('dialog', function(d) { d.accept(); });
   page.on('pageerror', function(err) { errors.push('pageerror: ' + err.message); });
-  page.on('console', function(msg) { if (msg.type() === 'error') errors.push('console: ' + msg.text()); });
+  // Art loading (BUILD 146) deliberately ships no art/*.png files yet —
+  // the browser's own "resource not found" line for #playerArtImg/
+  // #enemyArtImg is the expected fallback path, not a bug.
+  page.on('console', function(msg) {
+    if (msg.type() === 'error' && msg.text().indexOf('Failed to load resource') === -1) {
+      errors.push('console: ' + msg.text());
+    }
+  });
   await page.addInitScript(installSeededRandom, seed);
   await page.goto(FILE_URL);
   await page.waitForFunction(function() { return typeof gameState !== 'undefined' && gameState.run.screen === 'map'; });

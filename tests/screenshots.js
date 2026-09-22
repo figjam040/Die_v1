@@ -79,7 +79,10 @@ async function shoot(page, name) {
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   const consoleErrors = [];
   const pageErrors = [];
-  page.on('console', function(msg) { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+  // Art loading (BUILD 146) deliberately ships no art/*.png files yet —
+  // the browser's own "resource not found" line for #playerArtImg/
+  // #enemyArtImg is the expected fallback path, not a bug.
+  page.on('console', function(msg) { if (msg.type() === 'error' && msg.text().indexOf('Failed to load resource') === -1) consoleErrors.push(msg.text()); });
   page.on('pageerror', function(err) { pageErrors.push(err.message); });
   page.on('dialog', function(d) { d.accept(); });
 

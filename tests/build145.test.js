@@ -228,9 +228,12 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
   await runTest('Item 4: #playerArtBox and #enemyArtBox exist, the enemy box naming the live enemy', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
+    // BUILD 146's art loading gives each box an img plus a text label
+    // child (#playerArtLabel/#enemyArtLabel) instead of raw box text —
+    // read the label directly rather than the box's whole textContent.
     const v = await page.evaluate(() => ({
-      player: document.getElementById('playerArtBox').textContent,
-      enemy: document.getElementById('enemyArtBox').textContent,
+      player: document.getElementById('playerArtLabel').textContent,
+      enemy: document.getElementById('enemyArtLabel').textContent,
       name: gameState.enemy.name
     }));
     assert.ok(v.player.indexOf('ART') !== -1, '#playerArtBox must read as an art placeholder, got: ' + v.player);
@@ -345,10 +348,16 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
       const node = document.querySelector('#mapScreen .map-node');
       const cs = getComputedStyle(node);
       const r = node.getBoundingClientRect();
-      return { w: Math.round(r.width), h: Math.round(r.height), border: cs.borderTopWidth, font: cs.fontSize };
+      // BUILD 146's window-scaling zoom (applyScale(), rendering.js) is a
+      // known Chromium quirk for the legacy `zoom` property: descendant
+      // border-width readings via getComputedStyle come back divided by
+      // the active zoom, even though the border itself renders at its
+      // declared size — compensate before comparing.
+      const zoom = parseFloat(document.documentElement.style.zoom) || 1;
+      return { w: Math.round(r.width), h: Math.round(r.height), border: parseFloat(cs.borderTopWidth) * zoom, font: cs.fontSize };
     });
     assert.strictEqual(v.w, v.h, 'a map node must be square, got ' + v.w + 'x' + v.h);
-    assert.strictEqual(v.border, '2px', 'a map node must carry a 2px outline, got ' + v.border);
+    assert.ok(Math.abs(v.border - 2) < 0.01, 'a map node must carry a 2px outline, got ' + v.border + 'px');
     assert.strictEqual(v.font, '11px', 'a map node label must render at 11px, got ' + v.font);
     await page.close();
   });
