@@ -92,6 +92,9 @@ function buildAct(actNumber) {
     return { type: 'fight', label: label, enemy: buildEnemyFromDef(defId, hp), completed: false };
   };
   const rite = function() { return { type: 'rite', label: 'Rite', completed: false }; };
+  // The Font — the lower lane's own slot index 3, opposite the upper
+  // lane's Elite. One per act, id 'font' (see openEventScreen()).
+  const event = function() { return { type: 'event', label: 'Event', id: 'font', completed: false }; };
 
   if (actNumber === 1) {
     // Act 1's five lane-fight positions each carry their own fixed HP,
@@ -113,7 +116,7 @@ function buildAct(actNumber) {
         fightSlot('Fight', 'thurifer', laneHp[0]),
         rite(),
         fightSlot('Fight', 'asperser', laneHp[1]),
-        fightSlot('Fight', 'verger_lane', laneHp[2]),
+        event(),
         rite(),
         fightSlot('Fight', 'thurifer', laneHp[3]),
         fightSlot('Fight', 'asperser', laneHp[4]),
@@ -148,7 +151,7 @@ function buildAct(actNumber) {
       fightSlot('Fight', secondId, scaleHp(normalHp[1])),
       rite(),
       fightSlot('Fight', heaviestId, scaleHp(normalHp[2])),
-      fightSlot('Fight', lightestId, scaleHp(normalHp[0])),
+      event(),
       rite(),
       fightSlot('Fight', secondId, scaleHp(normalHp[1])),
       fightSlot('Fight', heaviestId, scaleHp(normalHp[2])),
@@ -327,6 +330,7 @@ function buildRunRecordLine() {
   const fightRoundsCol = r.fightRounds.map(function(f) { return f.label + ':' + f.rounds; }).join('|');
   const eventsCol = r.dieActionEvents.map(function(e) {
     if (e.type === 'load') { return 'load:' + e.offered.join('|') + '>' + (e.picked === null ? '' : e.picked); }
+    if (e.type === 'purify') { return 'purify:' + e.removed.join('|') + '>' + e.faceNumber; }
     return 'skip';
   }).join(';');
   const triggerCounts = collectTriggerCountsByMod();
@@ -453,7 +457,8 @@ function copyTextToClipboardFallback(text) {
 // (a new key here) without reopening enterSlot() itself.
 const SLOT_HANDLERS = {
   fight: function(slot, nodeLabel) { beginFightFromSlot(slot, nodeLabel); },
-  rite: function() { openRiteScreen(); }
+  rite: function() { openRiteScreen(); },
+  event: function() { openEventScreen(); }
 };
 
 function enterSlot(laneName, index) {

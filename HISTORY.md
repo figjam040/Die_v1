@@ -1012,4 +1012,12 @@ Verification: guardrails 19/19, facts 111/111, mods 40/40, build141 22/22, build
 Stage 2.76 (BUILD 149) — three independent items, no existing number or mechanic changed. (1) The awe status: gameState.enemy.aweStacks, 0 at fight start, set through the one shared applyAwe(stacks) (js/cards-mods.js); decays by 1 at START_OF_TURN, in the same place the enemy's own poison ticks and before advanceEnemyIntentForRound(); in ENEMY_ACT_PHASE (js/phase-machine.js), an Attack's damage (Wrath already applied) is lowered by the enemy's stacks of awe, floored at 0, before block — a Charge release, Afflict and a Nat are untouched. Shown as an A-badge (`.status-awe`, --tag-awe purple) beside stacks of poison in #enemyStatusRow, and appended to the Attack intent's hover sentence. (2) The awe cluster: two mods (Dread, common, applies 4 stacks of awe; Genuflect, uncommon, 6 block + 3 stacks of awe) and four cards (Kneel, common, applies 3; Compline, common, 4 block + 2; Tremendum, uncommon, 4 damage + 2 per stack of awe on the enemy, capped at 12; Mysterium, rare, 3 damage per stack of awe, capped at 12, stacks unchanged), all tagged 'awe', all loadable/offerable exactly like any other mod or card — mod pool 25 to 27, reward pool 36 to 40. (3) Card art loading: attachCardArtImg() (js/rendering.js) gives every hand card's art placeholder and every card reward button an img child, src art/cards/<id>.png, pixelated and object-fit contain; a load failure hides the img, leaving an empty box. art/cards/ (with .gitkeep) is new; no image files ship in this build.
 
 Verification: guardrails 19/19, facts 111/111, mods 42/42, build141 22/22, build142 22/22, build144 13/13, build145 23/23, build146 11/11, build147 9/9, build148 11/11, new tests/build149.test.js 15/15.
-- BUILD 150 — break numbers lowered by 4, the card Bulwark, gold, the shop, three relics, KI-29. Full write-up in CLAUDE.md's CURRENT SUBSTAGE until the next build moves it here.
+- BUILD 150 — break numbers lowered by 4, the card Bulwark, gold, the shop, three relics, KI-29. Full write-up below.
+
+---
+
+## Stage 2.77 (BUILD 150)
+
+Stage 2.77 (BUILD 150) — six items; new mechanics under GOLD, SHOP AND RELICS. (1) OQ-16: every Charge enemy's breakAt lowered 4 (config.js ENEMIES). (2) Bulwark: common card, 1 soul, 6 block, 16 if chargeStage 'windup'/'release' — pool 40 to 41. (3) Gold. (4) The shop, after every rite. (5) Three relics plus their reward panel. (6) KI-29: build142.test.js F-b forces threnodyFace 7 after each enterOpeningFight() — no game code changed.
+
+Verification: guardrails 19/19, facts 111/111, mods 42/42, build141 22/22, build142 22/22, build144 13/13, build145 23/23, build146 11/11, build147 9/9, build148 11/11, build149 15/15, new tests/build150.test.js 9/9.

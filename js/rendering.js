@@ -109,6 +109,7 @@ function refreshInspector() {
   renderCardRewardPanel();
   renderRelicRewardPanel();
   renderRiteScreen();
+  renderEventScreen();
   renderShopPanel();
   renderMapScreen();
 
@@ -441,9 +442,9 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
 
   // The player's own die reads as one horizontal row of squares, face 1 at
   // the left; every other container keeps the vertical row list.
-  const isHorizontal = (containerId === 'playerDieList' || containerId === 'dieActionDieList');
+  const isHorizontal = (containerId === 'playerDieList' || containerId === 'dieActionDieList' || containerId === 'eventDieList');
 
-  const tracksRolledFace = (containerId === 'playerDieList' || containerId === 'dieActionDieList' || containerId === 'enemyDieList');
+  const tracksRolledFace = (containerId === 'playerDieList' || containerId === 'dieActionDieList' || containerId === 'enemyDieList' || containerId === 'eventDieList');
   const isEnemyContainer = containerId === 'enemyDieList';
   const trackedRolledFaceNumber = isEnemyContainer ? gameState.turn.enemyRolledFaceNumber : gameState.turn.rolledFaceNumber;
   const trackedRollOutcome = isEnemyContainer ? gameState.turn.enemyRollOutcome : gameState.turn.rollOutcome;
@@ -1257,7 +1258,7 @@ function renderCardButtons() {
 // same convention playerRollResolved/lastEnemyHp already use, rather than
 // added to gameState.
 
-let dieActionStep = null; // null | 'choose' | 'load_pick_mod' | 'load_pick_face' | 'strengthen_pick_face'
+let dieActionStep = null; // null | 'choose' | 'load_pick_mod' | 'load_pick_face' | 'strengthen_pick_face' | 'purify_pick_face'
 let dieActionMods = []; // the (up to) 3 mod ids offered this pass
 let dieActionChosenModId = null;
 
@@ -1302,6 +1303,11 @@ function closeDieActionScreen() {
     // A shop's own Strengthen purchase returns to the shop, not the map.
     shopStep = 'open';
     refreshInspector();
+    return;
+  }
+  if (origin === 'event') {
+    // The Font's own Nat 20 Load offer — no card reward, straight to the map.
+    advanceRun();
     return;
   }
   // The elite's extra action — decrement and reopen if any remain.
@@ -1369,6 +1375,19 @@ function dieActionChooseStrengthen() {
   refreshInspector();
 }
 
+// A face is purifiable if it carries a mod and isn't one of the three
+// fixed faces (1 NAT_ONE, 10 the anchor, 20 NAT_TWENTY).
+function purifiableFaceExists() {
+  return gameState.die.faces.some(function(f) {
+    return f.number !== 1 && f.number !== 10 && f.number !== GAME_CONFIG.DIE_SIZE.PLAYER && f.modId !== null;
+  });
+}
+
+function dieActionChoosePurify() {
+  dieActionStep = 'purify_pick_face';
+  refreshInspector();
+}
+
 function dieActionChooseSkip() {
   log('[DIE ACTION] skipped');
   updateRunRecord({ dieActionEvents: gameState.runRecord.dieActionEvents.concat([{ type: 'skip' }]) });
@@ -1425,6 +1444,28 @@ function dieActionPickStrengthenFace(faceNumber) {
   closeDieActionScreen();
 }
 
+// Removes every mod on a face, resetting modId/modId2/modData to what a
+// fresh blank face holds — weight is untouched. The removed mods need no
+// separate pool bookkeeping: eligibleLoadModIds() re-derives its offer
+// live off gameState.die.faces, so a purified mod is eligible for Load
+// again the instant this returns (D-07).
+function dieActionPickPurifyFace(faceNumber) {
+  const face = gameState.die.faces[faceNumber - 1];
+  const removedIds = [face.modId];
+  if (face.modId2) removedIds.push(face.modId2);
+  const removedNames = removedIds.map(function(id) { return gameState.config.mods[id].name; });
+
+  const newFaces = gameState.die.faces.slice();
+  newFaces[faceNumber - 1] = { number: face.number, modId: null, modId2: null, weight: face.weight };
+  updateDie({ faces: newFaces });
+
+  log('[DIE] purify face ' + faceNumber + ': ' + removedNames.join(', ') + ' removed');
+  updateRunRecord({ dieActionEvents: gameState.runRecord.dieActionEvents.concat([{ type: 'purify', faceNumber: faceNumber, removed: removedIds.slice() }]) });
+  playAudioEvent('die_action_strengthen');
+  appendTranscript('PURIFY ' + faceNumber + ' > ' + removedNames.join(','));
+  closeDieActionScreen();
+}
+
 function renderDieActionPanel() {
   const panel = document.getElementById('dieActionPanel');
   if (!panel) return;
@@ -1465,11 +1506,21 @@ function renderDieActionPanel() {
     strengthenBtn.textContent = 'Strengthen';
     strengthenBtn.addEventListener('click', function() { log('[CLICK] Strengthen'); dieActionChooseStrengthen(); });
 
+    row.appendChild(strengthenBtn);
+
+    // Purify offers only when a purifiable face exists (D-54-style hide).
+    if (purifiableFaceExists()) {
+      const purifyBtn = document.createElement('button');
+      purifyBtn.textContent = 'PURIFY';
+      purifyBtn.title = 'Take every mod off one face. The face stays as heavy as it was.';
+      purifyBtn.addEventListener('click', function() { log('[CLICK] Purify'); dieActionChoosePurify(); });
+      row.appendChild(purifyBtn);
+    }
+
     const skipBtn = document.createElement('button');
     skipBtn.textContent = 'Skip';
     skipBtn.addEventListener('click', function() { log('[CLICK] Skip'); dieActionChooseSkip(); });
 
-    row.appendChild(strengthenBtn);
     row.appendChild(skipBtn);
 
   } else if (dieActionStep === 'load_pick_mod') {
@@ -1519,6 +1570,17 @@ function renderDieActionPanel() {
       },
       onPick: dieActionPickStrengthenFace,
       showBecomes: true
+    };
+
+  } else if (dieActionStep === 'purify_pick_face') {
+    title.textContent = 'Choose a face to purify';
+    pickConfig = {
+      isEligible: function(f) {
+        if (f.number === 1 || f.number === 10 || f.number === GAME_CONFIG.DIE_SIZE.PLAYER) return false;
+        return f.modId !== null;
+      },
+      onPick: dieActionPickPurifyFace,
+      showBecomes: false
     };
   }
 
@@ -1842,6 +1904,125 @@ function renderRiteScreen() {
 
   panel.appendChild(title);
   panel.appendChild(row);
+}
+
+// ---------- EVENT SCREEN — The Font (slot type 'event', id 'font') ----------
+// A roll that resolves nothing: rollWithRelics() picks a face the same
+// way a fight roll does (D-21), but the face is never passed to
+// resolvePlayerRoll() — no listener dispatch, no Bound, no Nat sweep.
+// Outcome is read straight off the picked face's own shape.
+
+let eventStep = null; // null | 'open' | 'result'
+let eventOutcomeText = '';
+
+function openEventScreen() {
+  eventStep = 'open';
+  eventOutcomeText = '';
+  updateTurn({ rolledFaceNumber: null, rollOutcome: null });
+  refreshInspector();
+}
+
+function closeEventScreen() {
+  eventStep = null;
+  eventOutcomeText = '';
+  updateTurn({ rolledFaceNumber: null, rollOutcome: null });
+  refreshInspector();
+  advanceRun();
+}
+
+function eventRoll() {
+  if (eventStep !== 'open') return;
+  const face = rollWithRelics(gameState.die.faces);
+  playAudioEvent('roll');
+
+  if (face.modId === 'NAT_TWENTY') {
+    updateTurn({ rolledFaceNumber: face.number, rollOutcome: 'nat_twenty' });
+    updateRun({ gold: gameState.run.gold + GAME_CONFIG.EVENT.NAT_TWENTY_GOLD });
+    log('[EVENT] font: rolled ' + face.number + ', outcome nat twenty, +' + GAME_CONFIG.EVENT.NAT_TWENTY_GOLD + ' gold, Load offered');
+    appendTranscript('EVENT font: rolled ' + face.number + ' NAT 20, +' + GAME_CONFIG.EVENT.NAT_TWENTY_GOLD + ' gold');
+    eventStep = null;
+    openDieActionScreen('event');
+    return;
+  }
+
+  if (face.modId === 'NAT_ONE') {
+    const before = gameState.player.hp;
+    const newHp = Math.max(before - GAME_CONFIG.EVENT.NAT_ONE_HP_LOSS, 1);
+    updatePlayer({ hp: newHp });
+    updateTurn({ rolledFaceNumber: face.number, rollOutcome: 'nat_one' });
+    eventOutcomeText = 'The water keeps what it is owed.';
+    log('[EVENT] font: rolled ' + face.number + ', outcome nat one, hp ' + before + ' to ' + newHp);
+    appendTranscript('EVENT font: rolled ' + face.number + ' NAT 1, hp ' + before + ' to ' + newHp);
+  } else if (face.modId !== null) {
+    const newWeight = strengthenFace(face.number);
+    updateTurn({ rolledFaceNumber: face.number, rollOutcome: 'mod' });
+    eventOutcomeText = 'The rolled face comes up heavier.';
+    log('[EVENT] font: rolled ' + face.number + ', outcome loaded face, weight now ' + newWeight);
+    appendTranscript('EVENT font: rolled ' + face.number + ' loaded, weight now ' + newWeight);
+  } else {
+    updateRun({ gold: gameState.run.gold + GAME_CONFIG.EVENT.BLANK_GOLD });
+    updateTurn({ rolledFaceNumber: face.number, rollOutcome: 'blank' });
+    eventOutcomeText = 'Coins lie on the bottom.';
+    log('[EVENT] font: rolled ' + face.number + ', outcome blank, +' + GAME_CONFIG.EVENT.BLANK_GOLD + ' gold');
+    appendTranscript('EVENT font: rolled ' + face.number + ' blank, +' + GAME_CONFIG.EVENT.BLANK_GOLD + ' gold');
+  }
+
+  eventStep = 'result';
+  refreshInspector();
+}
+
+function renderEventScreen() {
+  const panel = document.getElementById('eventScreenPanel');
+  if (!panel) return;
+
+  if (eventStep === null) {
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+
+  panel.style.display = 'flex';
+  panel.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.className = 'die-action-title';
+  title.textContent = 'A font of black water stands where the road bends. Nothing moves in it. The die goes in.';
+  panel.appendChild(title);
+
+  const row = document.createElement('div');
+  row.className = 'die-action-row';
+
+  if (eventStep === 'open') {
+    const rollBtn = document.createElement('button');
+    rollBtn.textContent = 'ROLL';
+    rollBtn.addEventListener('click', function() { log('[CLICK] ROLL'); eventRoll(); });
+    row.appendChild(rollBtn);
+  } else if (eventStep === 'result') {
+    const outcome = document.createElement('div');
+    outcome.className = 'die-action-empty';
+    outcome.textContent = eventOutcomeText;
+    row.appendChild(outcome);
+
+    const continueBtn = document.createElement('button');
+    continueBtn.textContent = 'CONTINUE';
+    continueBtn.addEventListener('click', function() { log('[CLICK] CONTINUE'); closeEventScreen(); });
+    row.appendChild(continueBtn);
+  }
+
+  panel.appendChild(row);
+
+  const dieContainer = document.createElement('div');
+  dieContainer.className = 'die-col player-die die-col-h';
+  dieContainer.id = 'eventDieList';
+
+  const dieWrap = document.createElement('div');
+  dieWrap.className = 'die-action-die-preview';
+  dieWrap.appendChild(dieContainer);
+  panel.appendChild(dieWrap);
+
+  // Must run after dieContainer is attached to the live document
+  // (renderDieList looks it up by id).
+  renderDieList('eventDieList', gameState.die.faces, null, null);
 }
 
 // ---------- SHOP SCREEN (opens after every rite resolves, before the map returns) ----------

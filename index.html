@@ -943,6 +943,7 @@
   #dieActionPanel,
   #cardRewardPanel,
   #relicRewardPanel,
+  #eventScreenPanel,
   #shopPanel {
     display: flex;
     flex-direction: column;
@@ -1573,7 +1574,7 @@
 <div class="top-bar">
   <div class="top-bar-left">
     <div>
-      <div id="buildStamp">DIE V1 — STAGE 2.74 BUILD <span id="buildStampNumber"></span></div>
+      <div id="buildStamp">DIE V1 — STAGE 2.78 BUILD <span id="buildStampNumber"></span></div>
       <div class="top-bar-tokens">
         <!-- No gold mechanic exists in V1; this reads gameState.run.gold if
              that field is ever added, and an em dash until then. -->
@@ -1707,6 +1708,9 @@
 
     <!-- Rite slot choice — hidden except mid-choice. -->
     <div class="panel" id="riteScreenPanel" style="display:none;"></div>
+
+    <!-- The Font event slot — hidden except mid-visit. -->
+    <div class="panel" id="eventScreenPanel" style="display:none;"></div>
 
     <!-- Shop, opened after every rite resolves — hidden except mid-visit. -->
     <div class="panel" id="shopPanel" style="display:none;"></div>

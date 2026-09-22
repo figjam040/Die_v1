@@ -146,6 +146,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       lowerRiteLabels: GAME_CONFIG.RITE_SLOT_INDICES.map(function(i) { return gameState.run.act.lower[i].label; }),
       upperFightCount: gameState.run.act.upper.filter(function(s) { return s.type === 'fight'; }).length,
       lowerFightCount: gameState.run.act.lower.filter(function(s) { return s.type === 'fight'; }).length,
+      lowerEventCount: gameState.run.act.lower.filter(function(s) { return s.type === 'event'; }).length,
       upperLabels: gameState.run.act.upper.map(function(s) { return s.label; }),
       lowerLabels: gameState.run.act.lower.map(function(s) { return s.label; })
     }));
@@ -160,12 +161,15 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.deepStrictEqual(v.riteIndices, [1, 4, 7], 'F16: three rites per lane, at slots 2, 5 and 8 (1-based)');
     assert.deepStrictEqual(v.upperRiteLabels, ['Rite', 'Rite', 'Rite']);
     assert.deepStrictEqual(v.lowerRiteLabels, ['Rite', 'Rite', 'Rite']);
-    // CHECKPOINT 3 MAP: every path through an act is 7 fights — the opening
+    // BUILD 151 (F44): the upper lane is still 7 fights — the opening
     // fight, 5 fights/elite in the lane (8 slots minus 3 rites), the boss.
+    // The lower lane's slot index 3 is now the event (The Font), so its
+    // lane holds 4 fights, 6 through that lane's own path.
     assert.strictEqual(v.upperFightCount, 5);
-    assert.strictEqual(v.lowerFightCount, 5);
+    assert.strictEqual(v.lowerFightCount, 4);
+    assert.strictEqual(v.lowerEventCount, 1);
     assert.deepStrictEqual(v.upperLabels, ['Fight', 'Rite', 'Fight', 'Elite', 'Rite', 'Fight', 'Fight', 'Rite']);
-    assert.deepStrictEqual(v.lowerLabels, ['Fight', 'Rite', 'Fight', 'Fight', 'Rite', 'Fight', 'Fight', 'Rite']);
+    assert.deepStrictEqual(v.lowerLabels, ['Fight', 'Rite', 'Fight', 'Event', 'Rite', 'Fight', 'Fight', 'Rite']);
     await page.close();
   });
 
@@ -191,7 +195,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.close();
   });
 
-  await runTest('CHECKPOINT 3 MAP: each path through an act is 7 fights (21 a run)', async () => {
+  await runTest('BUILD 151 (F44): the upper path is still 7 fights an act (21 a run); the lower path, through the event slot, is 6 (18 a run)', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
       function fightsInPath(lane) {
@@ -200,8 +204,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       return { upper: fightsInPath('upper'), lower: fightsInPath('lower'), acts: GAME_CONFIG.ACTS };
     });
     assert.strictEqual(v.upper, 7);
-    assert.strictEqual(v.lower, 7);
+    assert.strictEqual(v.lower, 6);
     assert.strictEqual(v.upper * v.acts, 21);
+    assert.strictEqual(v.lower * v.acts, 18);
     await page.close();
   });
 
@@ -251,8 +256,11 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.strictEqual(act.upper[2].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[1]);
     assert.strictEqual(act.lower[0].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[0]);
     assert.strictEqual(act.lower[2].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[1]);
-    assert.strictEqual(act.lower[3].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[2]);
-    [act.upper[0], act.upper[2], act.lower[0], act.lower[2], act.lower[3]].forEach(function(s) {
+    // BUILD 151 (F44): lower[3] is now the event slot (The Font), not a
+    // fight — ACT1_LANE_FIGHT_HP[2] (72) is no longer consumed anywhere.
+    assert.strictEqual(act.lower[3].type, 'event');
+    assert.strictEqual(act.lower[3].label, 'Event');
+    [act.upper[0], act.upper[2], act.lower[0], act.lower[2]].forEach(function(s) {
       assert.ok(s.enemy.pattern.length > 0, 'every act 1 lane fight must carry a non-empty pattern');
     });
     assert.strictEqual(act.upper[3].enemy.hp, cfg.HP.ELITE);

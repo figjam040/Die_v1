@@ -48,7 +48,7 @@ One class only: The Ordained. Dante, Obelisk and EX-0 are deferred and must not 
 
 Blank faces are not empty. Rolling a blank face generates 2 block for The Ordained. This is what makes loading a mod a real decision rather than a free upgrade.
 
-Two die actions only: Load (place a mod on a blank face) and Strengthen (add 1 weight to a face). Remove, Enchant, Purify and Expand are deferred.
+Three die actions only: Load (place a mod on a blank face), Strengthen (add 1 weight to a face) and Purify (remove every mod from a chosen loaded face — see DIE ACTIONS below). Remove, Enchant and Expand are deferred.
 
 Design floor: every mod must clearly outperform a guaranteed 2 block, measured on the turn it triggers, not scaled by trigger frequency. Trigger frequency cancels out of this comparison: a mod and a blank loaded on the same face are gated by the identical roll chance, so comparing their per-trigger value directly is correct. Do not multiply mod value by trigger rate — that arithmetic is wrong. Current band: 10 to 16 points of value on the triggering turn — the standard every future mod is checked against.
 
@@ -200,7 +200,7 @@ gameState = {
     arrivalHpAtBoss: null,         // player.hp the instant the boss slot is entered; null if never reached
     outcome: null,                 // 'won' | 'lost' | 'abandoned' — set once, at flush time
     fightRounds: [],               // [{ label, rounds }, ...] — one entry per fight that has ended or was in progress at flush
-    dieActionEvents: []            // [{ type:'load', offered:[modId,...], picked }|{ type:'skip' }] — one per Load offer shown or Skip chosen
+    dieActionEvents: []            // [{ type:'load', offered:[modId,...], picked }|{ type:'skip' }|{ type:'purify', faceNumber, removed:[modId,...] }] — one per Load offer shown, Skip chosen, or Purify resolved
   },
 
   registry: {
@@ -396,6 +396,8 @@ Load: dieActionChooseLoad() (rendering.js) excludes the anchor and any mod alrea
 
 Pool exhaustion (D-54): eligibleLoadModIds() (rendering.js) is checked before the Load button itself is rendered — the die action panel's 'choose' step shows only Strengthen and Skip once fewer than 3 eligible mods remain, so a short offer is never presented at all.
 
+PURIFY (F43): the third die action, offered on the 'choose' step (purifiableFaceExists()) whenever a face other than 1, 10 or 20 carries a mod. Opens the Strengthen picker limited to those faces (dieActionStep 'purify_pick_face'). dieActionPickPurifyFace() resets the face's modId/modId2/modData to a fresh blank's shape, weight untouched — the removed mod(s) are offerable again next Load since eligibleLoadModIds() re-derives live off gameState.die.faces (D-07). Logs `[DIE] purify face N: X, Y removed`; writes `{ type:'purify', faceNumber, removed }` into runRecord.dieActionEvents, CSV `purify:X|Y>N`. Reuses the Strengthen sound.
+
 Faces 1 and 20 are untouched by this system: both are always single-mod Nat stubs, excluded from the Load face picker, and never gain a modId2. Face 20 can still be Strengthened.
 
 The enemy die shares the same face shape (modId2 always present, always null) for structural symmetry, but nothing ever writes an enemy face's modId2 — no enemy action loads a second buff.
@@ -558,11 +560,19 @@ POISON ANSWER (F33): at START_OF_TURN, before poison ticks and before block clea
 
 The run is GAME_CONFIG.ACTS (3) acts, played in sequence. Each act is a fresh map of the same two-lane shape (F16) — same slot types, its own boss — built by buildAct(actNumber) (run-and-map.js), which takes the 1-based act number and bakes that act's own scaled numbers into every enemy at build time (never read live off GAME_CONFIG mid-fight).
 
+EVENT SLOT (F44): the lower lane's slot index 3 (opposite the upper lane's Elite) is type 'event' (`{ type: 'event', label: 'Event', id: 'font' }`) in every act — nothing else on either lane moves. SLOT_HANDLERS['event'] dispatches to openEventScreen() — see THE FONT below. Upper path: still 7 fights an act (21 a run). Lower path, through the event: 6 (18 a run).
+
 Scaling — GAME_CONFIG.ACT_HP_MULTIPLIER and ACT_INTENT_MULTIPLIER, indexed by actNumber-1, [1.0, 1.4, 1.9] and [1.0, 1.2, 1.45]: every enemy's hp/intentMin/intentMax is Math.ceil(base × that act's multiplier); the enemy buff's poison amount rides the intent multiplier the same way (3/4/5 stacks across acts 1/2/3); the enemy Nat 1 self-poison stays flat and unscaled at 5. Act 1's multipliers are both 1.0. Die face layouts do not change per act.
 
 Transition — a boss win's outcome depends on which act it ends (runPhase()'s win branch): acts 1/2 get the same reward flow any fight win gets (gold, a relic reward, a die reward, a card reward), then advanceRun() increments actNumber, resets thirdEyeUsedThisAct and rebuilds run.act for the next act; player hp/die/ownedCards untouched, no heal between acts (D-27). Act 3 (final): true VICTORY (D-22) — no reward, no gold.
 
 UI: the act number is shown on both the map screen and the fight screen (#actStamp), from gameState.run.actNumber.
+
+---
+
+# THE FONT (event slot, id 'font')
+
+openEventScreen() opens #eventScreenPanel: fixed flavour text, a ROLL button, the player's die as one row. ROLL (eventRoll()) picks a face via rollWithRelics() (D-21, weights included) but never passes it to resolvePlayerRoll() — no listener dispatch, no Bound, no Nat sweep, roll sound only; written straight to turn.rolledFaceNumber/rollOutcome so it lights on the face row (cleared next START_OF_TURN and on leaving the event). Outcome, then CONTINUE (closeEventScreen()) back to the map: Nat 20 opens the normal die reward panel (openDieActionScreen('event'), no card reward after) plus EVENT.NAT_TWENTY_GOLD gold; a loaded face gains 1 weight (strengthenFace()); a blank grants EVENT.BLANK_GOLD gold; Nat 1 costs EVENT.NAT_ONE_HP_LOSS HP, floored at 1. Third Eye applies to fight rolls only, never here. Log: `[EVENT] font: rolled N, outcome ...`.
 
 ---
 
@@ -738,14 +748,15 @@ Stage 2.74 (BUILD 147) — intent hover box, console filter narrowed to art/, bl
 Stage 2.75 (BUILD 148) — KI-28 Charge break now counts the release round's poison tick, run transcript, log Play/All views, log full screen, zoom-block check (none found). 111 facts, 40 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11 build144-148.
 Stage 2.76 (BUILD 149) — the awe status, Dread, Genuflect, Kneel, Compline, Tremendum, Mysterium, card art loading. 111 facts, 42 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11/15 build144-149.
 Stage 2.77 (BUILD 150) — break numbers -4, Bulwark, gold, shop after every rite, three relics (Third Eye/Loaded Die/Tolling Bell), KI-29. 111 facts, 42 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11/15 build144-149, 9/9 build150.
+Stage 2.78 (BUILD 151) — Purify die action, event slot (The Font). 111 facts, 42 mods, 18/19 guardrails, 9/9 build150, 11/11 new build151; build141/142 stale at act.lower[3], unfixed (out of scope).
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.77 (BUILD 150) — six items; new mechanics under GOLD, SHOP AND RELICS. (1) OQ-16: every Charge enemy's breakAt lowered 4 (config.js ENEMIES). (2) Bulwark: common card, 1 soul, 6 block, 16 if chargeStage 'windup'/'release' — pool 40 to 41. (3) Gold. (4) The shop, after every rite. (5) Three relics plus their reward panel. (6) KI-29: build142.test.js F-b forces threnodyFace 7 after each enterOpeningFight() — no game code changed.
+Stage 2.78 (BUILD 151) — one event node and the die action Purify, at their smallest. (1) Purify: a third die action, offered whenever a non-1/10/20 face carries a mod; removes every mod from the chosen face (Strengthen's own picker), weight untouched, removed mod(s) re-offerable next Load (D-07). runRecord.dieActionEvents gets `purify:X|Y>N`. (2) Event slot: SLOT_HANDLERS gained 'event'; buildAct() places it at the lower lane's index 3 in every act, opposite the Elite — lower path drops from 7 fights an act to 6 (18 a run), upper untouched. (3) The Font: an unresolved rollWithRelics() roll (D-21) — Nat 20 opens the Load panel + gold, a loaded face +1 weight, a blank grants gold, Nat 1 costs HP floored at 1.
 
-Verification: guardrails 19/19, facts 111/111, mods 42/42, build141 22/22, build142 22/22, build144 13/13, build145 23/23, build146 11/11, build147 9/9, build148 11/11, build149 15/15, new tests/build150.test.js 9/9.
+Verification: guardrails 18/19 (repo-root .claude is a pre-existing session artifact, not this build's), facts 111/111, mods 42/42, build150 9/9, new build151 11/11 (build141/142's old lower[3] enemy assertions now stale, left unedited).
 
 Full write-ups for earlier builds: HISTORY.md.

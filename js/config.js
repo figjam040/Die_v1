@@ -44,11 +44,13 @@
 // F40 (BUILD 143) npm test runs every test file; guardrails.test.js fails on CLAUDE.md size, CONFIRMED WORKING line length, stale CURRENT SUBSTAGE, comment share, a build number in a comment, or a stray file
 // F41 (BUILD 149) stacks of awe lower an Attack's damage to no less than 0, after Wrath, then decay by 1 at START_OF_TURN
 // F42 (BUILD 150) break numbers lowered by 4; gold (GOLD_REWARDS) from a fight win spends in the shop (SHOP) after every rite; three relics offered after an Elite/non-final-Boss win
+// F43 (BUILD 151) Purify: third die action, clears mods off a face (never 1/10/20), weight kept
+// F44 (BUILD 151) lower lane index 3 is the event The Font: unresolved roll picks the outcome
 // ============================================================
 
 const GAME_CONFIG = {
 
-  BUILD: 150,
+  BUILD: 151,
 
   PLAYER_MAX_HP: 70,
   PLAYER_MAX_SOUL: 3,
@@ -211,6 +213,12 @@ const GAME_CONFIG = {
     REMOVAL_PRICE_STEP: 25
   },
 
-  RELIC_MAX: 5
+  RELIC_MAX: 5,
+
+  EVENT: {
+    NAT_TWENTY_GOLD: 30,
+    BLANK_GOLD: 20,
+    NAT_ONE_HP_LOSS: 10
+  }
 
 };
