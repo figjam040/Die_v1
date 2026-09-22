@@ -35,6 +35,7 @@ function runPhase(phase) {
       updateRun({ status: 'win' });
       log('[WIN] enemy defeated');
       recordFightRoundEnd(gameState.enemy.id);
+      appendTranscript('WON r' + gameState.turn.round + ' | you ' + gameState.player.hp + '/' + gameState.player.maxHp);
       // A boss win only ends the run (VICTORY, D-22) on the FINAL act.
       // Every earlier act's boss grants the usual reward flow first.
       if (gameState.run.currentSlot === 'boss') {
@@ -63,6 +64,7 @@ function runPhase(phase) {
       log('[RUN] run over');
       playAudioEvent('fight_lost');
       recordFightRoundEnd(gameState.enemy.id);
+      appendTranscript('LOST r' + gameState.turn.round + ' | you ' + gameState.player.hp + '/' + gameState.player.maxHp);
       flushRunRecord('lost');
       return;
     }
@@ -77,17 +79,6 @@ function runPhase(phase) {
     updateTurn({ round: gameState.turn.round + 1 });
 
     resetSoundChains();
-
-    // Enemies act from a repeating pattern of 1-4 intents — see
-    // advanceEnemyIntentForRound() (pipeline.js).
-    advanceEnemyIntentForRound();
-
-    // A Seal lasts one round: REPLACED (not appended) every START_OF_TURN, even when empty.
-    gameState.player.sealNextRound.forEach(function(faceNumber) {
-      log('[ENEMY] Face ' + faceNumber + ' is sealed and counts as blank.');
-    });
-    updateTurn({ sealedFaces: gameState.player.sealNextRound.slice() });
-    updatePlayer({ sealNextRound: [] });
 
     if (gameState.player.poisonStacks > 0) {
       const poisonDamage = calculateDamage(gameState.player.poisonStacks, 'poison');
@@ -118,6 +109,18 @@ function runPhase(phase) {
       return;
     }
 
+    // Enemies act from a repeating pattern of 1-4 intents — see
+    // advanceEnemyIntentForRound() (pipeline.js). Runs after the enemy's own
+    // poison tick above so a Charge's break check counts that tick (KI-28).
+    advanceEnemyIntentForRound();
+
+    // A Seal lasts one round: REPLACED (not appended) every START_OF_TURN, even when empty.
+    gameState.player.sealNextRound.forEach(function(faceNumber) {
+      log('[ENEMY] Face ' + faceNumber + ' is sealed and counts as blank.');
+    });
+    updateTurn({ sealedFaces: gameState.player.sealNextRound.slice() });
+    updatePlayer({ sealNextRound: [] });
+
     const blockBefore = gameState.player.block;
     updatePlayer({ block: 0 });
     log('[START] block cleared: ' + blockBefore + ' to 0');
@@ -145,7 +148,7 @@ function runPhase(phase) {
     log('[START] turn listeners cleared');
 
     // Clears every per-turn/per-round roll flag so none leaks forward.
-    updateTurn({ rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, enemyRollOutcome: null, enemyRolledFaceNumber: null, modTriggeredThisTurn: false, enemyAttackCancelledThisTurn: false, outsideTriggeredFaces: [], roundTriggerCount: 0, roundSweepPlays: 0, roundTriggerCapLogged: false, hoppedFaces: [] });
+    updateTurn({ rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, enemyRollOutcome: null, enemyRolledFaceNumber: null, modTriggeredThisTurn: false, enemyAttackCancelledThisTurn: false, outsideTriggeredFaces: [], roundTriggerCount: 0, roundSweepPlays: 0, roundTriggerCapLogged: false, hoppedFaces: [], cardsPlayed: [], modsTriggered: [] });
 
     drawCards(GAME_CONFIG.DRAW_COUNT);
   }
@@ -170,6 +173,7 @@ function runPhase(phase) {
     if (gameState.turn.enemyAttackCancelledThisTurn) {
       log('[ENEMY] attack cancelled by its own Nat 1');
       advanceEnemyPattern();
+      appendRoundTranscript('nat 1 cancelled');
       return;
     }
 
@@ -183,18 +187,28 @@ function runPhase(phase) {
       updateEnemy({ pontifexDoubleAttackThisRound: false });
     }
 
+    // The enemy's own die (a separate mechanism from the pattern intent
+    // above) rolled Nat 20 this round — a buff sweep, reported in place of
+    // whatever the pattern intent also did.
+    const enemyBuffSweep = gameState.turn.enemyRollOutcome === 'nat_twenty';
+
+    let actionSummary;
+
     if (entry && entry.kind === 'charge') {
       if (gameState.enemy.chargeStage === 'windup') {
         log('[ENEMY] ' + enemyName + ' winds up.');
+        actionSummary = 'windup ' + entry.release + ' break ' + entry.breakAt;
       } else {
         if (gameState.enemy.chargeBroken) {
           log('[ENEMY] ' + enemyName + '\'s release is lost.');
+          actionSummary = 'release broken';
         } else {
           const rawDamage = Math.max(0, entry.release - block);
           const blockedAmount = Math.min(entry.release, block);
           if (blockedAmount > 0) { playAudioEvent('block_absorb'); }
           const damage = dealDamage('player', rawDamage, 'enemy_attack', null, false);
           log('[ENEMY] ' + enemyName + ' releases for ' + damage + '.');
+          actionSummary = 'release ' + entry.release + ' for ' + damage;
         }
         advanceEnemyPattern();
       }
@@ -203,6 +217,7 @@ function runPhase(phase) {
       const newStacks = gameState.player.poisonStacks + stacks;
       updatePlayer({ poisonStacks: newStacks });
       log('[ENEMY] ' + enemyName + ' afflicts: ' + stacks + ' stacks of poison.');
+      actionSummary = 'afflict ' + stacks;
       advanceEnemyPattern();
     } else {
       const intent = entry ? entry.rolledValue : 0;
@@ -216,13 +231,18 @@ function runPhase(phase) {
       if (pontifexDouble) {
         const damage2 = dealDamage('player', rawDamage, 'enemy_attack', null, false);
         log('[ENEMY] ' + enemyName + '\'s Nat 20: the Attack resolves twice — dealt ' + damage + ' + ' + damage2 + ' damage (intent ' + intent + ', block ' + block + ')');
+        actionSummary = 'attack twice for ' + damage + '+' + damage2;
       } else if (damage === 0) {
         log('[ENEMY] attack fully blocked (intent ' + intent + ', block ' + block + ')');
+        actionSummary = 'attack ' + intent + ' blocked';
       } else {
         log('[ENEMY] dealt ' + damage + ' damage (intent ' + intent + ', block ' + block + ')');
+        actionSummary = 'attack ' + intent + ' for ' + damage;
       }
       advanceEnemyPattern();
     }
+
+    appendRoundTranscript(enemyBuffSweep ? 'nat 20 buffs' : actionSummary);
   }
 
   if (phase === 'CHECK_WIN_LOSS') {

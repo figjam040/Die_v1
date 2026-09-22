@@ -80,6 +80,18 @@ document.getElementById('logToggleBtn').addEventListener('click', function() {
   updateUi({ logOpen: !gameState.ui.logOpen });
 });
 
+// Player-facing Play/All filter; gameState.ui.logView is a display flag
+// only, never part of the run record — every line still writes to the DOM.
+document.getElementById('logViewToggleBtn').addEventListener('click', function() {
+  log('[CLICK] LOG view toggle');
+  updateUi({ logView: gameState.ui.logView === 'all' ? 'play' : 'all' });
+});
+
+document.getElementById('logCloseBtn').addEventListener('click', function() {
+  log('[CLICK] LOG close');
+  updateUi({ logOpen: false });
+});
+
 document.getElementById('devPauseBeforeRollCheckbox').addEventListener('change', function() {
   devPauseBeforeFirstRoll = this.checked;
   log('[DEV] pause before first roll: ' + (devPauseBeforeFirstRoll ? 'on' : 'off'));
@@ -173,8 +185,11 @@ document.getElementById('copyRunRecordBtn').addEventListener('click', function()
     log('[RUN RECORD] nothing stored yet — nothing copied');
     return;
   }
-  copyTextToClipboard(text);
-  log('[RUN RECORD] copied ' + (text.split('\n').length - 1) + ' line(s) to clipboard');
+  const transcriptLines = gameState.run.transcript;
+  const fullText = text + '\n\nTRANSCRIPT\n' + transcriptLines.join('\n');
+  copyTextToClipboard(fullText);
+  const recordLineCount = text.split('\n').length - 1;
+  log('[RUN RECORD] copied ' + recordLineCount + ' record line(s) and ' + transcriptLines.length + ' transcript line(s)');
 });
 
 window.addEventListener('beforeunload', function() {

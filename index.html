@@ -70,10 +70,6 @@
     min-height: 0;
   }
 
-  .app.log-open {
-    grid-template-columns: 1fr 380px;
-  }
-
   /* ---------- BAND A — TOP BAR ---------- */
 
   .top-bar {
@@ -1457,8 +1453,15 @@
     min-height: 0;
   }
 
+  /* Full screen over the whole play column, not a sidebar — the fight
+     underneath keeps rendering, it's just covered while the log is open. */
   .app.log-open .right-col {
     display: flex;
+    position: fixed;
+    inset: 0;
+    background: #000000;
+    padding: 24px;
+    z-index: 1000;
   }
 
   #log {
@@ -1472,8 +1475,32 @@
     line-height: 17px;
   }
 
+  .app.log-open #log {
+    font-size: 22px;
+    line-height: 24px;
+  }
+
   #log div {
     padding: 0;
+  }
+
+  .log-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 0 8px;
+    flex-shrink: 0;
+  }
+
+  /* Play view (default): [STATE]/[LISTENER] lines stay in the DOM but are
+     hidden. All view shows every line — nothing is ever not written. */
+  #log .log-state, #log .log-listener {
+    display: none;
+  }
+
+  #log.log-view-all .log-state, #log.log-view-all .log-listener {
+    display: block;
   }
 
   .log-phase { color: #a88a5a; font-weight: bold; margin-top: 6px; }
@@ -1736,6 +1763,12 @@
   </div>
 
   <div class="right-col">
+    <div class="log-header">
+      <!-- Display-only toggle for gameState.ui.logView; hides [STATE]/[LISTENER] lines in Play, shows everything in All. -->
+      <button id="logViewToggleBtn">LOG: PLAY</button>
+      <!-- Only present while gameState.ui.logOpen — full-screen mode's own close button. -->
+      <button id="logCloseBtn" style="display:none;">CLOSE</button>
+    </div>
     <div id="log"></div>
   </div>
 

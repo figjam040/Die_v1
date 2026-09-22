@@ -33,7 +33,7 @@
 // F27 pitch chains cap 8, reset at START_OF_TURN
 // F28 (corrected BUILD 102 — see paste-back) sound duration ceiling 200 ms holds for every frequent sound (roll, card plays, damage, block, end turn, mod trigger, die action, card reward, fight_start_normal/elite); nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it — all six are rare, at most once per fight-ending event, boss fight, or Nat roll, measured live via tests/facts.test.js, not just the two Nat sounds the fact previously named
 // F33 (BUILD 141) at START_OF_TURN, before poison ticks and before block clears, every 5 block the player holds removes 1 stack of poison from the player
-// F34 (BUILD 141) enemies act from a repeating pattern of 1 to 4 intents: Attack (a number rolled evenly in its range), Charge (a no-damage wind-up round, then a release; broken if the enemy loses the break number of HP in the wind-up round, poison ticks included) and Afflict (stacks of poison, no damage); an enemy Nat 1 cancels that round's intent
+// F34 (BUILD 141, KI-28 BUILD 148) enemies act from a repeating pattern of 1 to 4 intents: Attack (a number rolled evenly in its range), Charge (a no-damage wind-up round, then a release; broken if HP lost from the wind-up's start through the release's own tick reaches the break number) and Afflict (stacks of poison, no damage); an enemy Nat 1 cancels that round's intent
 // F35 (BUILD 141) any enemy can carry a die of any size from GAME_CONFIG.DIE_SIZE; buffs are poison, Wrath (adds to every Attack from the next round on), Drain (1 less soul next round) and Seal (the player's heaviest loaded face other than 1 and 20 counts as blank next round, for every rule)
 // F36 (BUILD 142) act 1 enemies: Verger (opening at 6–9, position 3 at 9–12), Thurifer (positions 1 and 4), Asperser (positions 2 and 5), Lector (elite), Hierophant (boss); an enemy Nat 20 or Nat 1 has its own sound and a pulse on the rolled row (KI-22)
 // F37 (BUILD 142) acts 2 and 3 enemies: Chorister, Cantor, Flagellant, Archdeacon, Cardinal; Anchorite, Mendicant, Inquisitor, Exarch, Pontifex; normals roll 6-sided dice, elites 12-sided, bosses 20-sided with their own Nat pair; the Pontifex reads the player's heaviest face
@@ -46,7 +46,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 147,
+  BUILD: 148,
 
   PLAYER_MAX_HP: 70,
   PLAYER_MAX_SOUL: 3,

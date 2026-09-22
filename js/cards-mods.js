@@ -67,6 +67,7 @@ function playCard(handIndex) {
 
   card.effect(gameState);
   callListeners('ON_CARD_PLAY', { card: card });
+  updateTurn({ cardsPlayed: gameState.turn.cardsPlayed.concat([card.name]) });
 
   const newHand = gameState.player.hand.slice();
   newHand.splice(handIndex, 1);
@@ -863,6 +864,7 @@ function init() {
       const newFaces = gameState.die.faces.slice();
       newFaces[faceIndex] = Object.assign({}, face, { modData: newModData });
       updateDie({ faces: newFaces });
+      updateTurn({ modsTriggered: gameState.turn.modsTriggered.concat([mod.name]) });
       mod.effect(data);
     }
   }, 'permanent');

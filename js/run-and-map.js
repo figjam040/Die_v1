@@ -219,7 +219,7 @@ function startNewRun() {
 
   clearListeners('turn');
 
-  updateTurn({ phase: 'START_OF_TURN', round: 0, cardsPlayedThisTurn: 0, rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, enemyRollOutcome: null, enemyRolledFaceNumber: null, modTriggeredThisTurn: false });
+  updateTurn({ phase: 'START_OF_TURN', round: 0, cardsPlayedThisTurn: 0, rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, enemyRollOutcome: null, enemyRolledFaceNumber: null, modTriggeredThisTurn: false, cardsPlayed: [], modsTriggered: [] });
 
   updateRun({
     status: 'active',
@@ -231,8 +231,10 @@ function startNewRun() {
     currentSlot: 'opening',
     act: buildAct(1),
     actNumber: 1,
-    threnodyFace: Math.floor(Math.random() * 18) + 2
+    threnodyFace: Math.floor(Math.random() * 18) + 2,
+    transcript: []
   });
+  localStorage.removeItem(RUN_TRANSCRIPT_STORAGE_KEY);
 
   resetRunRecord();
 
@@ -360,6 +362,47 @@ function collectAllRunRecordLines() {
   return [RUN_RECORD_CSV_HEADER].concat(lines).join('\n');
 }
 
+// ---------- RUN TRANSCRIPT ----------
+// Player-facing, last run only. See RUN RECORD, CLAUDE.md.
+
+const RUN_TRANSCRIPT_STORAGE_KEY = 'dieRunTranscript';
+
+// The one function every transcript line goes through — pushes to
+// gameState.run.transcript and mirrors the whole array to localStorage,
+// replaced (not appended to) on every New Run.
+function appendTranscript(line) {
+  updateRun({ transcript: gameState.run.transcript.concat([line]) });
+  localStorage.setItem(RUN_TRANSCRIPT_STORAGE_KEY, JSON.stringify(gameState.run.transcript));
+}
+
+// Builds and appends this round's own line — called once at the end of
+// ENEMY_ACT_PHASE (phase-machine.js), after the enemy's action for the
+// round has fully resolved, with that action's own five-word-or-fewer
+// summary (or the enemy's own Nat 1/20 wording in its place).
+function appendRoundTranscript(actionSummary) {
+  const t = gameState.turn;
+  const e = gameState.enemy;
+  const p = gameState.player;
+
+  let rollSegment;
+  if (t.rollOutcome === 'nat_twenty') {
+    rollSegment = 'roll ' + t.rolledFaceNumber + ' NAT 20';
+  } else if (t.rollOutcome === 'nat_one') {
+    rollSegment = 'roll ' + t.rolledFaceNumber + ' NAT 1';
+  } else if (t.rollOutcome === 'blank') {
+    rollSegment = 'roll ' + t.rolledFaceNumber + ' blank';
+  } else {
+    rollSegment = 'roll ' + t.rolledFaceNumber + ' ' + t.modsTriggered.join(', ');
+  }
+
+  const line = 'R' + t.round + ' ' + e.name + ' ' + e.hp + '/' + e.maxHp + ' P' + e.poisonStacks
+    + ' | ' + rollSegment
+    + ' | ' + t.cardsPlayed.join(', ')
+    + ' | enemy ' + actionSummary
+    + ' | you ' + p.hp + '/' + p.maxHp + ' bl' + p.block + ' P' + p.poisonStacks;
+  appendTranscript(line);
+}
+
 // Best-effort clipboard write, falling back to the hidden-textarea +
 // execCommand('copy') trick where the async Clipboard API isn't available.
 function copyTextToClipboard(text) {
@@ -386,7 +429,7 @@ function copyTextToClipboardFallback(text) {
 // table rather than an if/else, so a further slot type can be added later
 // (a new key here) without reopening enterSlot() itself.
 const SLOT_HANDLERS = {
-  fight: function(slot) { beginFightFromSlot(slot); },
+  fight: function(slot, nodeLabel) { beginFightFromSlot(slot, nodeLabel); },
   rite: function() { openRiteScreen(); }
 };
 
@@ -401,12 +444,13 @@ function enterSlot(laneName, index) {
   log('[RUN] entering slot: ' + slot.label);
 
   const slotForDescribe = (laneName === 'opening' || laneName === 'boss') ? laneName : { lane: laneName, index: index };
-  const runRecordChanges = { started: true, node: describeSlot(slotForDescribe) };
+  const nodeLabel = describeSlot(slotForDescribe);
+  const runRecordChanges = { started: true, node: nodeLabel };
   if (laneName === 'boss') { runRecordChanges.arrivalHpAtBoss = gameState.player.hp; }
   updateRunRecord(runRecordChanges);
 
   const handler = SLOT_HANDLERS[slot.type];
-  if (handler) { handler(slot); }
+  if (handler) { handler(slot, nodeLabel); }
 }
 
 function chooseLane(laneName) {
@@ -464,7 +508,7 @@ function devJumpToSlot(laneName, index) {
 
 // Begins the fight for a 'fight'-type slot (normal, elite, or boss — they
 // differ only in the enemy config carried on the slot, per buildAct()).
-function beginFightFromSlot(slot) {
+function beginFightFromSlot(slot, nodeLabel) {
   updateEnemy({
     id: slot.label,
     // Display/log identity name, distinct from id (the slot label
@@ -498,6 +542,7 @@ function beginFightFromSlot(slot) {
   updateRun({ screen: 'fight' });
   log('[RUN] fight begins: ' + slot.label + ' (' + slot.enemy.hp + ' HP)');
   playAudioEvent(slot.label === 'Boss' ? 'fight_start_boss' : slot.label === 'Elite' ? 'fight_start_elite' : 'fight_start_normal');
+  appendTranscript('FIGHT act ' + gameState.run.actNumber + ' ' + nodeLabel + ' ' + slot.enemy.name + ' ' + slot.enemy.hp + ' | you ' + gameState.player.hp + '/' + gameState.player.maxHp);
   startFreshTurnPaused();
 }
 

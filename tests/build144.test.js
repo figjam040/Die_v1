@@ -154,12 +154,14 @@ const TIMING_FN_PATTERN = /\b(ease-in-out|ease-in|ease-out|ease|linear)\b/;
     assert.strictEqual(state.logVisible, true, '#log must be visible after one click');
     assert.strictEqual(state.btnText, 'LOG ▾');
 
-    await page.click('#logToggleBtn');
+    // The log now covers the whole viewport while open (BUILD 148), so
+    // #logToggleBtn sits underneath it — closed via its own #logCloseBtn instead.
+    await page.click('#logCloseBtn');
     state = await page.evaluate(() => ({
       logVisible: document.getElementById('log').offsetParent !== null,
       btnText: document.getElementById('logToggleBtn').textContent
     }));
-    assert.strictEqual(state.logVisible, false, '#log must be hidden after a second click');
+    assert.strictEqual(state.logVisible, false, '#log must be hidden after closing');
     assert.strictEqual(state.btnText, 'LOG ▸');
 
     await page.click('#startGameBtn');

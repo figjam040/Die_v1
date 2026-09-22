@@ -167,17 +167,18 @@ async function enterOpeningFight(page) {
     await page2.close();
   });
 
-  await runTest('Item B-d: a poison tick during the wind-up round counts toward the break', async () => {
+  await runTest('Item B-d: the release round\'s own poison tick counts toward the break (KI-28)', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => {
-      updateEnemy({ pattern: [{ kind: 'charge', release: 24, breakAt: 3 }], patternIndex: 0, poisonStacks: 3 });
-      runPhase('START_OF_TURN'); // wind-up begins, poison ticks for 3 (this same call)
+      updateEnemy({ pattern: [{ kind: 'charge', release: 24, breakAt: 3 }], patternIndex: 0, poisonStacks: 0 });
+      runPhase('START_OF_TURN'); // wind-up begins, no poison this round
     });
     await page.evaluate(() => { runPhase('ENEMY_ACT_PHASE'); });
-    await page.evaluate(() => { runPhase('START_OF_TURN'); }); // release begins, break check
+    await page.evaluate(() => { updateEnemy({ poisonStacks: 3 }); }); // gained during the wind-up round
+    await page.evaluate(() => { runPhase('START_OF_TURN'); }); // release begins: poison ticks for 3, then the break check
     const broken = await page.evaluate(() => gameState.enemy.chargeBroken);
-    assert.strictEqual(broken, true, 'expected the wind-up round\'s own poison tick to count toward the break');
+    assert.strictEqual(broken, true, 'expected the release round\'s own poison tick to count toward the break');
     await page.close();
   });
 

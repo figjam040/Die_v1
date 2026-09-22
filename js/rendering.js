@@ -73,6 +73,14 @@ function refreshInspector() {
     appEl.classList.toggle('log-open', gameState.ui.logOpen);
     logToggleBtn.textContent = gameState.ui.logOpen ? 'LOG ▾' : 'LOG ▸';
   }
+  const logEl = document.getElementById('log');
+  const logViewToggleBtn = document.getElementById('logViewToggleBtn');
+  const logCloseBtn = document.getElementById('logCloseBtn');
+  if (logEl && logViewToggleBtn) {
+    logEl.classList.toggle('log-view-all', gameState.ui.logView === 'all');
+    logViewToggleBtn.textContent = gameState.ui.logView === 'all' ? 'LOG: ALL' : 'LOG: PLAY';
+  }
+  if (logCloseBtn) { logCloseBtn.style.display = gameState.ui.logOpen ? 'inline-block' : 'none'; }
   renderRegistryInspector();
   renderStats();
   renderCardButtons();
@@ -1288,6 +1296,7 @@ function dieActionChooseStrengthen() {
 function dieActionChooseSkip() {
   log('[DIE ACTION] skipped');
   updateRunRecord({ dieActionEvents: gameState.runRecord.dieActionEvents.concat([{ type: 'skip' }]) });
+  appendTranscript('SKIP');
   closeDieActionScreen();
 }
 
@@ -1328,6 +1337,7 @@ function dieActionPickLoadFace(faceNumber) {
   }
   updateRunRecord({ dieActionEvents: events });
   playAudioEvent('die_action_load');
+  appendTranscript('LOAD ' + dieActionChosenModId + ' > ' + faceNumber);
   closeDieActionScreen();
 }
 
@@ -1335,6 +1345,7 @@ function dieActionPickStrengthenFace(faceNumber) {
   const newWeight = strengthenFace(faceNumber);
   log('[DIE ACTION] strengthened face ' + faceNumber + ' to weight ' + newWeight);
   playAudioEvent('die_action_strengthen');
+  appendTranscript('STRENGTHEN ' + faceNumber + ' > ' + newWeight);
   closeDieActionScreen();
 }
 
@@ -1492,6 +1503,7 @@ function cardRewardPickCard(cardId) {
   });
   log('[CARD REWARD] added ' + card.name + ' to deck, deck now ' + gameState.player.ownedCards.length + ' cards');
   playAudioEvent((cardId === 'strike' || cardId === 'ward') ? 'card_reward_basic' : 'card_reward_rich');
+  appendTranscript('CARD ' + cardId);
   closeCardRewardScreen();
 }
 
@@ -1560,12 +1572,14 @@ function riteChooseHeal() {
   const healedAmount = healPlayer(GAME_CONFIG.RITE_HEAL);
   const after = gameState.player.hp;
   log('[RITE] healed ' + healedAmount + ' HP (' + before + ' to ' + after + ')');
+  appendTranscript('RITE heal ' + healedAmount + ' | you ' + after + '/' + gameState.player.maxHp);
   closeRiteScreen();
   advanceRun();
 }
 
 function riteChooseDieAction() {
   log('[RITE] taking a die action');
+  appendTranscript('RITE die action');
   closeRiteScreen();
   // Only the origin tag differs from the post-fight-win path, so
   // closeDieActionScreen() knows to advance the run rather than open a card reward.
@@ -1600,6 +1614,7 @@ function riteRemoveCard(index) {
 
   updatePlayer({ ownedCards: newOwnedCards, deck: newDeck, discard: newDiscard, hand: newHand });
   log('[RITE] removed ' + card.name + ' from deck, deck now ' + newOwnedCards.length + ' cards');
+  appendTranscript('RITE remove ' + cardId);
   closeRiteScreen();
   advanceRun();
 }

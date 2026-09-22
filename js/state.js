@@ -74,7 +74,9 @@ const gameState = {
     roundTriggerCapLogged: false,
     roundSweepPlays: 0,
     hoppedFaces: [],
-    sealedFaces: []
+    sealedFaces: [],
+    cardsPlayed: [],
+    modsTriggered: []
   },
 
   run: {
@@ -87,7 +89,8 @@ const gameState = {
     currentSlot: null,
     act: null,
     actNumber: 1,
-    threnodyFace: null
+    threnodyFace: null,
+    transcript: []
   },
 
   runRecord: {
@@ -114,7 +117,8 @@ const gameState = {
 
   // Display-only flags, never part of the run record.
   ui: {
-    logOpen: false
+    logOpen: false,
+    logView: 'play'
   }
 
 };
