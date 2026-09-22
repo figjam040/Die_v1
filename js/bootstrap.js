@@ -15,8 +15,20 @@ document.getElementById('startGameBtn').addEventListener('click', function() {
   riteStep = null;
   dieActionStep = null;
   cardRewardStep = null;
+  relicRewardStep = null;
+  shopStep = null;
+  shopRemovingCard = false;
+  thirdEyeChoosing = false;
   flushRunRecord('abandoned');
   startNewRun();
+});
+
+// Third Eye — toggles face-choosing mode; a face-btn click on the real
+// player die (renderDieList()) while this is on calls thirdEyeChooseFace().
+document.getElementById('thirdEyeBtn').addEventListener('click', function() {
+  thirdEyeChoosing = !thirdEyeChoosing;
+  log('[CLICK] Third Eye' + (thirdEyeChoosing ? ' — choose a face' : ' — cancelled'));
+  refreshInspector();
 });
 
 // DEV ONLY — "Restart Fight". Never player-facing: must not undo a loss.

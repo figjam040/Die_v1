@@ -131,7 +131,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.deepStrictEqual(act.lower[3].enemy.pattern, [{ kind: 'attack', min: 9, max: 12 }, { kind: 'attack', min: 9, max: 12 }]);
     [act.upper[0], act.upper[5], act.lower[0], act.lower[5]].forEach(function(s) {
       assert.strictEqual(s.enemy.name, 'Thurifer');
-      assert.deepStrictEqual(s.enemy.pattern, [{ kind: 'attack', min: 10, max: 14 }, { kind: 'charge', release: 24, breakAt: 15 }]);
+      assert.deepStrictEqual(s.enemy.pattern, [{ kind: 'attack', min: 10, max: 14 }, { kind: 'charge', release: 24, breakAt: 11 }]);
     });
     [act.upper[2], act.upper[6], act.lower[2], act.lower[6]].forEach(function(s) {
       assert.strictEqual(s.enemy.name, 'Asperser');
@@ -636,6 +636,10 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   await runTest('Item F-b: a loaded face triggers, a blank one gives 2 block, and the round cap holds', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
+    // KI-29: forced to a face that is always blank on a fresh die (10
+    // carries Consecrate), so the blank/round-cap cases below can't land
+    // on a threnodyFace that happens to already be loaded.
+    await page.evaluate(() => { updateRun({ threnodyFace: 7 }); });
     const faceNumber = await page.evaluate(() => gameState.run.threnodyFace);
     // Loaded case.
     await page.evaluate((fn) => {
@@ -654,6 +658,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     // Blank case, new fight.
     const page2 = await freshPage(browser);
     await enterOpeningFight(page2);
+    await page2.evaluate(() => { updateRun({ threnodyFace: 7 }); });
     const faceNumber2 = await page2.evaluate(() => gameState.run.threnodyFace);
     await page2.evaluate((fn) => { forcePlayerRoll(fn === 9 ? 8 : 9); }, faceNumber2);
     await page2.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
@@ -666,6 +671,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     // Round cap: exhaust the cap with mod triggers, then Threnody must refuse.
     const page3 = await freshPage(browser);
     await enterOpeningFight(page3);
+    await page3.evaluate(() => { updateRun({ threnodyFace: 7 }); });
     const faceNumber3 = await page3.evaluate(() => gameState.run.threnodyFace);
     await page3.evaluate((fn) => { forcePlayerRoll(fn === 9 ? 8 : 9); }, faceNumber3);
     await page3.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');

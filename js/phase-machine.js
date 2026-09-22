@@ -47,14 +47,20 @@ function runPhase(phase) {
           return;
         }
         log('[RUN] act ' + gameState.run.actNumber + ' boss defeated');
+        grantGoldForWin('Boss');
         dieActionsRemaining = GAME_CONFIG.DIE_REWARDS.SINGLE;
-        openDieActionScreen();
+        openRelicRewardScreen();
       } else {
         playAudioEvent('fight_won');
         const cs = gameState.run.currentSlot;
         const wonSlot = cs === 'opening' ? gameState.run.act.opening : gameState.run.act[cs.lane][cs.index];
+        grantGoldForWin(wonSlot.label);
         dieActionsRemaining = (wonSlot.label === 'Elite') ? GAME_CONFIG.DIE_REWARDS.ELITE : GAME_CONFIG.DIE_REWARDS.SINGLE;
-        openDieActionScreen();
+        if (wonSlot.label === 'Elite') {
+          openRelicRewardScreen();
+        } else {
+          openDieActionScreen();
+        }
       }
       return;
     }
@@ -266,8 +272,18 @@ function nextPhase() {
 
   if (currentPhase === 'ROLL_PHASE' && !playerRollResolved) {
     playerRollResolved = true;
-    const face = rollDie(gameState.die.faces);
+    const face = rollWithRelics(gameState.die.faces);
     resolvePlayerRoll(face);
+    // Tolling Bell — a second roll, fully after the first resolves, while
+    // the enemy is mid-Charge (wind-up or release) this round. Goes
+    // through the same resolvePlayerRoll() dispatch, so a Nat on either
+    // roll behaves exactly as it always does and both count toward
+    // GAME_CONFIG.ROUND_TRIGGER_CAP via mod_dispatch as usual.
+    if (hasRelic('tolling_bell') && (gameState.enemy.chargeStage === 'windup' || gameState.enemy.chargeStage === 'release')) {
+      const secondFace = rollWithRelics(gameState.die.faces);
+      log('[RELIC] Tolling Bell: second face ' + secondFace.number + ' triggers');
+      resolvePlayerRoll(secondFace);
+    }
   }
   if (currentPhase === 'ENEMY_ROLL_PHASE') {
     if (!enemyRollResolved) {

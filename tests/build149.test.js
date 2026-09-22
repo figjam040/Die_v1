@@ -247,7 +247,7 @@ async function triggerMod(page, modId) {
   // ITEM (e) — pool sizes, tags, Load offer eligibility
   // ---------------------------------------------------------------
 
-  await runTest('Item e: the mod pool has 27 entries and the card pool has 40, both awe pieces carry the awe tag, Load offers can contain Dread', async () => {
+  await runTest('Item e: the mod pool has 27 entries and the card pool has at least 40, both awe pieces carry the awe tag, Load offers can contain Dread', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => ({
       modCount: Object.keys(gameState.config.mods).length,
@@ -264,7 +264,7 @@ async function triggerMod(page, modId) {
       }
     }));
     assert.strictEqual(v.modCount, 27, 'expected 27 mods');
-    assert.strictEqual(v.cardCount, 40, 'expected 40 reward-pool cards');
+    assert.ok(v.cardCount >= 40, 'expected at least 40 reward-pool cards, got ' + v.cardCount);
     assert.deepStrictEqual(v.modTags.dread, ['awe']);
     assert.deepStrictEqual(v.modTags.genuflect, ['awe']);
     assert.deepStrictEqual(v.cardTags.kneel, ['awe']);

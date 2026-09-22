@@ -102,11 +102,14 @@ function refreshInspector() {
   renderDieIcons();
   renderArtBoxes();
   renderTopBarTokens();
+  renderThirdEyeButton();
   renderPhaseBadge();
   renderResultBanner();
   renderDieActionPanel();
   renderCardRewardPanel();
+  renderRelicRewardPanel();
   renderRiteScreen();
+  renderShopPanel();
   renderMapScreen();
 
   // dieActionPanel/cardRewardPanel/riteScreenPanel are siblings of both
@@ -119,7 +122,7 @@ function refreshInspector() {
   document.getElementById('devBeginRollBtn').disabled = !(gameState.run.screen === 'fight' && gameState.run.status === 'active' && gameState.turn.phase === 'START_OF_TURN');
   document.getElementById('devRestartFightBtn').disabled = !(gameState.run.screen === 'fight' && gameState.run.status === 'active' && gameState.run.outcome === 'active');
   document.getElementById('devSkipToDieActionBtn').disabled = !(gameState.run.status === 'active' && gameState.run.outcome === 'active');
-  document.getElementById('endTurnBtn').disabled = !(gameState.run.status === 'active' && gameState.turn.phase === 'CARD_PHASE' && dieActionStep === null && cardRewardStep === null && riteStep === null);
+  document.getElementById('endTurnBtn').disabled = !(gameState.run.status === 'active' && gameState.turn.phase === 'CARD_PHASE' && dieActionStep === null && cardRewardStep === null && riteStep === null && relicRewardStep === null && shopStep === null);
   // End Turn belongs to the fight screen only — hidden entirely on the
   // map, not just disabled-but-visible.
   document.getElementById('endTurnBtn').style.display = (gameState.run.screen === 'fight') ? '' : 'none';
@@ -547,6 +550,16 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       });
     }
 
+    // Third Eye — while choosing, a click on the real player die's own
+    // row picks that face for the roll instead of the dev force-roll path.
+    if (containerId === 'playerDieList' && thirdEyeChoosing) {
+      const faceNumber = face.number;
+      btn.addEventListener('click', function() {
+        thirdEyeChoosing = false;
+        thirdEyeChooseFace(faceNumber);
+      });
+    }
+
     const modWrap = document.createElement('div');
     modWrap.className = 'die-mod-wrap';
 
@@ -966,10 +979,37 @@ function renderArtBoxes() {
 }
 
 // No gold mechanic exists in V1; the field is read if it is ever added.
+// Shown only while Third Eye is held, unused this act, and a roll is
+// actually pending — the one window thirdEyeChooseFace() itself accepts.
+function renderThirdEyeButton() {
+  const btn = document.getElementById('thirdEyeBtn');
+  if (!btn) return;
+  const eligible = hasRelic('third_eye') && !gameState.run.thirdEyeUsedThisAct &&
+    gameState.turn.phase === 'ROLL_PHASE' && !playerRollResolved;
+  btn.style.display = eligible ? '' : 'none';
+  btn.classList.toggle('choosing', thirdEyeChoosing);
+  if (!eligible) { thirdEyeChoosing = false; }
+}
+
 function renderTopBarTokens() {
   const goldEl = document.getElementById('goldValue');
   if (!goldEl) return;
   goldEl.textContent = 'GOLD ' + (gameState.run.gold === undefined ? '—' : gameState.run.gold);
+
+  const relicRow = document.getElementById('relicRow');
+  if (!relicRow) return;
+  const slots = relicRow.querySelectorAll('.relic-slot');
+  slots.forEach(function(slot, index) {
+    const relicId = gameState.run.relics[index];
+    if (relicId && gameState.config.relics[relicId]) {
+      const relic = gameState.config.relics[relicId];
+      slot.textContent = relic.name;
+      slot.title = relic.name + ' — ' + relic.text;
+    } else {
+      slot.textContent = '';
+      slot.title = '';
+    }
+  });
 }
 
 // ---------- DIE ICONS ----------
@@ -1056,6 +1096,7 @@ const CARD_EFFECT_TEXT = {
   censer: '4 poison',
   purge: '6 damage, 10 if enemy poisoned',
   interdict: "5 block. 10 if the enemy's intent deals 12 or more damage this round.",
+  bulwark: '6 block. 16 block if the enemy is winding up or releasing this round.',
   reckoning: '3 damage + 2 per poison stack',
   retribution: 'damage = block, capped at 12',
   covenant: '2 damage + 3 per face weight',
@@ -1220,6 +1261,10 @@ let dieActionStep = null; // null | 'choose' | 'load_pick_mod' | 'load_pick_face
 let dieActionMods = []; // the (up to) 3 mod ids offered this pass
 let dieActionChosenModId = null;
 
+// Third Eye's own UI-flow flag, same convention — true while the button is
+// toggled on and the next real player-die face click chooses the roll.
+let thirdEyeChoosing = false;
+
 // Consecrate is the class anchor, not a reward, per SCOPE — V1.
 const DIE_ACTION_EXCLUDED_MOD_IDS = ['consecrate'];
 
@@ -1249,8 +1294,14 @@ function closeDieActionScreen() {
   const origin = dieActionOrigin;
   dieActionOrigin = 'reward';
   if (origin === 'rite') {
-    // A rite's die-action choice never offers a card reward.
-    advanceRun();
+    // A rite's die-action choice never offers a card reward — a shop opens instead.
+    openShopScreen();
+    return;
+  }
+  if (origin === 'shop') {
+    // A shop's own Strengthen purchase returns to the shop, not the map.
+    shopStep = 'open';
+    refreshInspector();
     return;
   }
   // The elite's extra action — decrement and reopen if any remain.
@@ -1580,6 +1631,91 @@ function renderCardRewardPanel() {
   panel.appendChild(row);
 }
 
+// ---------- RELIC REWARD SCREEN (after an Elite win, and after a
+// non-final act's Boss win, before the die reward) ----------
+
+let relicRewardStep = null; // null | 'choose'
+let relicRewardOptions = []; // up to 3 relic ids offered this pass
+
+function openRelicRewardScreen() {
+  const available = Object.keys(gameState.config.relics).filter(function(id) {
+    return gameState.run.relics.indexOf(id) === -1;
+  });
+  if (available.length < 1) {
+    openDieActionScreen();
+    return;
+  }
+  const pool = available.slice();
+  const options = [];
+  while (options.length < 3 && pool.length > 0) {
+    options.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  }
+  relicRewardOptions = options;
+  relicRewardStep = 'choose';
+  refreshInspector();
+}
+
+function closeRelicRewardScreen() {
+  relicRewardStep = null;
+  relicRewardOptions = [];
+  refreshInspector();
+  openDieActionScreen();
+}
+
+function relicRewardPick(relicId) {
+  const relic = gameState.config.relics[relicId];
+  updateRun({ relics: gameState.run.relics.concat([relicId]).slice(0, GAME_CONFIG.RELIC_MAX) });
+  log('[RELIC] gained ' + relic.name);
+  appendTranscript('RELIC ' + relicId);
+  closeRelicRewardScreen();
+}
+
+function relicRewardSkip() {
+  log('[RELIC] reward skipped');
+  closeRelicRewardScreen();
+}
+
+function renderRelicRewardPanel() {
+  const panel = document.getElementById('relicRewardPanel');
+  if (!panel) return;
+
+  if (relicRewardStep === null) {
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+
+  panel.style.display = 'flex';
+  panel.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.className = 'die-action-title';
+  title.textContent = 'Choose a relic';
+
+  const row = document.createElement('div');
+  row.className = 'die-action-row';
+
+  relicRewardOptions.forEach(function(relicId) {
+    const relic = gameState.config.relics[relicId];
+    const btn = document.createElement('button');
+    btn.textContent = relic.name;
+    const tip = document.createElement('span');
+    tip.className = 'hover-tip';
+    tip.textContent = relic.text;
+    btn.appendChild(tip);
+    btn.addEventListener('click', function() { log('[CLICK] ' + relic.name); relicRewardPick(relicId); });
+    row.appendChild(btn);
+  });
+
+  const skipBtn = document.createElement('button');
+  skipBtn.textContent = 'Skip';
+  skipBtn.addEventListener('click', function() { log('[CLICK] Skip'); relicRewardSkip(); });
+  row.appendChild(skipBtn);
+
+  panel.appendChild(title);
+  panel.appendChild(row);
+}
+
 // ---------- RITE SCREEN ----------
 // A rite slot offers a choice of heal, take a die action, or remove a
 // card, then returns to the map.
@@ -1603,7 +1739,7 @@ function riteChooseHeal() {
   log('[RITE] healed ' + healedAmount + ' HP (' + before + ' to ' + after + ')');
   appendTranscript('RITE heal ' + healedAmount + ' | you ' + after + '/' + gameState.player.maxHp);
   closeRiteScreen();
-  advanceRun();
+  openShopScreen();
 }
 
 function riteChooseDieAction() {
@@ -1645,7 +1781,7 @@ function riteRemoveCard(index) {
   log('[RITE] removed ' + card.name + ' from deck, deck now ' + newOwnedCards.length + ' cards');
   appendTranscript('RITE remove ' + cardId);
   closeRiteScreen();
-  advanceRun();
+  openShopScreen();
 }
 
 function renderRiteScreen() {
@@ -1702,6 +1838,189 @@ function renderRiteScreen() {
     row.appendChild(healBtn);
     row.appendChild(dieBtn);
     row.appendChild(removeBtn);
+  }
+
+  panel.appendChild(title);
+  panel.appendChild(row);
+}
+
+// ---------- SHOP SCREEN (opens after every rite resolves, before the map returns) ----------
+
+let shopStep = null; // null | 'open'
+let shopRemovingCard = false; // the shop's own remove-a-card picker
+
+function buildShopStock() {
+  const pool = Object.keys(gameState.config.cardPool)
+    .filter(function(id) { return gameState.config.cardPool[id].tier != null; })
+    .map(function(id) { return { id: id, tier: gameState.config.cardPool[id].tier }; });
+  const cards = pickTieredOffer(pool, GAME_CONFIG.TIER_SPLIT.elite, 3).map(function(o) { return o.id; });
+  return { cards: cards, boughtCards: [], strengthenBought: false, removalBought: false };
+}
+
+function openShopScreen() {
+  shopRemovingCard = false;
+  updateRun({ shop: buildShopStock() });
+  shopStep = 'open';
+  refreshInspector();
+}
+
+function closeShopScreen() {
+  shopStep = null;
+  shopRemovingCard = false;
+  updateRun({ shop: null });
+  refreshInspector();
+  advanceRun();
+}
+
+function shopBuyCard(cardId) {
+  const shop = gameState.run.shop;
+  if (shop.boughtCards.indexOf(cardId) !== -1) { return; }
+  const card = gameState.config.cardPool[cardId];
+  const price = GAME_CONFIG.SHOP.CARD_PRICE[card.tier];
+  if (gameState.run.gold < price) { return; }
+  updateRun({ gold: gameState.run.gold - price, shop: Object.assign({}, shop, { boughtCards: shop.boughtCards.concat([cardId]) }) });
+  updatePlayer({ deck: gameState.player.deck.concat([cardId]), ownedCards: gameState.player.ownedCards.concat([cardId]) });
+  log('[SHOP] bought ' + card.name + ' for ' + price + ' gold');
+  appendTranscript('SHOP ' + cardId + ' ' + price);
+  refreshInspector();
+}
+
+// Opens the same die-row Strengthen face picker the post-fight die action
+// panel uses — dieActionOrigin 'shop' tells closeDieActionScreen() to
+// return to the shop instead of chaining into a card reward.
+function shopBuyStrengthen() {
+  const shop = gameState.run.shop;
+  const price = GAME_CONFIG.SHOP.STRENGTHEN_PRICE;
+  if (shop.strengthenBought || gameState.run.gold < price) { return; }
+  updateRun({ gold: gameState.run.gold - price, shop: Object.assign({}, shop, { strengthenBought: true }) });
+  log('[SHOP] bought Strengthen for ' + price + ' gold');
+  appendTranscript('SHOP strengthen ' + price);
+  shopStep = null;
+  dieActionOrigin = 'shop';
+  dieActionMods = [];
+  dieActionChosenModId = null;
+  dieActionStep = 'strengthen_pick_face';
+  refreshInspector();
+}
+
+function shopBuyRemoval() {
+  const shop = gameState.run.shop;
+  const price = gameState.run.removalPrice;
+  if (shop.removalBought || gameState.run.gold < price) { return; }
+  shopRemovingCard = true;
+  refreshInspector();
+}
+
+// Same shape as riteRemoveCard() (run-and-map.js's rite flow), kept
+// separate so a shop removal returns to the shop rather than the map.
+function shopRemoveCard(index) {
+  const shop = gameState.run.shop;
+  const price = gameState.run.removalPrice;
+  const cardId = gameState.player.ownedCards[index];
+  const card = getCard(cardId);
+
+  const newOwnedCards = gameState.player.ownedCards.slice();
+  newOwnedCards.splice(index, 1);
+  const newDeck = gameState.player.deck.slice();
+  const deckIdx = newDeck.indexOf(cardId);
+  if (deckIdx !== -1) newDeck.splice(deckIdx, 1);
+  const newDiscard = gameState.player.discard.slice();
+  const discardIdx = newDiscard.indexOf(cardId);
+  if (discardIdx !== -1) newDiscard.splice(discardIdx, 1);
+  const newHand = gameState.player.hand.slice();
+  const handIdx = newHand.indexOf(cardId);
+  if (handIdx !== -1) newHand.splice(handIdx, 1);
+
+  updatePlayer({ ownedCards: newOwnedCards, deck: newDeck, discard: newDiscard, hand: newHand });
+  updateRun({ gold: gameState.run.gold - price, removalPrice: price + GAME_CONFIG.SHOP.REMOVAL_PRICE_STEP, shop: Object.assign({}, shop, { removalBought: true }) });
+  log('[SHOP] bought Removal for ' + price + ' gold, removed ' + card.name);
+  appendTranscript('SHOP removal ' + price + ' | removed ' + cardId);
+  shopRemovingCard = false;
+  refreshInspector();
+}
+
+function renderShopPanel() {
+  const panel = document.getElementById('shopPanel');
+  if (!panel) return;
+
+  if (shopStep === null) {
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+
+  panel.style.display = 'flex';
+  panel.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.className = 'die-action-title';
+
+  const row = document.createElement('div');
+  row.className = 'die-action-row';
+
+  const shop = gameState.run.shop;
+
+  if (shopRemovingCard) {
+    title.textContent = 'Choose a card to remove';
+    gameState.player.ownedCards.forEach(function(cardId, index) {
+      const card = getCard(cardId);
+      const btn = document.createElement('button');
+      btn.textContent = card.name + ' (' + getCardCost(card) + ')';
+      const tip = document.createElement('span');
+      tip.className = 'hover-tip';
+      tip.textContent = getCardEffectText(cardId);
+      btn.appendChild(tip);
+      btn.addEventListener('click', function() { log('[CLICK] ' + card.name); shopRemoveCard(index); });
+      row.appendChild(btn);
+    });
+  } else {
+    title.textContent = 'SHOP';
+
+    shop.cards.forEach(function(cardId) {
+      if (shop.boughtCards.indexOf(cardId) !== -1) { return; }
+      const card = gameState.config.cardPool[cardId];
+      const price = GAME_CONFIG.SHOP.CARD_PRICE[card.tier];
+      const btn = document.createElement('button');
+      btn.textContent = card.name + ' — ' + price + 'g';
+      btn.disabled = gameState.run.gold < price;
+      const tip = document.createElement('span');
+      tip.className = 'hover-tip';
+      tip.textContent = getCardEffectText(cardId);
+      btn.appendChild(tip);
+      btn.addEventListener('click', function() { log('[CLICK] ' + card.name); shopBuyCard(cardId); });
+      row.appendChild(btn);
+    });
+
+    if (!shop.strengthenBought) {
+      const price = GAME_CONFIG.SHOP.STRENGTHEN_PRICE;
+      const btn = document.createElement('button');
+      btn.textContent = 'Strengthen — ' + price + 'g';
+      btn.disabled = gameState.run.gold < price;
+      const tip = document.createElement('span');
+      tip.className = 'hover-tip';
+      tip.textContent = 'Add 1 weight to a face of your choice.';
+      btn.appendChild(tip);
+      btn.addEventListener('click', function() { log('[CLICK] Strengthen'); shopBuyStrengthen(); });
+      row.appendChild(btn);
+    }
+
+    if (!shop.removalBought) {
+      const price = gameState.run.removalPrice;
+      const btn = document.createElement('button');
+      btn.textContent = 'Remove a card — ' + price + 'g';
+      btn.disabled = gameState.run.gold < price;
+      const tip = document.createElement('span');
+      tip.className = 'hover-tip';
+      tip.textContent = 'Remove a card of your choice from your deck.';
+      btn.appendChild(tip);
+      btn.addEventListener('click', function() { log('[CLICK] Remove a card'); shopBuyRemoval(); });
+      row.appendChild(btn);
+    }
+
+    const leaveBtn = document.createElement('button');
+    leaveBtn.textContent = 'LEAVE';
+    leaveBtn.addEventListener('click', function() { log('[CLICK] Leave'); closeShopScreen(); });
+    row.appendChild(leaveBtn);
   }
 
   panel.appendChild(title);

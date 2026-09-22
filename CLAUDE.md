@@ -184,7 +184,8 @@ gameState = {
     currentSlot: null,             // null (at the fork) | { lane, index } | 'boss'
     act: null,                     // built by buildAct(actNumber) — opening/upper[]/lower[]/boss slots, that act's own numbers baked in
     actNumber: 1,                  // 1-based, GAME_CONFIG.ACTS total. Incremented only when a non-final act's boss is defeated — see ACTS
-    threnodyFace: null             // Threnody's own fixed face for this run, 2-19, rolled once at run creation
+    threnodyFace: null,            // Threnody's own fixed face for this run, 2-19, rolled once at run creation
+    gold: 0, relics: [], shop: null, removalPrice: 75, thirdEyeUsedThisAct: false  // GOLD, SHOP AND RELICS
   },
 
   // The run record. Distinct from run above (which is fight/run-progress
@@ -210,7 +211,8 @@ gameState = {
     classes: {},
     cards: {},
     mods: {},
-    cardPool: {}                   // the reward pool — see CARDS
+    cardPool: {},                  // the reward pool — see CARDS
+    relics: {}                     // see GOLD, SHOP AND RELICS
   }
 
 }
@@ -353,7 +355,7 @@ Cards live in config.cards. Not config.mods.
 
 # CARDS
 
-Forty-three cards defined in total: the three Ring 0 cards the run always starts with, plus the reward pool (config.cardPool) the reward screen draws its three offered options from. Both live in the same config.cards object; cardPool holds references to the same objects, not copies.
+Forty-four cards defined in total: the three Ring 0 cards the run always starts with, plus the reward pool (config.cardPool, 41 entries) the reward screen and shop both draw offers from. Both live in config.cards; cardPool holds references, not copies.
 
 Ring 0 — the starting deck (5 Strike, 4 Ward, 1 Rite, 10 cards):
 Strike — 1 soul, attack — 5 damage.
@@ -558,9 +560,19 @@ The run is GAME_CONFIG.ACTS (3) acts, played in sequence. Each act is a fresh ma
 
 Scaling — GAME_CONFIG.ACT_HP_MULTIPLIER and ACT_INTENT_MULTIPLIER, indexed by actNumber-1, [1.0, 1.4, 1.9] and [1.0, 1.2, 1.45]: every enemy's hp/intentMin/intentMax is Math.ceil(base × that act's multiplier); the enemy buff's poison amount rides the intent multiplier the same way (3/4/5 stacks across acts 1/2/3); the enemy Nat 1 self-poison stays flat and unscaled at 5. Act 1's multipliers are both 1.0. Die face layouts do not change per act.
 
-Transition — a boss win's outcome depends on which act it ends (runPhase()'s win branch): acts 1/2 get the same reward flow any fight win gets (one die reward, plus a card reward), then advanceRun() increments actNumber and rebuilds run.act for the next act; player hp/die/ownedCards untouched, no heal between acts (D-27). Act 3 (final): true VICTORY (D-22) — no reward.
+Transition — a boss win's outcome depends on which act it ends (runPhase()'s win branch): acts 1/2 get the same reward flow any fight win gets (gold, a relic reward, a die reward, a card reward), then advanceRun() increments actNumber, resets thirdEyeUsedThisAct and rebuilds run.act for the next act; player hp/die/ownedCards untouched, no heal between acts (D-27). Act 3 (final): true VICTORY (D-22) — no reward, no gold.
 
 UI: the act number is shown on both the map screen and the fight screen (#actStamp), from gameState.run.actNumber.
+
+---
+
+# GOLD, SHOP AND RELICS
+
+GOLD: a fight win grants gold within GAME_CONFIG.GOLD_REWARDS (Fight 12-20, Elite 30-40, Boss 60 flat); the final act's boss grants none (D-22). #goldValue reads gameState.run.gold.
+
+SHOP (GAME_CONFIG.SHOP): opens after every rite, in #shopPanel. Stock (gameState.run.shop, built once per visit): 3 cards at the Elite tier split, one Strengthen (opens the real face picker, returns to the shop), one removal at gameState.run.removalPrice (starts REMOVAL_BASE_PRICE, +REMOVAL_PRICE_STEP/purchase, run-scoped). Unaffordable disabled; Leave is free.
+
+RELICS: gameState.run.relics, max RELIC_MAX (5), defs in gameState.config.relics. #relicRewardPanel (pick 1 of 3, Skip allowed) opens after an Elite win and a non-final Boss win, before the die reward. Third Eye (thirdEyeChooseFace()) forces one chosen face per act. Loaded Die (rollWithRelics(), the roll path's one rollDie() site) rolls twice, higher stands. Tolling Bell (nextPhase()) triggers a second face after the first if chargeStage is 'windup'/'release'.
 
 ---
 
@@ -725,14 +737,15 @@ Stage 2.73 (BUILD 146) — CLAUDE.md trim, window scaling, End Turn/hand-card re
 Stage 2.74 (BUILD 147) — intent hover box, console filter narrowed to art/, blank rolled face holds like a loaded one, die icon number gets a black backing. No number or mechanic changed. 111 facts, 40 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9 build144-147.
 Stage 2.75 (BUILD 148) — KI-28 Charge break now counts the release round's poison tick, run transcript, log Play/All views, log full screen, zoom-block check (none found). 111 facts, 40 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11 build144-148.
 Stage 2.76 (BUILD 149) — the awe status, Dread, Genuflect, Kneel, Compline, Tremendum, Mysterium, card art loading. 111 facts, 42 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11/15 build144-149.
+Stage 2.77 (BUILD 150) — break numbers -4, Bulwark, gold, shop after every rite, three relics (Third Eye/Loaded Die/Tolling Bell), KI-29. 111 facts, 42 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11/15 build144-149, 9/9 build150.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.76 (BUILD 149) — three independent items, no existing number or mechanic changed. (1) The awe status: gameState.enemy.aweStacks, 0 at fight start, set through the one shared applyAwe(stacks) (js/cards-mods.js); decays by 1 at START_OF_TURN, in the same place the enemy's own poison ticks and before advanceEnemyIntentForRound(); in ENEMY_ACT_PHASE (js/phase-machine.js), an Attack's damage (Wrath already applied) is lowered by the enemy's stacks of awe, floored at 0, before block — a Charge release, Afflict and a Nat are untouched. Shown as an A-badge (`.status-awe`, --tag-awe purple) beside stacks of poison in #enemyStatusRow, and appended to the Attack intent's hover sentence. (2) The awe cluster: two mods (Dread, common, applies 4 stacks of awe; Genuflect, uncommon, 6 block + 3 stacks of awe) and four cards (Kneel, common, applies 3; Compline, common, 4 block + 2; Tremendum, uncommon, 4 damage + 2 per stack of awe on the enemy, capped at 12; Mysterium, rare, 3 damage per stack of awe, capped at 12, stacks unchanged), all tagged 'awe', all loadable/offerable exactly like any other mod or card — mod pool 25 to 27, reward pool 36 to 40. (3) Card art loading: attachCardArtImg() (js/rendering.js) gives every hand card's art placeholder and every card reward button an img child, src art/cards/<id>.png, pixelated and object-fit contain; a load failure hides the img, leaving an empty box. art/cards/ (with .gitkeep) is new; no image files ship in this build.
+Stage 2.77 (BUILD 150) — six items; new mechanics under GOLD, SHOP AND RELICS. (1) OQ-16: every Charge enemy's breakAt lowered 4 (config.js ENEMIES). (2) Bulwark: common card, 1 soul, 6 block, 16 if chargeStage 'windup'/'release' — pool 40 to 41. (3) Gold. (4) The shop, after every rite. (5) Three relics plus their reward panel. (6) KI-29: build142.test.js F-b forces threnodyFace 7 after each enterOpeningFight() — no game code changed.
 
-Verification: guardrails 19/19, facts 111/111, mods 42/42, build141 22/22, build142 22/22, build144 13/13, build145 23/23, build146 11/11, build147 9/9, build148 11/11, new tests/build149.test.js 15/15.
+Verification: guardrails 19/19, facts 111/111, mods 42/42, build141 22/22, build142 22/22, build144 13/13, build145 23/23, build146 11/11, build147 9/9, build148 11/11, build149 15/15, new tests/build150.test.js 9/9.
 
 Full write-ups for earlier builds: HISTORY.md.

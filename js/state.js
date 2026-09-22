@@ -91,7 +91,12 @@ const gameState = {
     act: null,
     actNumber: 1,
     threnodyFace: null,
-    transcript: []
+    transcript: [],
+    gold: 0,
+    relics: [],
+    shop: null,
+    removalPrice: GAME_CONFIG.SHOP.REMOVAL_BASE_PRICE,
+    thirdEyeUsedThisAct: false
   },
 
   runRecord: {
@@ -113,7 +118,8 @@ const gameState = {
     classes: {},
     cards: {},
     mods: {},
-    cardPool: {}
+    cardPool: {},
+    relics: {}
   },
 
   // Display-only flags, never part of the run record.

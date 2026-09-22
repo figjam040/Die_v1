@@ -121,10 +121,34 @@
     gap: 4px;
   }
 
+  #thirdEyeBtn {
+    font-family: var(--game-font);
+    font-size: 11px;
+    padding: 4px 10px;
+    border: 2px solid var(--nat);
+    color: var(--nat);
+    background: var(--panel-bg);
+    margin-top: 4px;
+  }
+
+  #thirdEyeBtn.choosing {
+    background: var(--nat);
+    color: #1a1500;
+  }
+
   .relic-slot {
     width: 26px;
     height: 26px;
     border: 2px solid #3a3a3a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: var(--game-font-2);
+    font-size: 9px;
+    line-height: 1;
+    color: var(--nat);
+    text-align: center;
   }
 
   .top-bar-centre {
@@ -917,7 +941,9 @@
   /* ---------- PANELS OVER THE PLAY AREA ---------- */
 
   #dieActionPanel,
-  #cardRewardPanel {
+  #cardRewardPanel,
+  #relicRewardPanel,
+  #shopPanel {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -1657,6 +1683,7 @@
           <div class="roll-hero roll-hero-empty" id="rollHero">
             <span class="roll-hero-number" id="rollResultNumber"></span>
             <span class="roll-hero-label" id="rollResultLabel">AWAITING ROLL</span>
+            <button id="thirdEyeBtn" style="display:none;">THIRD EYE — choose the face</button>
           </div>
           <div class="die-col player-die die-col-h" id="playerDieList"></div>
         </div>
@@ -1675,8 +1702,14 @@
     <!-- Post-fight card reward screen — hidden except mid-choice. -->
     <div class="panel" id="cardRewardPanel" style="display:none;"></div>
 
+    <!-- Post-Elite-win / non-final-act Boss-win relic reward — hidden except mid-choice. -->
+    <div class="panel" id="relicRewardPanel" style="display:none;"></div>
+
     <!-- Rite slot choice — hidden except mid-choice. -->
     <div class="panel" id="riteScreenPanel" style="display:none;"></div>
+
+    <!-- Shop, opened after every rite resolves — hidden except mid-visit. -->
+    <div class="panel" id="shopPanel" style="display:none;"></div>
 
     <div class="controls-row">
       <div id="devChrome">

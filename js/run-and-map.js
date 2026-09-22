@@ -232,7 +232,12 @@ function startNewRun() {
     act: buildAct(1),
     actNumber: 1,
     threnodyFace: Math.floor(Math.random() * 18) + 2,
-    transcript: []
+    transcript: [],
+    gold: 0,
+    relics: [],
+    shop: null,
+    removalPrice: GAME_CONFIG.SHOP.REMOVAL_BASE_PRICE,
+    thirdEyeUsedThisAct: false
   });
   localStorage.removeItem(RUN_TRANSCRIPT_STORAGE_KEY);
 
@@ -240,6 +245,24 @@ function startNewRun() {
 
   log('[RUN] new run started');
   refreshInspector();
+}
+
+// ---------- GOLD ----------
+
+// A fight win's gold, rolled evenly within its type's range; a flat amount
+// for a Boss. The final act's Boss grants none (D-22) — callers never pass
+// 'Boss' for that win.
+function rollGoldForSlotLabel(label) {
+  if (label === 'Boss') { return GAME_CONFIG.GOLD_REWARDS.BOSS; }
+  const range = label === 'Elite' ? GAME_CONFIG.GOLD_REWARDS.ELITE : GAME_CONFIG.GOLD_REWARDS.FIGHT;
+  return Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+}
+
+function grantGoldForWin(label) {
+  const amount = rollGoldForSlotLabel(label);
+  const total = gameState.run.gold + amount;
+  updateRun({ gold: total });
+  log('[RUN] +' + amount + ' gold (total ' + total + ')');
 }
 
 // ---------- RUN RECORD ----------
@@ -559,7 +582,7 @@ function advanceRun() {
     // a normal fight win gets, then start the next act. No heal between
     // acts (D-27); player hp/die/ownedCards are untouched.
     const nextActNumber = gameState.run.actNumber + 1;
-    updateRun({ act: buildAct(nextActNumber), actNumber: nextActNumber, currentSlot: 'opening', lane: null });
+    updateRun({ act: buildAct(nextActNumber), actNumber: nextActNumber, currentSlot: 'opening', lane: null, thirdEyeUsedThisAct: false });
     log('[RUN] act ' + nextActNumber + ' begins');
   } else if (cs === 'opening') {
     // Returns to the fork (currentSlot null); lane stays null too.

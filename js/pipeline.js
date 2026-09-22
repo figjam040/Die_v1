@@ -112,6 +112,30 @@ function rollDie(faces) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+// Loaded Die, threaded through the one place the real roll path calls
+// rollDie() — rollDie() itself is untouched (WEIGHTED ROLL ALGORITHM).
+function rollWithRelics(faces) {
+  if (!hasRelic('loaded_die')) { return rollDie(faces); }
+  const a = rollDie(faces);
+  const b = rollDie(faces);
+  const chosen = b.number > a.number ? b : a;
+  log('[RELIC] Loaded Die: rolled ' + a.number + ' and ' + b.number + ', ' + chosen.number + ' stands');
+  return chosen;
+}
+
+// Third Eye — mirrors forcePlayerRoll() (dev-tools.js) but player-facing,
+// gated on the relic and its once-per-act use instead of dev chrome.
+function thirdEyeChooseFace(faceNumber) {
+  if (!hasRelic('third_eye')) { return; }
+  if (gameState.run.thirdEyeUsedThisAct) { return; }
+  if (gameState.turn.phase !== 'ROLL_PHASE' || playerRollResolved) { return; }
+  playerRollResolved = true;
+  updateRun({ thirdEyeUsedThisAct: true });
+  const face = gameState.die.faces[faceNumber - 1];
+  log('[RELIC] Third Eye: face ' + faceNumber + ' chosen');
+  resolvePlayerRoll(face);
+}
+
 function resolvePlayerRoll(face) {
   log('[ROLL] face: ' + face.number + ' modId: ' + face.modId);
 

@@ -90,6 +90,12 @@ function applyAwe(stacks) {
   log('[AWE] applied ' + stacks + ' stacks of awe, now ' + newStacks + ' stacks of awe');
 }
 
+// ---------- RELICS ----------
+
+function hasRelic(id) {
+  return gameState.run.relics.indexOf(id) !== -1;
+}
+
 // ---------- INIT ----------
 
 function init() {
@@ -200,6 +206,22 @@ function init() {
         log('[CARD] interdict: 10 block, intent 12+');
       } else {
         log('[CARD] interdict: 5 block');
+      }
+    }
+  };
+
+  // Reads chargeStage directly, not getIncomingIntentDamage() — Bulwark
+  // cares about the enemy being mid-Charge at all, wind-up or release,
+  // not about how much that Charge is about to deal.
+  gameState.config.cards['bulwark'] = {
+    id: 'bulwark', name: 'Bulwark', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: [],
+    effect: function(gameState) {
+      const charging = gameState.enemy.chargeStage === 'windup' || gameState.enemy.chargeStage === 'release';
+      const block = dealBlock(charging ? 16 : 6, 'bulwark');
+      if (charging) {
+        log('[CARD] bulwark: 16 block, enemy charging');
+      } else {
+        log('[CARD] bulwark: 6 block');
       }
     }
   };
@@ -676,6 +698,7 @@ function init() {
     censer: gameState.config.cards['censer'],
     purge: gameState.config.cards['purge'],
     interdict: gameState.config.cards['interdict'],
+    bulwark: gameState.config.cards['bulwark'],
     reckoning: gameState.config.cards['reckoning'],
     retribution: gameState.config.cards['retribution'],
     covenant: gameState.config.cards['covenant'],
@@ -1413,6 +1436,20 @@ function init() {
       applyAwe(3);
       log('[MOD] genuflect: ' + block + ' block');
     }
+  };
+
+  // ---------- RELICS ----------
+  // Third Eye, Loaded Die and Tolling Bell each act on the one roll path
+  // (nextPhase(), phase-machine.js) rather than a MOD_TRIGGER-shaped
+  // listener — none of them are a die trigger, so there is no hook in
+  // EVENT HOOKS shaped for "before/instead of the roll itself". Every
+  // relic function still gates itself on hasRelic(), the same pattern the
+  // enemy die mechanics use for "registered unconditionally, checks which
+  // one applies".
+  gameState.config.relics = {
+    third_eye: { id: 'third_eye', name: 'Third Eye', text: 'Once per act, before a roll, choose the face.' },
+    loaded_die: { id: 'loaded_die', name: 'Loaded Die', text: 'Roll twice, the higher face stands.' },
+    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', text: 'When the enemy winds up or releases, roll twice and both faces trigger.' }
   };
 
   renderDevModOptions(); // DEV ONLY — remove before any real release
