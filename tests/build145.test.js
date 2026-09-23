@@ -274,7 +274,7 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
     await page.click('#devSkipToDieActionBtn');
     await page.waitForFunction(() => dieActionStep !== null);
     const v = await page.evaluate(() => {
-      const btns = Array.from(document.querySelectorAll('#dieActionDieList .face-btn'));
+      const btns = Array.from(document.querySelectorAll('#playerDieList .face-btn'));
       const byLeft = btns.slice().sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
       return {
         visible: document.getElementById('dieActionPanel').offsetParent !== null,
@@ -297,7 +297,7 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
     await enterOpeningFight(page);
     await page.evaluate(() => { openDieActionScreen(); dieActionChooseStrengthen(); });
     const v = await page.evaluate(() => {
-      const rows = Array.from(document.querySelectorAll('#dieActionDieList .die-row'));
+      const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
       return {
         pickable: rows.filter(r => r.classList.contains('die-row-pickable')).length,
         tips: rows.filter(r => r.querySelector('.hover-tip')).length

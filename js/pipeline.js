@@ -116,6 +116,25 @@ function rollDie(faces) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+// the exact bag rollDie() builds, read without consuming a
+// roll. Gilded Die's extra tickets on one face count here the same way
+// they count in the real pool, so the face row's own odds match what a
+// roll actually draws from. Keyed by face number; pct is Math.floor'd, not
+// rounded (a face never reads a higher share than its tickets earn it).
+function rollOdds(faces) {
+  const gilded = gameState.turn.gildedFace;
+  const tickets = faces.map(function(face) {
+    const extra = (gilded && gilded.faceNumber === face.number) ? gilded.weight : 0;
+    return face.weight + extra;
+  });
+  const total = tickets.reduce(function(a, b) { return a + b; }, 0);
+  const odds = {};
+  faces.forEach(function(face, i) {
+    odds[face.number] = { tickets: tickets[i], total: total, pct: total > 0 ? Math.floor((tickets[i] / total) * 100) : 0 };
+  });
+  return odds;
+}
+
 // Loaded Die, threaded through the one place the real roll path calls
 // rollDie() — rollDie() itself is untouched (WEIGHTED ROLL ALGORITHM).
 function rollWithArtifacts(faces) {

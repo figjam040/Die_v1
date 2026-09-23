@@ -9,22 +9,22 @@ Read this file at the start of every session before doing anything else.
 
 # PROJECT
 
-Single HTML file (index.html) plus eleven plain JavaScript files under /js/, loaded via ordinary `<script src>` tags in a fixed order: config.js, state.js, listener-registry.js, audio.js, pipeline.js, cards-mods.js, run-and-map.js, phase-machine.js, rendering.js, dev-tools.js, bootstrap.js. No ES modules — file:// origins are null and module scripts are CORS-blocked, so this is a hard constraint, not a style choice. No build step. No npm. No server.
+Single HTML file (index.html) plus eleven plain JavaScript files under /js/, loaded via ordinary `<script src>` tags in a fixed order: config.js, state.js, listener-registry.js, audio.js, pipeline.js, cards-mods.js, run-and-map.js, phase-machine.js, rendering.js, dev-tools.js, bootstrap.js. No ES modules — file:// origins are null and module scripts are CORS-blocked, a hard constraint, not a style choice. No build step. No npm. No server.
 
-config.js is the one constants file, loaded first, before state.js. Every tunable number and structural constant lives on one object, GAME_CONFIG — every other file reads it from there instead of repeating a literal. Its header comment carries the FACTS block (F01-F39+) verbatim from the Notion "Die — V1" page, one line per fact beside the GAME_CONFIG field(s) that implement it — the one place the F-numbers live in code.
+config.js is the one constants file, loaded first, before state.js. Every tunable number/structural constant lives on one object, GAME_CONFIG — every other file reads it from there instead of repeating a literal. Its header comment carries the FACTS block (F01-F39+) verbatim from the Notion "Die — V1" page, one line per fact beside the GAME_CONFIG field(s) implementing it — the one place F-numbers live in code.
 
-All eleven files share one global lexical scope, the same way one giant inline `<script>` block would. The only eager trigger anywhere in the codebase is `window.addEventListener('DOMContentLoaded', init)` in bootstrap.js — nothing calls a game function at parse time, so cross-file references are safe regardless of script tag order.
+All eleven files share one global lexical scope, as one giant inline `<script>` block would. The only eager trigger anywhere is `window.addEventListener('DOMContentLoaded', init)` in bootstrap.js — nothing calls a game function at parse time, so cross-file references are safe regardless of script tag order.
 
 File: C:\Users\figja\Die_v1\index.html (loads the eleven js/ files above).
-Open in browser to test. Double-click index.html only — never through a local server. /audio/ and /art/ exist as empty asset folders; nothing currently populates them — see AUDIO MODULE. /fonts/ holds the game's two self-hosted OFL font files (Press Start 2P, VT323), loaded by index.html's own @font-face rules.
+Open in browser to test. Double-click index.html only — never through a local server. /audio/ and /art/ are empty asset folders; nothing populates them — see AUDIO MODULE. /fonts/ holds the game's two self-hosted OFL font files (Press Start 2P, VT323), loaded by index.html's @font-face rules.
 
-tests/facts.test.js — a plain Node script (this project has no test runner installed, only the raw `playwright` library), run via `node tests/facts.test.js`. Asserts every F-number against GAME_CONFIG and against the running gameState/DOM after a fresh New Run, entering the opening fight or dev-jumping to the elite/boss where a fact needs live combat state. A mismatch between a documented fact and the live value is a failing test. Not loaded by index.html.
+tests/facts.test.js — plain Node script (no test runner installed, only raw `playwright`), `node tests/facts.test.js`. Asserts every F-number against GAME_CONFIG and the running gameState/DOM after a fresh New Run, entering the opening fight or dev-jumping to elite/boss where a fact needs live combat state. A mismatch is a failing test.
 
-tests/mods.test.js — same shape, run via `node tests/mods.test.js`. For each of config.mods' reward-eligible entries, dev-loads it onto a face and forces that roll through the real forcePlayerRoll()/MOD_TRIGGER dispatch, then asserts the exact numeric effect on gameState. Not loaded by index.html.
+tests/mods.test.js — same shape, `node tests/mods.test.js`. For each of config.mods' reward-eligible entries, dev-loads it onto a face and forces that roll through the real forcePlayerRoll()/MOD_TRIGGER dispatch, asserting the exact numeric effect on gameState.
 
-tests/build141.test.js, tests/build142.test.js — same shape, one file per build that shipped new mechanics, asserting that build's own items. Not loaded by index.html.
+tests/build141.test.js, tests/build142.test.js, etc. — same shape, one file per build shipping new mechanics, asserting that build's own items.
 
-tests/autoplay.js — a headless autoplayer, run via `node tests/autoplay.js`. Plays complete runs against real gameplay only (New Run, map node clicks, playCard(), nextPhase()'s own natural rolls, the real die-action/rite/card-reward panels) — never forcePlayerRoll()/forceEnemyRoll()/devJumpToSlot()/devLoadMod() — with a seeded Math.random so every roll and shuffle is reproducible. Fixed, documented-in-file policy (lane, card priority, die/card rewards, rite choice). Appends one CSV row per run to tests/autoplay_results.csv. A measurement tool, not a floor or ceiling for a human — never loaded by index.html. Never run the bot except when explicitly asked (D-70).
+tests/autoplay.js — headless autoplayer, `node tests/autoplay.js`. Plays complete runs against real gameplay only (New Run, map node clicks, playCard(), nextPhase()'s natural rolls, the real die-action/rite/card-reward panels) — never forcePlayerRoll()/forceEnemyRoll()/devJumpToSlot()/devLoadMod() — seeded Math.random so every roll/shuffle is reproducible. Fixed, documented-in-file policy (lane, card priority, die/card rewards, rite choice). Appends one CSV row per run to tests/autoplay_results.csv. A measurement tool, not a floor/ceiling for a human. Never run except when explicitly asked (D-70). None of these tests/ files are loaded by index.html.
 
 tests/screenshots.js, tests/pngdiff.js — regenerate and diff the visual baseline in verify/.
 
@@ -50,9 +50,9 @@ Blank faces are not empty. Rolling a blank face generates 2 block for The Ordain
 
 Three die actions only: Load (place a mod on a blank face), Strengthen (add 1 weight to a face) and Purify (remove every mod from a chosen loaded face — see DIE ACTIONS below). Remove, Enchant and Expand are deferred.
 
-Design floor: every mod must clearly outperform a guaranteed 2 block, measured on the turn it triggers, not scaled by trigger frequency. Trigger frequency cancels out of this comparison: a mod and a blank loaded on the same face are gated by the identical roll chance, so comparing their per-trigger value directly is correct. Do not multiply mod value by trigger rate — that arithmetic is wrong. Current band: 10 to 16 points of value on the triggering turn — the standard every future mod is checked against.
+Design floor: every mod must clearly outperform a guaranteed 2 block, measured on the turn it triggers, not scaled by trigger frequency. Frequency cancels out of this comparison: a mod and a blank on the same face are gated by identical roll chance, so their per-trigger value compares directly. Do not multiply mod value by trigger rate — that arithmetic is wrong. Current band: 10 to 16 points of value on the triggering turn — the standard every future mod is checked against.
 
-Enemy HP is the axis that carries progression across a run, not mod numbers. As enemies get tougher across a run, their HP pool scales; mod values themselves should stay in readable single or low double digits, and multipliers on those values should stay modest. Do not design a mod's power budget by inflating its raw numbers to keep pace with a harder run — that's enemy HP's job. This keeps every mod's value legible at a glance regardless of what stage of a run it's being evaluated in.
+Enemy HP carries progression across a run, not mod numbers. As enemies get tougher, their HP pool scales; mod values stay in readable single or low double digits, multipliers stay modest. Do not inflate a mod's raw numbers to keep pace with a harder run — that's enemy HP's job. This keeps every mod's value legible regardless of the run's stage.
 
 A run has three fight types, each with its own HP/intent band and its own die (see ENEMY DIE PER TYPE): normal fights, one elite per act, and the act boss.
 
@@ -121,90 +121,89 @@ gameState = {
     classId: 'ordained',
     poisonStacks: 0,
     penitenceActive: false,
-    penitenceTurnsRemaining: 0,   // set to PENITENCE_TURNS (3) at Nat 1 onset, ticked down at START_OF_TURN
-    natOneFiredThisFight: false,  // Nat 1 is once per fight; once true, face 1 rolls a plain blank for the rest of the fight
-    drainNextRound: 0,            // Drain's queue; consumed by the next START_OF_TURN's soul reset
-    sealNextRound: [],            // Seal's queue (face numbers); moves into turn.sealedFaces at the next START_OF_TURN
-    ownedCards: []                // full permanent collection; deck/hand/discard reshuffle from this every fight reset
+    penitenceTurnsRemaining: 0, // PENITENCE_TURNS at Nat 1 onset, ticks at START_OF_TURN
+    natOneFiredThisFight: false, // once per fight — see CLASS OBJECT STRUCTURE, onNatOne
+    drainNextRound: 0, // Drain's queue — see MODS/ARTIFACTS
+    sealNextRound: [], // Seal's queue (face numbers) — see ENEMY DIE PER TYPE, SEAL
+    ownedCards: [] // full permanent collection — see DECK STORAGE
   },
 
   enemy: {
     id: 'Fight' | 'Elite' | 'Boss',
-    name: 'Verger' | ... ,          // the enemy's own designed identity, distinct from id
+    name: 'Verger' | ... , // distinct from id — see ENEMY DIE PER TYPE
     hp: 0, maxHp: 0,
-    intent: 0, intentMin: 0, intentMax: 0,  // intentMin/intentMax describe the built enemy's Attack band; live round-to-round behaviour runs through pattern/currentEntry — see ENEMY DIE PER TYPE
-    pattern: [],                   // 1-4 {kind:'attack'|'charge'|'afflict', ...} entries, copied from the entering slot; see ENEMY DIE PER TYPE
+    intent: 0, intentMin: 0, intentMax: 0, // see ENEMY DIE PER TYPE
+    pattern: [], // 1-4 {kind:'attack'|'charge'|'afflict', ...} — see ENEMY DIE PER TYPE
     patternIndex: 0,
-    chargeStage: null,             // null | 'windup' | 'release'
+    chargeStage: null, // null | 'windup' | 'release'
     chargeBroken: false,
     windupStartHp: null,
-    currentEntry: null,            // this round's fixed intent spec — getIncomingIntentDamage() (pipeline.js) reads this
-    forcedNextIntent: null,        // dev-only, devSetNextIntent() — replaces the next round's entry exactly once
-    wrath: 0, wrathPending: 0,     // see ENEMY DIE PER TYPE
-    wrathPerTrigger: 2,            // this enemy's own Wrath amount, from GAME_CONFIG.ENEMIES[...].wrathPerTrigger
+    currentEntry: null, // this round's intent spec — getIncomingIntentDamage()
+    forcedNextIntent: null, // dev-only, devSetNextIntent()
+    wrath: 0, wrathPending: 0, // see ENEMY DIE PER TYPE
+    wrathPerTrigger: 2, // from GAME_CONFIG.ENEMIES[...].wrathPerTrigger
     pontifexDoubleAttackThisRound: false,
-    hasDie: false,                 // true only for elite/boss — see ENEMY DIE PER TYPE
+    hasDie: false, // elite/boss only — see ENEMY DIE PER TYPE
     die: { faces: [] },
     poisonStacks: 0,
     activeBuffs: [],
-    natOneFiredThisFight: false,   // mirrors the player's field
-    buffPoisonStacks: 5            // this fight's own enemy_buff_poison amount, fixed at buildAct() time — see ACTS
+    natOneFiredThisFight: false, // mirrors the player's field
+    buffPoisonStacks: 5 // fixed at buildAct() — see ACTS
   },
 
   die: {
-    faces: []                      // the player's own die, 20 faces, persists across fights. Each loaded face's own modData carries triggerCount (for modId) and, on a two-mod face, triggerCount2 (for modId2), run-scoped. See MULTI-MOD FACES.
+    faces: [] // player's own die, 20 faces, persists across fights — see MULTI-MOD FACES for modData
   },
 
   turn: {
     phase: 'START_OF_TURN',
     cardsPlayedThisTurn: 0,
     round: 0,
-    rollOutcome: null,             // 'blank' | 'mod' | 'nat_twenty' | 'nat_one'; cleared every START_OF_TURN
+    rollOutcome: null, // 'blank' | 'mod' | 'nat_twenty' | 'nat_one'; cleared every START_OF_TURN
     rolledFaceWeight: null,
-    rolledFaceNumber: null,        // drives the die-row highlight
-    enemyRollOutcome: null,        // enemy-side mirror of rollOutcome, same values; set in resolveEnemyRoll()
-    enemyRolledFaceNumber: null,   // enemy-side mirror of rolledFaceNumber; drives the enemy die-row highlight
-    modTriggeredThisTurn: false,   // true whether the trigger came from a normal roll or Nat 20's loop
-    enemyAttackCancelledThisTurn: false,  // set by the enemy's own Nat 1, read once by ENEMY_ACT_PHASE, cleared next START_OF_TURN
-    outsideTriggeredFaces: [],     // faces already triggered outside a roll this round
-    roundTriggerCount: 0,          // toward GAME_CONFIG.ROUND_TRIGGER_CAP
-    roundTriggerCapLogged: false,  // the cap log line prints at most once per round
-    roundSweepPlays: 0,            // fast-sweep timing counter, see BOUND ENGINE
-    hoppedFaces: [],               // faces that fired without being the face actually rolled — see THE HOP
-    sealedFaces: [],               // this round's active Sealed faces; see LOADED-FACE RULE / SEAL
-    boundTriggeredThisRound: false,// set by mod_dispatch when any Bound face triggers; Watchword reads it
-    enemyRoundSkippedThisTurn: false, // Hourglass's own skip, distinct from the enemy Nat 1's cancel
-    gildedFace: null,              // Gilded Die's paid-for weight, one roll only: { faceNumber, weight }
-    secondChanceUsedThisFight: false  // Second Chance is once per fight; cleared by clearFightScopedState()
+    rolledFaceNumber: null, // drives the die-row highlight
+    enemyRollOutcome: null, // enemy-side mirror, set in resolveEnemyRoll()
+    enemyRolledFaceNumber: null, // enemy-side mirror
+    modTriggeredThisTurn: false, // true from a normal roll or Nat 20's loop
+    enemyAttackCancelledThisTurn: false, // set by the enemy's own Nat 1
+    outsideTriggeredFaces: [], // faces already triggered outside a roll this round
+    roundTriggerCount: 0, // toward GAME_CONFIG.ROUND_TRIGGER_CAP
+    roundTriggerCapLogged: false, // prints once per round
+    roundSweepPlays: 0, // see BOUND ENGINE
+    hoppedFaces: [], // see THE HOP
+    sealedFaces: [], // this round's Sealed faces — see ENEMY DIE PER TYPE, SEAL
+    boundTriggeredThisRound: false,// set by mod_dispatch, read by Watchword
+    enemyRoundSkippedThisTurn: false, // Hourglass's own skip
+    gildedFace: null, // Gilded Die's paid weight, one roll: { faceNumber, weight }
+    secondChanceUsedThisFight: false // once per fight
   },
 
   run: {
     stage: 1,
     node: 1,
-    status: 'active',              // 'active' | 'win' | 'loss' — THIS FIGHT only
-    screen: 'map',                 // 'map' | 'fight'
-    outcome: 'active',             // 'active' | 'won' | 'lost' — the WHOLE run
-    lane: null,                    // null | 'upper' | 'lower', fixed at the divergence
-    currentSlot: null,             // null (at the fork) | { lane, index } | 'boss'
-    act: null,                     // built by buildAct(actNumber) — opening/upper[]/lower[]/boss slots, that act's own numbers baked in
-    actNumber: 1,                  // 1-based, GAME_CONFIG.ACTS total. Incremented only when a non-final act's boss is defeated — see ACTS
-    threnodyFace: null,            // Threnody's own fixed face for this run, 2-19, rolled once at run creation
-    gold: 0, artifacts: [], shop: null, removalPrice: 75, thirdEyeUsedThisAct: false  // GOLD, SHOP AND ARTIFACTS
+    status: 'active', // 'active' | 'win' | 'loss' — this fight
+    screen: 'map', // 'map' | 'fight'
+    outcome: 'active', // 'active' | 'won' | 'lost' — the whole run
+    lane: null, // null | 'upper' | 'lower'
+    currentSlot: null, // null (fork) | { lane, index } | 'boss'
+    act: null, // buildAct(actNumber)'s opening/upper[]/lower[]/boss slots
+    actNumber: 1, // 1-based — see ACTS
+    threnodyFace: null, // fixed once per run, 2-19
+    gold: 0, artifacts: [], shop: null, removalPrice: 75, thirdEyeUsedThisAct: false // GOLD, SHOP AND ARTIFACTS
   },
 
-  // The run record. Distinct from run above (which is fight/run-progress
-  // state read by the game itself) — this is a write-once-per-event log of
-  // the run for the player's own reference, reset only by startNewRun()
-  // (resetRunRecord()), never by a fight reset. See RUN RECORD.
+ // A write-once-per-event log for the player's own reference, distinct
+ // from run above. Reset only by startNewRun(), never a fight reset. See
+ // RUN RECORD.
   runRecord: {
-    started: false,                // true once at least one real slot has been entered this run
-    flushed: false,                // true once this run's line has been written to localStorage
-    source: 'human',               // 'human' | 'bot' — always 'human' from real play
-    node: null,                    // last slot entered, e.g. 'opening' | 'upper-2' | 'boss'
-    arrivalHpAtBoss: null,         // player.hp the instant the boss slot is entered; null if never reached
-    outcome: null,                 // 'won' | 'lost' | 'abandoned' — set once, at flush time
-    fightRounds: [],               // [{ label, rounds }, ...] — one entry per fight that has ended or was in progress at flush
-    dieActionEvents: []            // [{ type:'load', offered:[modId,...], picked }|{ type:'skip' }|{ type:'purify', faceNumber, removed:[modId,...] }] — one per Load offer shown, Skip chosen, or Purify resolved
+    started: false,
+    flushed: false,
+    source: 'human', // 'human' | 'bot'
+    node: null, // last slot entered
+    arrivalHpAtBoss: null,
+    outcome: null, // 'won' | 'lost' | 'abandoned'
+    fightRounds: [], // [{ label, rounds }, ...]
+    dieActionEvents: [] // [{ type:'load'|'skip'|'purify', ... }]
   },
 
   registry: {
@@ -215,8 +214,8 @@ gameState = {
     classes: {},
     cards: {},
     mods: {},
-    cardPool: {},                  // the reward pool — see CARDS
-    artifacts: {}                     // see GOLD, SHOP AND ARTIFACTS
+    cardPool: {}, // CARDS
+    artifacts: {} // GOLD, SHOP AND ARTIFACTS
   }
 
 }
@@ -250,18 +249,18 @@ ENEMY_ACT_PHASE returns immediately — before intent, block, or damage are touc
 
 # EVENT HOOKS — COMPLETE LIST
 
-These are the names registerListener() is designed around. The phase names in PHASE ORDER (START_OF_TURN, ROLL_PHASE, CARD_PHASE, END_PLAYER_TURN, ENEMY_ROLL_PHASE, ENEMY_ACT_PHASE, CHECK_WIN_LOSS) are also, in practice, real dispatchable hooks: runPhase(phase) calls callListeners(phase) unconditionally near its top, once per phase visit, before that phase's own if-branch runs — so any registerListener() call using one of the seven PHASE_ORDER strings as its hook fires at that phase's boundary, ahead of the phase's own logic. END_PLAYER_TURN specifically is exercised today only by Vigil, and fires before that phase's own hand-to-discard logic, which is what lets it read hand size pre-discard.
+These are the names registerListener() is designed around. The PHASE ORDER names (START_OF_TURN, ROLL_PHASE, CARD_PHASE, END_PLAYER_TURN, ENEMY_ROLL_PHASE, ENEMY_ACT_PHASE, CHECK_WIN_LOSS) are also real dispatchable hooks: runPhase(phase) calls callListeners(phase) unconditionally near its top, once per visit, before that phase's own if-branch — so a listener on one of these seven fires at that boundary, ahead of the phase's own logic. END_PLAYER_TURN is exercised today only by Vigil, firing before hand-to-discard, which is what lets it read hand size pre-discard.
 
 Player-side hooks:
-BLANK_ROLL — { outsideRoll } — a genuinely blank player roll, and also the player's own Nat 1 once it has already fired this fight. outsideRoll: true marks a blank a card reached for rather than rolled (triggerFaceOutsideRoll()) — the one thing Alms reads to leave those alone
-MOD_TRIGGER — { modId, faceNumber } — a real mod trigger, from either a normal single-face roll or Nat 20's loop
+BLANK_ROLL — { outsideRoll } — a genuinely blank roll, and the player's own Nat 1 once already fired this fight. outsideRoll: true marks a blank reached for rather than rolled (triggerFaceOutsideRoll()) — what Alms reads to leave those alone
+MOD_TRIGGER — { modId, faceNumber } — a real mod trigger, normal roll or Nat 20's loop
 NAT_TWENTY — {} — player rolls face 20
 NAT_ONE — {} — player rolls face 1
 ON_CARD_PLAY — { card }
 ON_DAMAGE_DEALT — { amount, source }
 ON_BLOCK_GENERATED — { amount, source }
 ON_HEAL — { amount }
-FIGHT_START — {} — dispatched once by beginFightFromSlot(), after the fight-scoped reset and before the first START_OF_TURN; Plague Bell is its only listener today
+FIGHT_START — {} — dispatched once by beginFightFromSlot(), after the fight-scoped reset, before the first START_OF_TURN; Plague Bell is its only listener today
 
 Enemy-side hooks:
 ENEMY_BUFF_TRIGGER — { buffId, faceNumber } — a loaded enemy buff face triggers, from a normal roll or the enemy's own Nat 20 loop
@@ -313,11 +312,11 @@ generateBlock(baseBlock)
 
 Two multipliers compound. () => 2 then () => 3 produces x6 not x5. This is correct. Do not change.
 
-dealDamage(target, amount, sourceType, sourceId, fireListener = true) — shared helper (pipeline.js). Runs calculateDamage(), applies it to the target's hp via updateEnemy()/updatePlayer(), plays the damage-landing sound when damage > 0, and fires ON_DAMAGE_DEALT unless fireListener is explicitly false (used only by the enemy's own attack, which must not gain that hook). Returns the final damage dealt. Every card/mod that deals damage calls this instead of repeating the three lines inline.
+dealDamage(target, amount, sourceType, sourceId, fireListener = true) — shared helper (pipeline.js). Runs calculateDamage(), applies to the target's hp via updateEnemy()/updatePlayer(), plays the damage-landing sound when > 0, fires ON_DAMAGE_DEALT unless fireListener is explicitly false (the enemy's own attack only, which must not gain that hook). Returns the final damage dealt. Every damage-dealing card/mod calls this instead of repeating the three lines inline.
 
-dealBlock(amount, sourceId) — same shape for block: generateBlock(), add to gameState.player.block, fire ON_BLOCK_GENERATED. Returns the final block generated.
+dealBlock(amount, sourceId) — same shape for block: generateBlock(), add to player.block, fire ON_BLOCK_GENERATED. Returns the final block generated.
 
-healPlayer(amount) — newHp = Math.min(gameState.player.hp + amount, gameState.player.maxHp); updates hp; fires ON_HEAL with the actual, post-cap amount healed; returns that amount. No flat-addition or multiplier stage — a direct clamp, not a third pipeline. Currently used by the post-win rite's Heal option.
+healPlayer(amount) — newHp = Math.min(player.hp + amount, player.maxHp); updates hp; fires ON_HEAL with the actual, post-cap amount; returns it. No flat-addition/multiplier stage — a direct clamp, not a third pipeline. Used by the post-win rite's Heal option.
 
 All turn-scoped pipeline listeners clear at START_OF_TURN automatically.
 
@@ -375,85 +374,85 @@ Pool (config.cardPool) carries a tier ('common'/'uncommon'/'rare') and a tags li
 
 { number: 1, modId: null, modId2: null, weight: 1 }
 
-number: 1-N, where N is that die's own GAME_CONFIG.DIE_SIZE entry — PLAYER, ELITE, BOSS or NORMAL. Each is its own named value, not one shared literal: the player, an elite, a boss and a normal fight are each free to vary independently (D-11). Nothing in js/ reads a bare 20 for a die size.
-modId: null = blank. string = mod id from config.mods (player die) or a buff id (enemy die). weight: default 1.
-modId2: a face can hold up to two mods, cap two, never three. null = only one mod (or blank). string = a second mod id, loaded after modId, only ever onto a face where modId is already set. Blank faces, Nat faces, and the enemy die's faces never carry a modId2 — see MULTI-MOD FACES below.
-All of a die's faces must always be explicitly defined. No implicit blanks.
-Player die and enemy die share this face object shape, but the Nat-face rule differs by die:
+number: 1-N, N being that die's own DIE_SIZE entry — PLAYER, ELITE, BOSS or NORMAL, each independently variable (D-11). Nothing in js/ reads a bare 20 for a die size.
+modId: null = blank; string = mod id (player die) or buff id (enemy die). weight: default 1.
+modId2: cap two mods, never three. null = one mod (or blank); string = a second, loaded only onto a face where modId is set. Blank/Nat faces and the enemy die never carry a modId2 — see MULTI-MOD FACES.
+Every face must be explicitly defined. No implicit blanks.
+Player and enemy die share this shape; the Nat-face rule differs:
 
-Player die — face 1 is always modId 'NAT_ONE', face GAME_CONFIG.DIE_SIZE.PLAYER (20) is always modId 'NAT_TWENTY'. Cannot change. Both are stub ids, never real mods, and both are excluded from Nat 20's own loaded-face loop.
+Player die — face 1 is always 'NAT_ONE', face DIE_SIZE.PLAYER (20) always 'NAT_TWENTY'. Cannot change; both stub ids, never real mods, both excluded from Nat 20's own loop.
 
-Enemy die — whether faces 1/N carry a Nat modId depends on which enemy the die belongs to; it is not fixed the way the player's is. See ENEMY DIE PER TYPE. buildEnemyDieFaces(poisonFaceNumbers, includeNats, dieSize) and buildEnemyDieFromSpec(spec) (both build every enemy die); includeNats/spec.nats is what switches faces 1/dieSize between an ordinary blank and a Nat face.
+Enemy die — whether faces 1/N carry a Nat modId depends on the enemy, not fixed like the player's — see ENEMY DIE PER TYPE. buildEnemyDieFaces(poisonFaceNumbers, includeNats, dieSize) and buildEnemyDieFromSpec(spec) build every enemy die; includeNats/spec.nats switches faces 1/dieSize between blank and Nat.
 
-Weight display: any face at weight above 1 shows ×N in the die rows, live. The only place a face's weight is ever written is strengthenFace(faceNumber) (pipeline.js) — Strengthen and Ordain's/Elevation's own effect all call it. Player die only. A weight-2+ face also shows a bottom-anchored fill inside its own face-btn (`.face-weight-fill`, index.html), scaled per point of weight, capped at weight 5. Uses `background: currentColor` — no new colour.
+Weight display: a face above weight 1 shows ×N in the die rows, live. Weight is only ever written by strengthenFace(faceNumber) (pipeline.js) — Strengthen and Ordain's/Elevation's effect all call it. Player die only. A weight-2+ face also shows a bottom-anchored fill (`.face-weight-fill`), scaled per point, capped at weight 5, `background: currentColor` — no new colour.
 
-Trigger-count display: any loaded face on the player's own die that has triggered at least once this fight shows a badge (`.die-trigger-count`), zero triggers renders nothing. Player die only (reference equality with gameState.die.faces). One counter per mod slot — a two-mod face shows both separated by a slash, rendered as '#N' or '#N1/N2'. Faces 1 and 20 also carry this badge, counting how many times each has been rolled this run.
+Trigger-count display: a loaded player-die face that triggered at least once this fight shows a badge (`.die-trigger-count`), zero renders nothing. Player die only (reference equality with gameState.die.faces). One counter per mod slot — two-mod faces show both, slash-separated, '#N' or '#N1/N2'. Faces 1/20 also carry this badge, counting rolls this run.
 
 ---
 
 # MULTI-MOD FACES
 
-A face can hold up to two mods — modId (first loaded) and modId2 (second loaded) — cap two, never three. Per-face state (Zeal's accumulated bonus, per-mod trigger counts — see TRIGGER COUNTS below) stays on that face's own modData field regardless of which slot the mod is in; there is no parallel array keyed by face number anywhere in this system, and there must never be one (the carry-forward rule).
+A face can hold up to two mods — modId (first loaded), modId2 (second) — cap two, never three. Per-face state (Zeal's accumulated bonus, per-mod trigger counts — TRIGGER COUNTS below) stays on that face's own modData regardless of slot; no parallel array keyed by face number anywhere, and never one (the carry-forward rule).
 
-Trigger order: both mods on a face trigger when that face is rolled, in load order — modId first, modId2 second, each resolving fully before the next begins. resolvePlayerRoll() (pipeline.js) dispatches this with two sequential, synchronous callListeners('MOD_TRIGGER', ...) calls; onNatTwenty() (cards-mods.js) dispatches both mods on a two-mod face within that same face's own turn in the ascending sweep.
+Trigger order: both mods on a rolled face trigger in load order — modId first, modId2 second, each fully resolving before the next. resolvePlayerRoll() (pipeline.js) dispatches two sequential, synchronous callListeners('MOD_TRIGGER', ...) calls; onNatTwenty() (cards-mods.js) dispatches both within that face's own turn in the ascending sweep.
 
-Load: dieActionChooseLoad() (rendering.js) excludes the anchor and any mod already on the die, in either slot. The face picker (load_pick_face) offers any blank face AND any already-loaded, non-Nat, not-yet-full face together, always — a second mod is a valid Load target at any point in a run, regardless of how many blanks remain. isEligible: `f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && !f.modId2`. dieActionPickLoadFace() writes modId on a blank face, modId2 on an already-loaded one, and refuses (no write) if both slots are already full.
+Load: dieActionChooseLoad() (rendering.js) excludes the anchor and any mod already on the die, either slot. The face picker (load_pick_face) offers any blank AND any already-loaded, non-Nat, not-yet-full face together, always. isEligible: `f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && !f.modId2`. dieActionPickLoadFace() writes modId on a blank, modId2 on an already-loaded face, refuses (no write) if both slots are full.
 
-Pool exhaustion (D-54): eligibleLoadModIds() (rendering.js) is checked before the Load button itself is rendered — the die action panel's 'choose' step shows only Strengthen and Skip once fewer than 3 eligible mods remain, so a short offer is never presented at all.
+Pool exhaustion (D-54): eligibleLoadModIds() (rendering.js) is checked before the Load button renders — 'choose' shows only Strengthen and Skip once fewer than 3 eligible mods remain, so a short offer is never shown.
 
-PURIFY (F43): the third die action, offered on the 'choose' step (purifiableFaceExists()) whenever a face other than 1, 10 or 20 carries a mod. Opens the Strengthen picker limited to those faces (dieActionStep 'purify_pick_face'). dieActionPickPurifyFace() resets the face's modId/modId2/modData to a fresh blank's shape, weight untouched — the removed mod(s) are offerable again next Load since eligibleLoadModIds() re-derives live off gameState.die.faces (D-07). Logs `[DIE] purify face N: X, Y removed`; writes `{ type:'purify', faceNumber, removed }` into runRecord.dieActionEvents, CSV `purify:X|Y>N`. Reuses the Strengthen sound.
+PURIFY (F43): the third die action, offered on 'choose' (purifiableFaceExists()) whenever a face other than 1/10/20 carries a mod. Opens the picker limited to those faces ('purify_pick_face'). dieActionPickPurifyFace() resets modId/modId2/modData to a fresh blank's shape, weight untouched — removed mod(s) are offerable again next Load (eligibleLoadModIds() re-derives live, D-07). Logs `[DIE] purify face N: X, Y removed`; writes `{ type:'purify', faceNumber, removed }` into runRecord.dieActionEvents, CSV `purify:X|Y>N`. Reuses the Strengthen sound.
 
-Faces 1 and 20 are untouched by this system: both are always single-mod Nat stubs, excluded from the Load face picker, and never gain a modId2. Face 20 can still be Strengthened.
+Faces 1/20 are untouched here: single-mod Nat stubs, excluded from the Load picker, never gain a modId2. Face 20 can still be Strengthened.
 
-The enemy die shares the same face shape (modId2 always present, always null) for structural symmetry, but nothing ever writes an enemy face's modId2 — no enemy action loads a second buff.
+The enemy die shares this face shape (modId2 always present, always null) for structural symmetry, but nothing ever writes an enemy face's modId2.
 
-Display: a face holding two mods shows both mod names in the one die row, side by side — `.die-mod-pair` (index.html) wrapping two `.die-mod` spans, each with its own inline trigger-count badge. No new row. faceHoverText() (rendering.js) appends the second mod's MOD_DESCRIPTION entry to the hover tip. Each name is truncated to its first TWO_MOD_NAME_CHARS letters (rendering.js, 6 by default), no ellipsis; the full name is available via a native `title` tooltip. Drop TWO_MOD_NAME_CHARS to 5 if a future name stops fitting.
+Display: a two-mod face shows both names in the one die row, side by side — `.die-mod-pair` (index.html) wrapping two `.die-mod` spans, each with its own inline trigger badge. No new row. faceHoverText() (rendering.js) appends the second mod's MOD_DESCRIPTION to the hover tip. Each name truncates to TWO_MOD_NAME_CHARS letters (6 default), no ellipsis; full name via native `title`. Drop to 5 if a future name stops fitting.
 
-Dev tooling: devLoadMod() (dev-tools.js) mirrors the real Load flow's cap. devClearFace() clears both slots.
+Dev tooling: devLoadMod() (dev-tools.js) mirrors the Load cap. devClearFace() clears both slots.
 
-TRIGGER COUNTS: lives in each face's own modData — modData.triggerCount for modId, modData.triggerCount2 for modId2. mod_dispatch matches data.modId against the triggering face's modId/modId2 to decide which counter to bump, so a two-mod face increments only the one that fired. Run-scoped, not fight-scoped: survives a fight reset intact; only startNewRun()'s brand-new faces wipe it. Zeal's own effect merges into the face's existing modData rather than replacing it wholesale, so a trigger never erases the count.
+TRIGGER COUNTS: in each face's modData — triggerCount for modId, triggerCount2 for modId2. mod_dispatch matches data.modId against the triggering face's modId/modId2 to bump the right counter. Run-scoped: survives a fight reset; only startNewRun()'s fresh faces wipe it. Zeal's effect merges into existing modData rather than replacing it, so a trigger never erases a count.
 
 ---
 
 # OUTSIDE-ROLL TRIGGER
 
-triggerFaceOutsideRoll(faceNumber) (pipeline.js) is the one shared function every "trigger a face without rolling it" card/mod goes through — Threnody, Reverberation, Magnificat, Novena today; any future piece with the same shape uses this, never a second copy of the dispatch logic.
+triggerFaceOutsideRoll(faceNumber) (pipeline.js) is the one shared function every "trigger a face without rolling it" card/mod uses — Threnody, Reverberation, Magnificat, Novena today; any future piece with the same shape uses this, never a second dispatch copy.
 
-Refuses outright (no state change, returns false) for face 1 or face GAME_CONFIG.DIE_SIZE.PLAYER (20) — both are Nat stubs, never a real mod or a blank.
+Refuses outright (no state change, returns false) for face 1 or DIE_SIZE.PLAYER (20) — both Nat stubs, never a real mod or blank.
 
-Refuses a face already triggered this way once this round — gameState.turn.outsideTriggeredFaces (state.js), cleared to [] at START_OF_TURN. A face rolled normally and then re-triggered outside a roll (Reverberation) is not blocked — the record only tracks outside triggers, not the roll itself.
+Refuses a face already triggered this way once this round — turn.outsideTriggeredFaces (state.js), cleared to [] at START_OF_TURN. A face rolled normally then re-triggered outside a roll (Reverberation) isn't blocked — the record only tracks outside triggers, not the roll itself.
 
-D-51 — per-round trigger cap. GAME_CONFIG.ROUND_TRIGGER_CAP (config.js) is 10. gameState.turn.roundTriggerCount counts every real MOD_TRIGGER dispatch this round — mod_dispatch increments it on every call except a Nat 20 sweep's own calls (tagged natTwentySweep: true), the one exemption. A blank face bumps the same counter directly in triggerFaceOutsideRoll(). Refuses once the counter reaches the cap; cleared to 0 at START_OF_TURN. The "round trigger cap reached" log line prints at most once per round (roundTriggerCapLogged).
+D-51 — per-round trigger cap. ROUND_TRIGGER_CAP (config.js) is 10. turn.roundTriggerCount counts every real MOD_TRIGGER dispatch this round — mod_dispatch increments it on every call except a Nat 20 sweep's own (tagged natTwentySweep: true), the one exemption. A blank face bumps the same counter directly in triggerFaceOutsideRoll(). Refuses once the counter reaches the cap; cleared to 0 at START_OF_TURN. The "round trigger cap reached" log line prints at most once per round (roundTriggerCapLogged).
 
-Dispatch: a loaded face triggers through the identical MOD_TRIGGER dispatch a rolled face uses — modId first, then modId2 — so permanent per-face growth accrues exactly as it would on a roll. A blank face dispatches BLANK_ROLL for the same GAME_CONFIG.BLANK_ROLL_BLOCK (2) block. Never writes rolledFaceNumber/rollOutcome/rolledFaceWeight.
+Dispatch: a loaded face triggers through the identical MOD_TRIGGER dispatch a rolled face uses — modId first, then modId2 — so permanent per-face growth accrues exactly as on a roll. A blank face dispatches BLANK_ROLL for the same BLANK_ROLL_BLOCK (2) block. Never writes rolledFaceNumber/rollOutcome/rolledFaceWeight.
 
 ---
 
 # THE HOP
 
-Die feedback: every face that fires WITHOUT being the face actually rolled this round — a Nat 20 sweep, a Bound scan, or an outside-roll trigger — moves its die row to the exact same look a rolled face gets (`.die-row-rolled`/`.die-row-rolled-flash`, index.html — the same classes the rolled-face highlight uses, no new colour). Player die only.
+Die feedback: every face that fires WITHOUT being the face actually rolled this round — a Nat 20 sweep, a Bound scan, or an outside-roll trigger — moves its die row to the exact look a rolled face gets (`.die-row-rolled`/`.die-row-rolled-flash`, no new colour). Player die only.
 
-gameState.turn.hoppedFaces (state.js) is the record — face numbers in firing order, never added twice per round. Marked at the instant a face's dispatch fires (pipeline.js's markFaceHopped()), from triggerFaceOutsideRoll() (covers outside-roll triggers and the Bound scan) and from onNatTwenty()'s own playSweep() callback (the one path that dispatches directly). Paced by playSweep() — the hop lands at the same moment the underlying trigger does.
+turn.hoppedFaces (state.js) is the record — face numbers in firing order, never added twice per round. Marked the instant a face's dispatch fires (pipeline.js's markFaceHopped()), from triggerFaceOutsideRoll() (outside-roll triggers and the Bound scan) and onNatTwenty()'s own playSweep() callback (the one path dispatching directly). Paced by playSweep() — the hop lands the moment the trigger does.
 
-Display: renderDieList() applies the rolled-face look to any row whose face.number is in hoppedFaces, player-die containers only, skipped for the row that is already the tracked rolled face. Same flash-once-then-sustained split as the rolled face's own highlight, tracked per container (lastSeenHoppedFacesByContainer). Clears at START_OF_TURN alongside every other round-scoped roll flag.
+Display: renderDieList() applies the rolled-face look to any row whose face.number is in hoppedFaces, player-die containers only, skipped for the row already tracked as rolled. Same flash-once-then-sustained split as the rolled face's own highlight, per container (lastSeenHoppedFacesByContainer). Clears at START_OF_TURN with every other round-scoped roll flag.
 
-Faces 1 and 20's own run-scoped roll counts (separate from the hop record): each counts how many times it has been rolled this run, in modData.triggerCount — bumped by bumpNatFaceTriggerCount() (pipeline.js), called from resolvePlayerRoll()'s NAT_TWENTY/NAT_ONE branches on every roll. Reset for free on a new run.
+Faces 1/20's own run-scoped roll counts (separate from the hop record): each counts times rolled this run, in modData.triggerCount — bumped by bumpNatFaceTriggerCount() (pipeline.js), from resolvePlayerRoll()'s NAT_TWENTY/NAT_ONE branches on every roll. Reset free on a new run.
 
 ---
 
 # BOUND ENGINE
 
-A face is Bound if a mod loaded on it (either slot) has Bound printed — carries the 'bound' tag, permanent — or the face was granted Bound for the fight. isBoundFace(face) (pipeline.js) checks both: face.modId/modId2 against gameState.config.mods[...].tags, and face.modData.boundGranted. A Sealed face counts as blank for every rule, including Bound.
+A face is Bound if a mod loaded on it (either slot) carries the 'bound' tag (permanent) or was granted Bound for the fight. isBoundFace(face) (pipeline.js) checks both: modId/modId2 against config.mods[...].tags, and modData.boundGranted. A Sealed face counts as blank for every rule, Bound included.
 
-grantBoundToFace(faceNumber) (pipeline.js) is the one setter — grants Bound to a loaded face for the rest of the current fight, merged into that face's own modData (ARCH-CF2, same merge pattern Zeal/Cope use). Refuses for face 1/20 and a genuinely blank face. The grant is fight-scoped (unlike trigger counts or Zeal's/Cope's accumulators): clearFightScopedState() strips boundGranted at fight end, leaving the rest of that face's modData untouched.
+grantBoundToFace(faceNumber) (pipeline.js) is the one setter — grants Bound to a loaded face for the rest of the fight, merged into that face's modData (ARCH-CF2, Zeal/Cope's pattern). Refuses face 1/20 and a blank face. Fight-scoped: clearFightScopedState() strips boundGranted at fight end, leaving the rest of that modData untouched.
 
-Display: every Bound face — printed or granted — shows a small "Bound" badge on its die row (`.die-bound-badge`, same box/font as `.die-weight`, D-28's no-new-palette rule), shown on every container, not gated by showTriggerBadges.
+Display: every Bound face — printed or granted — shows a "Bound" badge on its die row (`.die-bound-badge`, same box/font as `.die-weight`, D-28), on every container, not gated by showTriggerBadges.
 
-Bound scan: runBoundScan(rolledFace) (pipeline.js), called only from resolvePlayerRoll()'s mod-trigger branch, never during a Nat 20. When the rolled face is itself Bound, every OTHER loaded Bound face triggers through triggerFaceOutsideRoll(), ascending face order. A face triggered this way never starts a further scan. Counts toward GAME_CONFIG.ROUND_TRIGGER_CAP (D-51), no exemption.
+Bound scan: runBoundScan(rolledFace) (pipeline.js), only from resolvePlayerRoll()'s mod-trigger branch, never during a Nat 20. When the rolled face is itself Bound, every other loaded Bound face triggers via triggerFaceOutsideRoll(), ascending order. A face triggered this way never starts a further scan. Counts toward ROUND_TRIGGER_CAP (D-51), no exemption.
 
-Fast sweep timing: playSweep(faceNumbers, dispatchFn) (pipeline.js) paces WHEN each face in a multi-face sweep plays — state itself still updates the instant each dispatch runs. gameState.turn.roundSweepPlays counts every sweep-played trigger this round, cleared at START_OF_TURN. The first three plays land GAME_CONFIG.SWEEP_TRIGGER_DELAY_MS (200ms) apart; every play after the third lands at a quarter of that delay (50ms).
+Fast sweep timing: playSweep(faceNumbers, dispatchFn) (pipeline.js) paces WHEN each face in a sweep plays — state updates the instant each dispatch runs. turn.roundSweepPlays counts every sweep-played trigger this round, cleared at START_OF_TURN. The first three plays land SWEEP_TRIGGER_DELAY_MS (200ms) apart; after, a quarter of that (50ms).
 
-Bound mods/cards: Unison (6 damage), Accord (10 block), Kinship (4 poison) are plain Bound. Kyrie — 5 damage, 10 if the rolled face has Bound. Novena — every loaded Bound face triggers. Canticle — 6 block; if the rolled face is loaded, it gains Bound for this fight (never face 1/20). Concord — Bound, +1 soul, 3 block. Herald — Bound, 6 damage; one other random loaded face without Bound gains Bound for this fight (pickRandom(), state.js).
+Bound mods/cards: Unison (6 damage), Accord (10 block), Kinship (4 poison) are plain Bound. Kyrie — 5 damage, 10 if the rolled face has Bound. Novena — every loaded Bound face triggers. Canticle — 6 block; if the rolled face is loaded, it gains Bound for the fight (never face 1/20). Concord — Bound, +1 soul, 3 block. Herald — Bound, 6 damage; one other random loaded non-Bound face gains Bound for the fight (pickRandom(), state.js).
 
 ---
 
@@ -469,11 +468,9 @@ function rollDie(faces) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-Default: GAME_CONFIG.DIE_SIZE.PLAYER faces (20) weight 1 = 5% each.
-Strengthen to weight 2 = that face appears twice in pool.
-Only weight values change. gameState.turn.gildedFace is the one exception and the only ticket source outside face.weight: Gilded Die's paid-for weight, live for exactly one roll and never written onto the face (see GOLD, SHOP AND ARTIFACTS).
+Default: DIE_SIZE.PLAYER faces (20) weight 1 = 5% each. Strengthen to weight 2 = that face appears twice in pool. Only weight values change. turn.gildedFace is the one exception, the only ticket source outside face.weight: Gilded Die's paid weight, live for one roll, never written onto the face (GOLD, SHOP AND ARTIFACTS). rollOdds() (pipeline.js, BUILD 155) reads this exact bag to show the face row's own percent — see DIE COLUMN.
 
-Strengthen may target face GAME_CONFIG.DIE_SIZE.PLAYER (20), in addition to any loaded face. Face 1 is never targetable — the Strengthen face picker (rendering.js) excludes number 1 explicitly. Face 20 never gains a mod; Strengthen only adds weight to it, raising how often Nat 20 itself comes up.
+Strengthen may target face DIE_SIZE.PLAYER (20), plus any loaded face. Face 1 is never targetable — the Strengthen picker (rendering.js) excludes number 1 explicitly. Face 20 never gains a mod; Strengthen only adds weight, raising how often Nat 20 comes up.
 
 ---
 
@@ -493,15 +490,15 @@ Classes live in config.classes. Only one class exists in V1.
 
 classId in player state is a lookup key for config.classes[classId].
 
-onBlankRoll(data): generateBlock(2) via dealBlock(2, 'blank_face'), fires ON_BLOCK_GENERATED — unless Alms replaces it outright (almsReplacesBlankRoll(data), see GOLD, SHOP AND ARTIFACTS).
+onBlankRoll(data): generateBlock(2) via dealBlock(2, 'blank_face'), fires ON_BLOCK_GENERATED — unless Alms replaces it outright (almsReplacesBlankRoll(data), GOLD, SHOP AND ARTIFACTS).
 
-onNatTwenty (Nat 20): every loaded face on the player die triggers this turn, ascending face number order. Not capped, not once per fight — it fires in full every single time face 20 comes up. Face 1 and face 20 are excluded (their modIds are the NAT_ONE/NAT_TWENTY stubs, not real mods). Each qualifying face fires through callListeners('MOD_TRIGGER', ...) — the same dispatch a single rolled mod face already uses, so there is no second trigger path. Loop-safe because no mod in the pool re-rolls the die.
+onNatTwenty (Nat 20): every loaded face on the player die triggers, ascending order. Not capped, not once per fight — fires in full every time face 20 comes up. Faces 1/20 excluded (NAT_ONE/NAT_TWENTY stubs, not real mods). Each qualifying face fires through callListeners('MOD_TRIGGER', ...), same dispatch a single rolled mod face uses — no second trigger path. Loop-safe: no mod in the pool re-rolls the die.
 
-onNatOne (Nat 1 — Penitence): fires once per fight, gated on gameState.player.natOneFiredThisFight. Bone Counter takes its gold ahead of everything below, and Penitence never arms. First time otherwise: sets penitenceActive: true and penitenceTurnsRemaining: PENITENCE_TURNS (3), and logs onset. The actual 1-soul loss happens at each of the next three START_OF_TURNs, immediately after the soul reset, floored at 0; Penitence expires automatically after the third tick. Every subsequent face 1 rolled this fight instead dispatches BLANK_ROLL directly — an ordinary blank roll, identical in every way, with no distinguishing tag.
+onNatOne (Nat 1 — Penitence): fires once per fight, gated on natOneFiredThisFight. Bone Counter takes its gold ahead of everything below; Penitence never arms. First time otherwise: sets penitenceActive true, penitenceTurnsRemaining PENITENCE_TURNS (3), logs onset. The 1-soul loss happens at each of the next three START_OF_TURNs, right after the soul reset, floored at 0; expires after the third tick. Every later face 1 this fight instead dispatches BLANK_ROLL directly — an ordinary blank, no distinguishing tag.
 
-anchorModId references consecrate, built in config.mods — see MODS. The Ordained's die starts with exactly one loaded face: Consecrate on face 10. That starting face is Strengthen-eligible like any other loaded face, and Consecrate is excluded from the reward pool for that reason.
+anchorModId references consecrate, built in config.mods — see MODS. The Ordained's die starts with one loaded face: Consecrate on face 10, Strengthen-eligible like any loaded face; Consecrate is excluded from the reward pool for that reason.
 
-Enemy classes do not exist — the enemy's Nat 20 / Nat 1 / buff-trigger behaviour is registered unconditionally in init() (cards-mods.js), not attached to a class object, because it belongs to whichever enemy is being fought, not to a player class. See ENEMY DIE PER TYPE.
+Enemy classes don't exist — the enemy's Nat 20/Nat 1/buff-trigger behaviour registers unconditionally in init() (cards-mods.js), not on a class object, since it belongs to the enemy fought, not a player class. See ENEMY DIE PER TYPE.
 
 ---
 
@@ -523,89 +520,89 @@ Die mods live in config.mods. Not config.cards.
 
 # MODS
 
-Twenty-seven mods, all in config.mods. Consecrate is excluded from the reward pool because it is already loaded on the Ordained's starting die (see CLASS OBJECT STRUCTURE); the other twenty-six are reward-eligible, each carrying a tier ('common'/'uncommon'/'rare') and a tags list. See MOD_DESCRIPTION (rendering.js) for the live, plain-text description of every mod — that table is the source a player reads from.
+Twenty-seven mods, all in config.mods. Consecrate is excluded from the reward pool because it's already loaded on the Ordained's starting die (CLASS OBJECT STRUCTURE); the other twenty-six are reward-eligible, each with a tier ('common'/'uncommon'/'rare') and a tags list. See MOD_DESCRIPTION (rendering.js) for the live, plain-text description of every mod — the source a player reads from.
 
 Consecrate (anchor) — +2 soul this turn; each card played this turn also generates 3 block, turn-scoped.
-Fervour — registers a turn-scoped DAMAGE_MULTIPLIER listener that doubles damage tagged 'attack' only (poison ticks are untouched). The first and only mod that uses the multiplier stage of the pipeline.
-Vigil — grants 5 block per card still held in hand at end of turn, via a turn-scoped listener on hook 'END_PLAYER_TURN'.
-Zeal — 10 damage plus an accumulated bonus that permanently increases by 4 every time Zeal triggers again from the same specific face; stored per-face on that face's own modData (via updateDie()), not as a global counter, so Zeal loaded on two faces accrues independently on each.
-Ordain — 10 damage, then permanently adds 1 weight to the specific face it triggered from.
-Elevation — 10 damage; the face directly above the triggering face (faceNumber + 1) permanently gains +1 weight, but only if that face is loaded and is not face GAME_CONFIG.DIE_SIZE.PLAYER (20). If the face above is blank or is face 20, only the 10 damage happens — no weight write, no error. Like Ordain, the weight write goes through the shared strengthenFace() (pipeline.js) — the only place any face's weight is ever written.
-Anthem — 6 damage, plus 4 per point of weight on its own face (weight 1 -> 10, weight 2 -> 14, weight 3 -> 18). Reuses dealDamage() tagged 'attack' and gameState.turn.rolledFaceWeight (Covenant's own read). Reads weight only; writes nothing.
+Fervour — turn-scoped DAMAGE_MULTIPLIER listener doubling damage tagged 'attack' only (poison untouched). The first and only mod using the pipeline's multiplier stage.
+Vigil — 5 block per card still in hand at end of turn, via a turn-scoped listener on 'END_PLAYER_TURN'.
+Zeal — 10 damage plus a bonus that permanently increases by 4 each further trigger from the same face; stored per-face on that face's modData (updateDie()), not a global counter, so Zeal on two faces accrues independently.
+Ordain — 10 damage, then permanently +1 weight to the face it triggered from.
+Elevation — 10 damage; the face above (faceNumber + 1) permanently gains +1 weight, only if loaded and not face 20. Blank-above or face 20: just the 10 damage, no write, no error. Weight write goes through the shared strengthenFace() (pipeline.js), the only place weight is ever written.
+Anthem — 6 damage plus 4 per point of weight on its own face (1→10, 2→14, 3→18). Reuses dealDamage() tagged 'attack' and turn.rolledFaceWeight. Reads weight only; writes nothing.
 
-The other reward-eligible mods (Smite, Penance, Offering, Blight, Virulence, Sanctuary, Largesse, Tithe, Congregation, Cope, Anathema, Thurible, Magnificat, Unison, Accord, Kinship, Concord, Herald, Dread, Genuflect) each have a plain, direct effect described in MOD_DESCRIPTION — see that table rather than duplicating the numbers here.
+The rest (Smite, Penance, Offering, Blight, Virulence, Sanctuary, Largesse, Tithe, Congregation, Cope, Anathema, Thurible, Magnificat, Unison, Accord, Kinship, Concord, Herald, Dread, Genuflect) each have a plain, direct effect in MOD_DESCRIPTION — see that table rather than duplicating numbers here.
 
 ---
 
 # ENEMY DIE PER TYPE
 
-Every fight-type slot's enemy is a named, designed entry in GAME_CONFIG.ENEMIES, keyed by id (buildAct(), run-and-map.js assembles each act's opening/lanes/elite/boss from these). Fifteen enemies total: act 1 — Verger (opening, and again at the lower lane's position 3), Thurifer, Asperser, Lector (elite), Hierophant (boss); act 2 — Chorister, Cantor, Flagellant, Archdeacon (elite), Cardinal (boss); act 3 — Anchorite, Mendicant, Inquisitor, Exarch (elite), Pontifex (boss). Each carries `name`, a literal `pattern` (ACT_INTENT_MULTIPLIER scales only the enemy-buff poison amount, never a pattern's own numbers), and, except the three plain act-1 lane normals (hasDie:false), a `dieSpec` built by buildEnemyDieFromSpec() (pipeline.js). GAME_CONFIG.DIE_SIZE.NORMAL (6) and ELITE (12) are real sizes; bosses stay 20-sided with both Nats. HP: Math.ceil(base × that act's ACT_HP_MULTIPLIER) — act 1's five lane positions read GAME_CONFIG.ACT1_LANE_FIGHT_HP ([58,65,72,78,85]) directly. gameState.enemy.name (beginFightFromSlot()) is the enemy's own identity, distinct from `id` (the slot label 'Fight'/'Elite'/'Boss', which the panel title keys off).
+Every fight-type slot's enemy is a named entry in GAME_CONFIG.ENEMIES, keyed by id (buildAct(), run-and-map.js, assembles each act's opening/lanes/elite/boss from these). Fifteen: act 1 — Verger (opening, lower lane position 3), Thurifer, Asperser, Lector (elite), Hierophant (boss); act 2 — Chorister, Cantor, Flagellant, Archdeacon (elite), Cardinal (boss); act 3 — Anchorite, Mendicant, Inquisitor, Exarch (elite), Pontifex (boss). Each carries `name`, a literal `pattern` (ACT_INTENT_MULTIPLIER scales only buff poison, never a pattern's own numbers), and, except the three plain act-1 lane normals (hasDie:false), a `dieSpec` (buildEnemyDieFromSpec(), pipeline.js). DIE_SIZE.NORMAL (6)/ELITE (12) are real sizes; bosses stay 20-sided, both Nats. HP: Math.ceil(base × ACT_HP_MULTIPLIER) — act 1's five lane positions read ACT1_LANE_FIGHT_HP ([58,65,72,78,85]) directly. enemy.name (beginFightFromSlot()) is the enemy's identity, distinct from `id` ('Fight'/'Elite'/'Boss', which the panel title keys off).
 
-Enemy buff/Nat mechanics — registered unconditionally in init() (cards-mods.js): enemy_buff_poison/wrath/drain/seal via enemy_buff_dispatch; ENEMY_NAT_TWENTY sweeps every loaded buff ascending; ENEMY_NAT_ONE cancels the attack + self-poisons 5, once per fight — the DEFAULT every enemy uses unless named below. gameState.enemy.wrathPerTrigger is each enemy's own Wrath amount, falling back to GAME_CONFIG.ENEMY_WRATH_AMOUNT.
+Enemy buff/Nat mechanics — registered unconditionally in init() (cards-mods.js): enemy_buff_poison/wrath/drain/seal via enemy_buff_dispatch; ENEMY_NAT_TWENTY sweeps every loaded buff ascending; ENEMY_NAT_ONE cancels the attack + self-poisons 5, once per fight — default unless named below. wrathPerTrigger is each enemy's own Wrath amount, falling back to ENEMY_WRATH_AMOUNT.
 
-Cardinal and Pontifex each replace the default Nat behaviour entirely (branch on gameState.enemy.name): Cardinal's Nat 20 Seals its two heaviest loaded faces, no buff sweep; its Nat 1 triggers the player's own heaviest loaded face outside the roll and does not cancel its attack. Pontifex's Nat 20 doubles that round's Attack damage (pontifexDoubleAttackThisRound); its Nat 1 zeroes both wrath fields, once per fight, and does not cancel its attack.
+Cardinal and Pontifex replace the default Nat behaviour entirely (branch on enemy.name): Cardinal's Nat 20 Seals its two heaviest loaded faces, no buff sweep; Nat 1 triggers the player's heaviest loaded face outside the roll, no attack cancel. Pontifex's Nat 20 doubles that round's Attack (pontifexDoubleAttackThisRound); Nat 1 zeroes both wrath fields, once per fight, no attack cancel.
 
-Per-enemy "reads" — applyEnemyReads() (pipeline.js), once per round, reading the PLAYER's own roll: Lector triggers Drain whenever the player rolls face 6; Hierophant's own Nat 1 also fires whenever the player rolls a Nat 1; Pontifex triggers Wrath whenever the player rolls their own heaviest loaded face.
+Per-enemy "reads" — applyEnemyReads() (pipeline.js), once per round, reading the player's roll: Lector triggers Drain on face 6; Hierophant's Nat 1 also fires on a player Nat 1; Pontifex triggers Wrath on the player's heaviest loaded face.
 
-Enemy intent (F34): every enemy acts from `pattern`, a repeating list of Attack/Charge/Afflict entries, fixed and shown during START_OF_TURN (advanceEnemyIntentForRound(), called after both poison ticks so a Charge's break check counts the release round's own tick — KI-28) and advanced by ENEMY_ACT_PHASE once a round resolves (a Charge only after its release). getIncomingIntentDamage() is the shared "how much is this round's intent about to deal" reader (Interdict). The enemy's own Nat 1 cancels whatever is live this round, including a wind-up's whole charge.
+Enemy intent (F34): every enemy acts from `pattern`, a repeating Attack/Charge/Afflict list, shown at START_OF_TURN (advanceEnemyIntentForRound(), after both poison ticks so a Charge's break check counts the release round's tick — KI-28), advanced by ENEMY_ACT_PHASE once a round resolves (Charge only after release). getIncomingIntentDamage() is the shared intent-damage reader (Interdict). The enemy's Nat 1 cancels whatever is live, wind-up included.
 
-FIGHT PANEL TITLE: #enemyPanelTitle reads ENEMY/ELITE ★/BOSS ☠ off gameState.enemy.id. #enemyNameValue shows gameState.enemy.name. Pontifex gets its own panel line (#enemyReadLine): "Reads the heaviest face: Wrath +N when the player rolls it."
+FIGHT PANEL TITLE: #enemyPanelTitle reads ENEMY/ELITE ★/BOSS ☠ off enemy.id. #enemyNameValue shows enemy.name. Pontifex's own #enemyReadLine: "Reads the heaviest face: Wrath +N when the player rolls it."
 
-ENEMY FACE HOVER TEXT: faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount) — threaded through by renderDieList(). Cardinal, Pontifex and Hierophant each get fully custom ENEMY_NAT_ONE/ENEMY_NAT_TWENTY hover text; Lector's own Drain face (6) appends "Also triggers when the player rolls a 6."
+ENEMY FACE HOVER TEXT: faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount), threaded by renderDieList(). Cardinal, Pontifex, Hierophant each get custom ENEMY_NAT_ONE/TWENTY hover text; Lector's Drain face (6) appends "Also triggers when the player rolls a 6."
 
-ENEMY NAT SOUND AND VISUAL: enemy_nat_20/enemy_nat_1 (audio.js) — the player's own synthesis an octave lower, each ≤200ms. Visual: the enemy die's rolled row pulses three times over 600ms in --nat, and #enemyIntentValue reads "NAT 20" or "CANCELLED — NAT 1" (plain "NAT 1" for Cardinal/Pontifex).
+ENEMY NAT SOUND/VISUAL: enemy_nat_20/enemy_nat_1 (audio.js) — the player's own synthesis an octave lower, ≤200ms. Visual: the rolled row pulses three times over 600ms in --nat; #enemyIntentValue reads "NAT 20" or "CANCELLED — NAT 1" (plain "NAT 1" for Cardinal/Pontifex).
 
-ENEMY DICE OF ANY SIZE, WRATH, DRAIN, SEAL (F35): buildEnemyDieFromSpec(spec) (pipeline.js) is the real construction path for every act 2/3 enemy and the two non-Hierophant bosses; buildEnemyDieFaces() (run-and-map.js) is kept only for Hierophant's own die.
+ENEMY DICE OF ANY SIZE, WRATH, DRAIN, SEAL (F35): buildEnemyDieFromSpec(spec) (pipeline.js) builds every act 2/3 enemy and the two non-Hierophant bosses; buildEnemyDieFaces() (run-and-map.js) is kept only for Hierophant.
 
-LOADED-FACE RULE / SEAL: isFaceSealed(faceNumber) (pipeline.js) is the one shared check. gameState.turn.sealedFaces is REPLACED by a copy of gameState.player.sealNextRound every START_OF_TURN (even when empty), and cleared at every fight-start reset, so a Seal never survives past its own round or into a new fight. Faces 1 and 20 are never Sealed.
+LOADED-FACE RULE / SEAL: isFaceSealed(faceNumber) (pipeline.js) is the one shared check. turn.sealedFaces is REPLACED by a copy of player.sealNextRound every START_OF_TURN (even empty), cleared at fight-start, so a Seal never survives past its round or into a new fight. Faces 1/20 are never Sealed.
 
-POISON ANSWER (F33): at START_OF_TURN, before poison ticks and before block clears, a permanent listener (poison_answer_passive) removes floor(gameState.player.block / GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK) stacks of the player's own poison, capped at their current stacks — block is read, not spent. Enemies have no block field and are unaffected.
+POISON ANSWER (F33): at START_OF_TURN, before poison ticks/block clears, a permanent listener (poison_answer_passive) removes floor(player.block / POISON_ANSWER_BLOCK_PER_STACK) stacks of the player's poison, capped at current stacks — block is read, not spent. Enemies have no block field.
 
 ---
 
 # ACTS
 
-The run is GAME_CONFIG.ACTS (3) acts, played in sequence. Each act is a fresh map of the same two-lane shape (F16) — same slot types, its own boss — built by buildAct(actNumber) (run-and-map.js), which takes the 1-based act number and bakes that act's own scaled numbers into every enemy at build time (never read live off GAME_CONFIG mid-fight).
+The run is ACTS (3) acts, played in sequence. Each act is a fresh map of the same two-lane shape (F16) — same slot types, its own boss — built by buildAct(actNumber) (run-and-map.js), baking that act's scaled numbers into every enemy at build time (never read live off GAME_CONFIG mid-fight).
 
-EVENT SLOT (F44): the lower lane's slot index 3 (opposite the upper lane's Elite) is type 'event' (`{ type: 'event', label: 'Event', id: 'font' }`) in every act — nothing else on either lane moves. SLOT_HANDLERS['event'] dispatches to openEventScreen() — see THE FONT below. Upper path: still 7 fights an act (21 a run). Lower path, through the event: 6 (18 a run).
+EVENT SLOT (F44): the lower lane's slot index 3 (opposite the upper lane's Elite) is type 'event' (`{ type: 'event', label: 'Event', id: 'font' }`) in every act. SLOT_HANDLERS['event'] dispatches to openEventScreen() — see THE FONT. Upper path: 7 fights an act (21 a run). Lower path, through the event: 6 (18 a run).
 
-Scaling — GAME_CONFIG.ACT_HP_MULTIPLIER and ACT_INTENT_MULTIPLIER, indexed by actNumber-1, [1.0, 1.4, 1.9] and [1.0, 1.2, 1.45]: every enemy's hp/intentMin/intentMax is Math.ceil(base × that act's multiplier); the enemy buff's poison amount rides the intent multiplier the same way (3/4/5 stacks across acts 1/2/3); the enemy Nat 1 self-poison stays flat and unscaled at 5. Act 1's multipliers are both 1.0. Die face layouts do not change per act.
+Scaling — ACT_HP_MULTIPLIER and ACT_INTENT_MULTIPLIER, indexed by actNumber-1, [1.0, 1.4, 1.9] and [1.0, 1.2, 1.45]: every enemy's hp/intentMin/intentMax is Math.ceil(base × that multiplier); the buff poison amount rides the intent multiplier the same way (3/4/5 stacks acts 1/2/3); enemy Nat 1 self-poison stays flat at 5. Act 1's multipliers are both 1.0. Die face layouts don't change per act.
 
-Transition — a boss win's outcome depends on which act it ends (runPhase()'s win branch): acts 1/2 get the same reward flow any fight win gets (gold, an artifact reward, a die reward, a card reward), then advanceRun() increments actNumber, resets thirdEyeUsedThisAct and rebuilds run.act for the next act; player hp/die/ownedCards untouched, no heal between acts (D-27). Act 3 (final): true VICTORY (D-22) — no reward, no gold.
+Transition — a boss win's outcome depends which act it ends: acts 1/2 get the same reward flow any fight win gets (gold, artifact/die/card reward), then advanceRun() increments actNumber, resets thirdEyeUsedThisAct, rebuilds run.act; player hp/die/ownedCards untouched, no heal between acts (D-27). Act 3 (final): true VICTORY (D-22) — no reward, no gold.
 
-UI: the act number is shown on both the map screen and the fight screen (#actStamp), from gameState.run.actNumber.
+UI: the act number shows on the map and fight screen (#actStamp), from gameState.run.actNumber.
 
 ---
 
 # THE FONT (event slot, id 'font')
 
-openEventScreen() opens #eventScreenPanel: fixed flavour text, a ROLL button, the player's die as one row. ROLL (eventRoll()) picks a face via rollWithArtifacts() (D-21, weights included) but never passes it to resolvePlayerRoll() — no listener dispatch, no Bound, no Nat sweep, roll sound only; written straight to turn.rolledFaceNumber/rollOutcome so it lights on the face row (cleared next START_OF_TURN and on leaving the event). Outcome, then CONTINUE (closeEventScreen()) back to the map: Nat 20 opens the normal die reward panel (openDieActionScreen('event'), no card reward after) plus EVENT.NAT_TWENTY_GOLD gold; a loaded face gains 1 weight (strengthenFace()); a blank grants EVENT.BLANK_GOLD gold; Nat 1 costs EVENT.NAT_ONE_HP_LOSS HP, floored at 1. Third Eye applies to fight rolls only, never here. Log: `[EVENT] font: rolled N, outcome ...`.
+openEventScreen() opens #eventScreenPanel: fixed flavour text, a ROLL button, the player's die as one row. ROLL (eventRoll()) picks a face via rollWithArtifacts() (D-21, weights included) but never passes it to resolvePlayerRoll() — no listener dispatch, no Bound, no Nat sweep, roll sound only; written straight to turn.rolledFaceNumber/rollOutcome so it lights on the face row (cleared next START_OF_TURN, on leaving). Outcome, then CONTINUE (closeEventScreen()) back to the map: Nat 20 opens the normal die reward panel (openDieActionScreen('event'), no card reward after) plus NAT_TWENTY_GOLD gold; a loaded face gains 1 weight (strengthenFace()); a blank grants BLANK_GOLD; Nat 1 costs NAT_ONE_HP_LOSS HP, floored at 1. Third Eye applies to fight rolls only, never here. Log: `[EVENT] font: rolled N, outcome ...`.
 
 ---
 
 # GOLD, SHOP AND ARTIFACTS
 
-GOLD: a fight win grants gold within GAME_CONFIG.GOLD_REWARDS (Fight 12-20, Elite 30-40, Boss 60 flat); the final act's boss grants none (D-22). #goldValue reads gameState.run.gold.
+GOLD: a fight win grants gold within GOLD_REWARDS (Fight 12-20, Elite 30-40, Boss 60 flat); the final boss grants none (D-22). #goldValue reads run.gold.
 
-SHOP (GAME_CONFIG.SHOP): opens after every rite, in #shopPanel. Stock (gameState.run.shop, built once per visit): 3 cards at the Elite tier split, one artifact at ARTIFACT_PRICE (150) drawn from the artifacts this run does not hold, one Strengthen (opens the real face picker, returns to the shop), one removal at shopRemovalPrice() (gameState.run.removalPrice, starting REMOVAL_BASE_PRICE, +REMOVAL_PRICE_STEP/purchase, run-scoped). Every price but the removal runs through shopPriceWithArtifacts() (cards-mods.js). Unaffordable disabled; Leave is free.
+SHOP (GAME_CONFIG.SHOP): opens after every rite, in #shopPanel. Stock (gameState.run.shop, built once per visit): 3 cards at the Elite tier split, one artifact at ARTIFACT_PRICE (150) from the artifacts not held, one Strengthen (opens the real face picker, returns to shop), one removal at shopRemovalPrice() (gameState.run.removalPrice, starting REMOVAL_BASE_PRICE, +REMOVAL_PRICE_STEP/purchase, run-scoped). Every price but removal runs through shopPriceWithArtifacts() (cards-mods.js). Unaffordable disabled; Leave is free.
 
-ARTIFACTS (F45): gameState.run.artifacts, max ARTIFACT_MAX (8), defs in gameState.config.artifacts, thirteen of them; every amount they use lives in GAME_CONFIG.ARTIFACTS. #artifactRewardPanel (pick 1 of 3, Skip allowed) opens after an Elite win and a non-final Boss win, before the die reward, and draws its 3 from the artifacts not held. Each one with a hook of its own registers a permanent listener in init() and gates itself on hasArtifact(); the rest gate at the roll path or shop price they act on, where there is no hook to sit on.
+ARTIFACTS (F45): gameState.run.artifacts, max ARTIFACT_MAX (8), defs in config.artifacts, thirteen total; amounts in GAME_CONFIG.ARTIFACTS. #artifactRewardPanel (pick 1 of 3, Skip allowed) opens after an Elite win and a non-final Boss win, before the die reward, drawing 3 from the unheld. Each with a hook of its own registers a permanent listener in init(), gated on hasArtifact(); the rest gate at the roll path or shop price they act on.
 
-Third Eye (thirdEyeChooseFace()) forces one chosen face per act. Loaded Die (rollWithArtifacts(), the roll path's one rollDie() site) rolls twice, higher stands. Tolling Bell (nextPhase()) triggers a second face after the first if chargeStage is 'windup'/'release'. Tithe Box (NAT_TWENTY) pays TITHE_BOX_GOLD per Nat 20. Merchant's Seal lowers every shop price a quarter, rounded down, and freezes removal at REMOVAL_BASE_PRICE while held. Leaden Face makes dieActionPickStrengthenFace() call strengthenFace() twice — Ordain and Elevation are untouched. Reliquary Chain (MOD_TRIGGER, only the face actually rolled) triggers the loaded face directly above a rolled Bound face through triggerFaceOutsideRoll(), never face 20, counting toward ROUND_TRIGGER_CAP. Plague Bell (FIGHT_START) poisons the enemy for half its loaded faces, rounded down, faces 1/10/20 excluded. Alms (BLANK_ROLL) replaces the blank passive with ALMS_SOUL soul — almsReplacesBlankRoll() is the one predicate it and onBlankRoll both read, and an outside-roll blank (Threnody, Reverberation, Refrain) still gives its block. Hourglass (ENEMY_ACT_PHASE) sets turn.enemyRoundSkippedThisTurn on round 1: the intent is skipped, the pattern advances, the enemy die still rolls. Second Chance (secondChanceReroll(), #secondChanceBtn) rerolls once a fight — the first face never resolves. Gilded Die (gildedDiePayForFace(), #gildedDieBtn) pays GILDED_DIE_PRICE for GILDED_DIE_WEIGHT extra tickets on one face for one roll, held in turn.gildedFace and cleared by resolvePlayerRoll(). Bone Counter takes BONE_COUNTER_GOLD instead of arming Penitence, when the gold is there.
+Third Eye (thirdEyeChooseFace()) forces one chosen face per act. Loaded Die (rollWithArtifacts()) rolls twice, higher stands. Tolling Bell (nextPhase()) triggers a second face after the first if chargeStage is 'windup'/'release'. Tithe Box (NAT_TWENTY) pays TITHE_BOX_GOLD per Nat 20. Merchant's Seal lowers every shop price a quarter, rounded down, freezes removal at REMOVAL_BASE_PRICE while held. Leaden Face makes dieActionPickStrengthenFace() call strengthenFace() twice — Ordain/Elevation untouched. Reliquary Chain (rolled face only) triggers the loaded face above a rolled Bound face via triggerFaceOutsideRoll(), never face 20, counting toward ROUND_TRIGGER_CAP. Plague Bell (FIGHT_START) poisons the enemy for half its loaded faces, rounded down, 1/10/20 excluded. Alms (BLANK_ROLL) replaces the blank passive with ALMS_SOUL soul — an outside-roll blank (Threnody, Reverberation, Refrain) still gives its block. Hourglass (ENEMY_ACT_PHASE) skips round 1's intent, pattern still advances, die still rolls. Second Chance rerolls once a fight — the first face never resolves. Gilded Die pays GILDED_DIE_PRICE for GILDED_DIE_WEIGHT extra tickets on one face for one roll. Bone Counter takes BONE_COUNTER_GOLD instead of arming Penitence, when the gold is there.
 
 ---
 
 # AUDIO MODULE
 
-audio.js. One AudioContext plus a name-to-sound table, the same shape as the listener registry: game logic never calls a sound function directly, only playAudioEvent('event_name'); SOUND_TABLE decides what that sounds like, so any sound can be swapped by editing that one table without touching a call site. Synthesised only via playTone(waveform, freqStart, freqEnd, durationMs, peakGain, attackMs) — no audio files; /audio/ stays empty.
+audio.js. One AudioContext plus a name-to-sound table, the same shape as the listener registry: game logic never calls a sound function directly, only playAudioEvent('event_name'); SOUND_TABLE decides the sound, swappable in one place with no call-site change. Synthesised only via playTone(waveform, freqStart, freqEnd, durationMs, peakGain, attackMs) — no audio files; /audio/ stays empty.
 
-Browser autoplay policy: an AudioContext built before any user gesture starts (and stays) suspended — every scheduled sound is silent, no error — until resumed from inside a real gesture handler. unlockAudioOnce() (audio.js), called once on the page's first pointerdown (bootstrap.js), is that resume.
+Browser autoplay policy: an AudioContext built before any user gesture stays suspended — every scheduled sound is silent, no error — until resumed inside a real gesture handler. unlockAudioOnce() (audio.js), on the page's first pointerdown (bootstrap.js), is that resume.
 
-SOUND_TABLE — 24 events: roll, roll_blank, card_attack, card_block, card_hybrid, mod_trigger, damage_enemy, damage_player, block_absorb, end_turn, nat_20, nat_1, fight_won, fight_lost, fight_start_normal, fight_start_elite, fight_start_boss, boss_defeated, die_action_load, die_action_strengthen, card_reward_basic, card_reward_rich, enemy_nat_20, enemy_nat_1. The last two are the player's own nat_20/nat_1 synthesis an octave lower, kept ≤200ms.
+SOUND_TABLE — 24 events: roll, roll_blank, card_attack, card_block, card_hybrid, mod_trigger, damage_enemy, damage_player, block_absorb, end_turn, nat_20, nat_1, fight_won, fight_lost, fight_start_normal/elite/boss, boss_defeated, die_action_load, die_action_strengthen, card_reward_basic/rich, enemy_nat_20, enemy_nat_1. The last two are the player's own nat_20/nat_1 synthesis an octave lower, ≤200ms.
 
-Two pitch chains climb as an action repeats within a turn, reset to 0 by resetSoundChains() at every START_OF_TURN, capped at CHAIN_STEP_CAP (8): CARD_CHAIN_EVENTS and MOD_CHAIN_EVENTS. playAudioEvent(eventName) threads the relevant chain's step into a chained event's sound function and advances the counter afterward.
+Two pitch chains climb as an action repeats within a turn, reset to 0 by resetSoundChains() every START_OF_TURN, capped at CHAIN_STEP_CAP (8): CARD_CHAIN_EVENTS, MOD_CHAIN_EVENTS. playAudioEvent(eventName) threads the chain's step into a chained sound function and advances the counter after.
 
-Mute: devMuteAudioCheckbox (index.html, dev chrome) sets the module-level audioMuted flag (bootstrap.js); playTone() returns immediately when muted, before scheduling any oscillator. Default unmuted.
+Mute: devMuteAudioCheckbox (dev chrome) sets the module-level audioMuted flag (bootstrap.js); playTone() returns immediately when muted, before scheduling any oscillator. Default unmuted.
 
 ---
 
@@ -623,19 +620,19 @@ Run record: entirely untouched by a fight reset — clearFightScopedState() neve
 
 # RUN RECORD
 
-Player-facing, not a dev tool. One line per run (human or bot), written to localStorage as the run happens — never reconstructed at the end — because a page opened via file:// cannot write files. gameState.runRecord (STATE SCHEMA) is run-scoped: reset only by startNewRun() (resetRunRecord()), untouched by a fight reset.
+Player-facing, not a dev tool. One line per run (human or bot), written to localStorage as the run happens — never reconstructed at the end, since file:// can't write files. gameState.runRecord (STATE SCHEMA) is run-scoped: reset only by startNewRun() (resetRunRecord()), untouched by a fight reset.
 
-Write as it happens: enterSlot() (run-and-map.js) sets runRecord.started/node on every real slot entry, and arrivalHpAtBoss the one time the boss slot is entered. dieActionChooseLoad() (rendering.js) pushes a `{ type:'load', offered, picked:null }` entry the moment an offer is shown; dieActionPickLoadFace() patches `picked` once committed. dieActionChooseSkip() pushes a `{ type:'skip' }` entry instead. runPhase()'s win/loss branches (phase-machine.js) call recordFightRoundEnd() the instant a fight ends, then flushRunRecord('won'|'lost').
+Write as it happens: enterSlot() (run-and-map.js) sets runRecord.started/node on every real slot entry, arrivalHpAtBoss the one time the boss slot is entered. dieActionChooseLoad() (rendering.js) pushes `{ type:'load', offered, picked:null }` the moment an offer shows; dieActionPickLoadFace() patches `picked` once committed. dieActionChooseSkip() pushes `{ type:'skip' }` instead. runPhase()'s win/loss branches (phase-machine.js) call recordFightRoundEnd() the instant a fight ends, then flushRunRecord('won'|'lost').
 
-Per-mod trigger counts are never accumulated as the run goes — collectTriggerCountsByMod() (run-and-map.js) reads gameState.die.faces fresh every time the record is serialized, seeds every real mod at 0, and sums each face's own trigger count (both modId and modId2 contribute) into that mod's running total.
+Per-mod trigger counts are never accumulated as the run goes — collectTriggerCountsByMod() (run-and-map.js) reads gameState.die.faces fresh at serialize time, seeds every real mod at 0, sums each face's trigger count (modId and modId2 both contribute) into that mod's total.
 
-Flush points — flushRunRecord(outcome), guarded by runRecord.flushed/started so a run that never began writes nothing and a run cannot be flushed twice: boss defeated → 'won'; player death → 'lost'; New Run clicked mid-run → 'abandoned' (bootstrap.js, before startNewRun() resets the record); a closed tab → the same 'abandoned' call from a 'beforeunload' listener. An abandon mid-fight has flushRunRecord() call recordFightRoundEnd() once more first, so a partial round count is never lost.
+Flush points — flushRunRecord(outcome), guarded by runRecord.flushed/started so a run that never began writes nothing and can't flush twice: boss defeated → 'won'; player death → 'lost'; New Run clicked mid-run → 'abandoned' (bootstrap.js, before startNewRun() resets it); a closed tab → the same from a 'beforeunload' listener. An abandon mid-fight calls recordFightRoundEnd() once more first, so a partial round count isn't lost.
 
-Line format — buildRunRecordLine() (run-and-map.js) — one comma-separated CSV row: source, node, arrivalHpAtBoss, outcome, fightRounds, totalRounds, dieActionEvents, triggerCounts. Lists within a column are "|"-joined, key:value pairs "label:rounds"/"modId:count" — never a raw comma, so it pastes as clean CSV with no quoting needed.
+Line format — buildRunRecordLine() (run-and-map.js) — one CSV row: source, node, arrivalHpAtBoss, outcome, fightRounds, totalRounds, dieActionEvents, triggerCounts. Lists within a column are "|"-joined, key:value pairs "label:rounds"/"modId:count" — never a raw comma, so it pastes clean with no quoting.
 
-Storage and the copy button — RUN_RECORD_STORAGE_KEY = 'dieRunRecordLines' (run-and-map.js), a JSON array of line strings in localStorage, appended to by flushRunRecord(), never overwritten. #copyRunRecordBtn calls collectAllRunRecordLines() and copies the whole thing to the clipboard, followed by every transcript line (see below). The player pastes that into one CSV file by hand — this game never writes to disk itself.
+Storage and copy — RUN_RECORD_STORAGE_KEY = 'dieRunRecordLines' (run-and-map.js), a JSON array of lines in localStorage, appended by flushRunRecord(), never overwritten. #copyRunRecordBtn calls collectAllRunRecordLines() and copies it all to the clipboard, followed by every transcript line (below) — the player pastes that into one CSV file by hand; the game never writes to disk itself.
 
-TRANSCRIPT — gameState.run.transcript, plain-text lines, last run only, reset by startNewRun() and mirrored whole to localStorage under RUN_TRANSCRIPT_STORAGE_KEY = 'dieRunTranscript' by the one shared appendTranscript() (run-and-map.js). Four line kinds: FIGHT (act, slot, enemy name/HP, player HP/max) on beginFightFromSlot(); R<round> (enemy HP/poison, the roll and its mods, cards played, the enemy's five-word-or-fewer action, player HP/block/poison) appended once per round from ENEMY_ACT_PHASE via appendRoundTranscript(); WON/LOST (round, player HP/max) from runPhase()'s win/loss branches; and LOAD/STRENGTHEN/SKIP/CARD/RITE reward lines from the die action, card reward and rite screens. #copyRunRecordBtn appends a blank line, TRANSCRIPT, and every line after the CSV, logging both line counts.
+TRANSCRIPT — gameState.run.transcript, plain-text lines, last run only, reset by startNewRun(), mirrored to localStorage (RUN_TRANSCRIPT_STORAGE_KEY = 'dieRunTranscript') by appendTranscript() (run-and-map.js). Four kinds: FIGHT (act, slot, enemy name/HP, player HP/max) on beginFightFromSlot(); R<round> (enemy HP/poison, roll and mods, cards played, enemy's five-word action, player HP/block/poison) once per round from ENEMY_ACT_PHASE via appendRoundTranscript(); WON/LOST (round, player HP/max) from runPhase()'s win/loss; LOAD/STRENGTHEN/SKIP/CARD/RITE lines from the die action, card reward and rite screens. #copyRunRecordBtn appends a blank line, TRANSCRIPT, then every line after the CSV, logging both counts.
 
 ---
 
@@ -667,7 +664,7 @@ Stage 0: confirmed when log output matches expected output exactly.
 Stage 1+: five consecutive clean fights with zero errors before next substage.
 Never skip a failing substage. Never advance on partial verification.
 
-COMMENT RULE (BUILD 143): A comment says what the code does now, or why it must be this way (a law, a trap, an order it depends on). At most 8 lines in a row; a file's opening header may run to 12. No build numbers, stage numbers, dates, test results, or the story of what the code used to do; git and HISTORY.md hold the story. Rule and decision IDs (LAW-A2, ARCH-CF1, D-66, KI-8) are allowed when the ID is the reason. The FACTS block at the top of js/config.js is exempt and is never edited by this rule.
+COMMENT RULE (BUILD 143): a comment says what the code does now, or why it must be this way (a law, a trap, an order it depends on). At most 8 lines in a row; a file's opening header may run to 12. No build numbers, stage numbers, dates, test results, or the story of what the code used to do; git and HISTORY.md hold that. Rule/decision IDs (LAW-A2, ARCH-CF1, D-66, KI-8) allowed when the ID is the reason. js/config.js's FACTS block is exempt.
 
 TESTS (BUILD 143): npm test runs every test file in tests/, one at a time, guardrails first. New assertions for a build go in tests/buildNNN.test.js. tests/ holds test files and their helpers only; screenshots and one-off scripts go in backups/.
 
@@ -675,23 +672,23 @@ TESTS (BUILD 143): npm test runs every test file in tests/, one at a time, guard
 
 # WHO EDITS THIS FILE
 
-Claude Code may append a one-line confirmation to CONFIRMED WORKING and update CURRENT SUBSTAGE. Claude Code also updates whichever standing section describes a mechanic, number, file, or structure that build actually changed — see the ownership rule below. No other rewrite of a standing section happens without Fergus's own pasted text in the planning chat.
+Claude Code may append a one-line confirmation to CONFIRMED WORKING and update CURRENT SUBSTAGE. Claude Code also updates whichever standing section describes a mechanic, number, file, or structure that build actually changed — the ownership rule below. No other rewrite of a standing section without Fergus's own pasted text in the planning chat.
 
 Every other change to this file — mechanics, rulings, schema, numbers, structure not touched by the build just shipped — is written in the planning chat and pasted in by Fergus.
 
-OWNERSHIP RULE. Any build that changes a mechanic, a number, a file, or a structure updates the standing section describing it in the same build, and says so explicitly in its paste-back. The log (CONFIRMED WORKING / HISTORY.md) records that the change happened; the standing section records what is now true. A build that touches only CONFIRMED WORKING/CURRENT SUBSTAGE — no mechanic, number, file, or structure change — has nothing else to update.
+OWNERSHIP RULE. Any build that changes a mechanic, a number, a file, or a structure updates the standing section describing it in the same build, and says so explicitly in its paste-back. The log (CONFIRMED WORKING/HISTORY.md) records that the change happened; the standing section records what is now true. A build touching only CONFIRMED WORKING/CURRENT SUBSTAGE has nothing else to update.
 
 A build that changes any GAME_CONFIG value updates the F-line comment beside it in config.js's header and the FACTS block on the Notion page in the same build, and runs tests/facts.test.js before pasting back.
 
-Every build updates #buildStamp (index.html) to that build's own stage and build number, in the same build, whether or not the build touches any other part of index.html — this is the one standing exception to "don't touch files the build doesn't need to." It is how a player or a future session can tell what code is actually running.
+Every build updates #buildStamp (index.html) to its own stage/build number, whether or not it touches any other part of index.html — the one standing exception to "don't touch files the build doesn't need to." It's how a player or future session tells what code is running.
 
-Every build regenerates verify/ (`node tests/screenshots.js`) and reports the diff (`node tests/screenshots.js --compare`, changed-pixel count per screen against the previous run's set) in its paste-back — a visual defect this catches costs a diff to notice, not a build. Same standing-exception status as the build stamp line above: run it even in a build that doesn't touch index.html/rendering, so a regression from any build is caught by the next one's screenshot set, not discovered cold several builds later.
+Every build regenerates verify/ (`node tests/screenshots.js`) and reports the diff (`node tests/screenshots.js --compare`, changed-pixel count per screen vs. the previous run) in its paste-back — a visual defect costs a diff to notice, not a build. Same standing-exception status: run it even when the build doesn't touch index.html/rendering, so a regression is caught by the next build's screenshot set, not discovered cold several builds later.
 
-SIZE RULE: CURRENT SUBSTAGE holds the write-up of the newest build only. The first work step of every build moves the previous build's write-up to the end of HISTORY.md, word for word, by script, not by retyping. A CONFIRMED WORKING line is one line of at most 300 characters; the full text goes to HISTORY.md. This file stays under 80 KB.
+SIZE RULE: CURRENT SUBSTAGE holds the write-up of the newest build only. The first work step of every build moves the previous build's write-up to the end of HISTORY.md, word for word, by script, not by retyping. A CONFIRMED WORKING line is one line of at most 300 characters; the full text goes to HISTORY.md. This file stays at or under 72,000 bytes (CLAUDE_MD_MAX_BYTES, tests/shared-constants.js — lowered from 80,000 by BUILD 155).
 
 At the end of every session, paste back the new CONFIRMED WORKING line and the CURRENT SUBSTAGE section.
 
-This file is the source of truth for building. Notion is the source of truth for planning. Neither mirrors the other. The Notion project page is 3d27b97ff65a81d396d5f6abf687468d, titled Die — V1. The previous page, 3be7b97ff65a81cd8836fd33c0a08b70, is now the Archive and is not read at session start.
+Notion is the source of truth for planning; neither mirrors the other. The Notion project page is 3d27b97ff65a81d396d5f6abf687468d, titled Die — V1. The previous page, 3be7b97ff65a81cd8836fd33c0a08b70, is now the Archive and is not read at session start.
 
 ---
 
@@ -707,33 +704,33 @@ Log: every event and calculation. Prefixed [PHASE] [MOD] [CARD] [DAMAGE] [BLOCK]
 
 # SCREEN LAYOUT
 
-The fight screen is designed for 1600 by 900 and fits a 16:9 window with no scrollbar. The play column (.left-col) is centred, max-width 1600px, min-width min(1280px, 100%), padding 16px 24px 14px. Colour is identity and motion is state: a face's hue never changes, a flash or hold says what just happened, and the screen shows state, not conclusions (D-30). Every number, name, weight, trigger count and state is either visible or readable from a native title on hover — information never decreases.
+The fight screen is designed for 1600 by 900, fits a 16:9 window with no scrollbar. The play column (.left-col) is centred, max-width 1600px, min-width min(1280px, 100%), padding 16px 24px 14px. Colour is identity, motion is state: a face's hue never changes, a flash or hold says what just happened, the screen shows state, not conclusions (D-30). Every number, name, weight, trigger count and state is visible or readable from a native title on hover — information never decreases.
 
-ACTION BAR — div.top-bar, 58px, outside .app, three groups. Left: #buildStamp, and under it #goldValue (84 by 26px, reads GOLD then gameState.run.gold) beside #artifactRow's eight 26px slots, each showing a held artifact's name and carrying its text as a title. Centre, var(--game-font) 13px: #actStamp as ACT N, ROUND with #roundValue, #phaseBadge in --phase-color, #resultBanner. Right, 30px buttons: #devChromeToggleBtn, #copyRunRecordBtn, #logToggleBtn, #startGameBtn.
+ACTION BAR — div.top-bar, 58px, outside .app, three groups. Left: #buildStamp, under it #goldValue (84x26px, GOLD + gameState.run.gold) beside #artifactRow's eight 26px slots (each an artifact's name, its text as a title). Centre, var(--game-font) 13px: #actStamp as ACT N, ROUND with #roundValue, #phaseBadge in --phase-color, #resultBanner. Right, 30px buttons: #devChromeToggleBtn, #copyRunRecordBtn, #logToggleBtn, #startGameBtn.
 
-ART BAND — the middle band of #fightScreen, taking the remaining height (minimum 220px). #playerArtBox and #enemyArtBox are 340 by 220px boxes, each holding an img (#playerArtImg/#enemyArtImg, src art/ordained.png and art/ + gameState.enemy.name.toLowerCase() + .png) and a text label (#playerArtLabel/#enemyArtLabel) that swap on the img's own load/error event — no art files ship in this build, so the label is what actually shows. Directly left of #enemyArtBox: #enemyIntentIcon, a 40px inline SVG stroked --nat — a sword for Attack, a bolt for Charge, a slashed bolt for Release, a drop for Afflict, the bolt again for Broken — whose aria-label carries the kind word; #enemyIntentValue beside it shows only the number (BROKEN, or the enemy Nat's own wording, when there is no number). Both carry the same full sentence in a .hover-tip child (game-font box, opens downward, the same pattern every die row's hover uses) instead of a native title — neither element carries a title attribute. #enemyIntentLabel under both carries a Charge wind-up's "break N / M".
+ART BAND — #fightScreen's middle band, remaining height (min 220px). #playerArtBox/#enemyArtBox are 340x220px boxes, each an img (#playerArtImg/#enemyArtImg, src art/ordained.png and art/<enemy name lowercased>.png) plus a text label that swap on load/error — no art ships this build, so the label shows. Left of #enemyArtBox: #enemyIntentIcon, 40px inline SVG stroked --nat — sword/Attack, bolt/Charge, slashed bolt/Release, drop/Afflict, bolt again/Broken — aria-label carries the kind word; #enemyIntentValue beside it shows only the number (or BROKEN / the enemy Nat's wording). Both carry the full sentence in a .hover-tip child (opens downward, same as every die row's hover), no title attribute. #enemyIntentLabel under both carries a Charge wind-up's "break N / M".
 
-ENEMY BLOCK — the right 300px column of the stats band (228px tall, 300px / hand / 300px, bottom-aligned). #enemyPanelTitle (ENEMY / ELITE ★ / BOSS ☠), #enemyNameValue, HP with #enemyHpValue, #enemyWrathLine when Wrath is up, #enemyReadLine for Pontifex, then #enemyStatusRow — one 28px square per state present, P plus stacks of poison and W plus Wrath, both --enemy-mod, each carrying its own sentence as a title. #enemyBuffsValue lists every loaded face on that enemy's die with its face number (POISON 3, POISON 9, SEAL 6); #enemyActiveValue lists gameState.enemy.activeBuffs. #enemyPoisonValue is still written every render, hidden — the P icon is where stacks of poison read.
+ENEMY BLOCK — the stats band's right 300px column (228px tall, 300/hand/300, bottom-aligned). #enemyPanelTitle (ENEMY / ELITE ★ / BOSS ☠), #enemyNameValue, HP #enemyHpValue, #enemyWrathLine when Wrath is up, #enemyReadLine for Pontifex, then #enemyStatusRow — one 28px square per state present, P + poison and W + Wrath, both --enemy-mod, each its own sentence as a title. #enemyBuffsValue lists every loaded face by number (POISON 3, POISON 9, SEAL 6); #enemyActiveValue lists gameState.enemy.activeBuffs. #enemyPoisonValue still writes every render, hidden — the P icon is where poison reads.
 
-PLAYER BLOCK — the left 300px column of the same band. ORDAINED, HP with #playerHpValue, BL with #playerBlockValue, SOUL with #playerSoulValue, then #playerStatusRow on the same icon rule: P plus stacks of poison in --enemy-mod, PN for Penitence in --nat, D plus the amount for Drain in --player-mod, S for a Seal in --muted. Then #playerDebuffsValue, #playerDrainLine when it applies, and DECK #playerDeckValue DISCARD #playerDiscardValue.
+PLAYER BLOCK — the same band's left 300px column. ORDAINED, HP #playerHpValue, BL #playerBlockValue, SOUL #playerSoulValue, then #playerStatusRow: P + poison in --enemy-mod, PN for Penitence in --nat, D + amount for Drain in --player-mod, S for a Seal in --muted. Then #playerDebuffsValue, #playerDrainLine when it applies, DECK #playerDeckValue DISCARD #playerDiscardValue.
 
-HAND ROW — #handRow, centred in the stats band's middle column, cards 144 by 216px, 2px --player-mod border: cost badge top right, a 100px art placeholder, the name at 12px var(--game-font), the effect text at 20px var(--game-font-2). Unaffordable cards sit at opacity 0.4; every card carries its name and effect as a title. #endTurnBtn (128 by 44px) sits immediately right of the last card, vertically centred on the hand row (align-self: center). Every hand card's art placeholder and every card in the card reward panel holds an img child, src art/cards/<id>.png, pixelated and object-fit contain, hidden with an empty box on load failure — no art files ship in this build.
+HAND ROW — #handRow, centred in the stats band's middle column, cards 144x216px, 2px --player-mod border: cost badge top right, 100px art placeholder, name at 12px var(--game-font), effect text at 20px var(--game-font-2). Unaffordable at opacity 0.4; every card carries name/effect as a title. #endTurnBtn (128x44px) sits right of the last card, vertically centred (align-self: center). Every hand card's art placeholder and every card reward panel card holds an img child, src art/cards/<id>.png, pixelated, object-fit contain, hidden with an empty box on load failure — no art ships this build.
 
-DIE COLUMN (now the face row) — #playerDieList, the bottom band's middle column, twenty squares in one horizontal row, face 1 at the left and face 20 at the right (D-10 as amended 22 Sep 2026). Each square is a .face-btn capped at 56px, square by aspect-ratio, shrinking together when the column is narrower, 8px gap, 2px border: blank faces --line with a --blank number, loaded faces --player-mod, faces 1 and 20 --nat. The rolled face fills --text with a black number and holds for the round — a blank roll holds the same way a loaded roll does, its own flash class on the roll itself then the plain sustained look for the rest of the round; a hopped face takes the same look; a sealed face keeps its own colour at opacity 0.5. Under each square, 17px var(--game-font-2) --blank: the weight as a bare number, NAT 1 / NAT 20 on those two faces, SEALED or SEALED NEXT ROUND on a sealed one. Each square's title reads "Blight · weight 1 · triggered 2 times this run · Bound" then the existing hover sentence. Rows are still built face 20 first and flipped by flex-direction: row-reverse, so nothing that indexes the row list changes; .die-mod-wrap (mod names, ×N weight, trigger-count badges, Bound badge) stays in the DOM, hidden, and is what those words are read from. The dev force-roll click and its hover state are unchanged. #enemyDieList stays in the DOM, display:none, still rendered every frame — its content reads off #enemyBuffsValue and the die icons instead.
+DIE COLUMN (now the face row) — #playerDieList, bottom band's middle column, twenty squares in one row, face 1 left, face 20 right (D-10 as amended 22 Sep 2026); the only face row on screen (BUILD 155) — the reward layer picks/lights faces on this row, not one of its own. Each square is a .face-btn capped at 56px, square, shrinking together, 8px gap, 2px border: blank --line/--blank number, loaded --player-mod, faces 1/20 --nat. The rolled face fills --text with a black number, holds for the round; a blank roll holds the same way; a hopped face matches; a sealed face keeps colour at opacity 0.5. Under each square, 17px var(--game-font-2) --blank: this roll's odds (rollOdds(), pipeline.js, the exact bag rollDie() builds, Gilded Die's extra tickets included), a floored percent; NAT 1/NAT 20 beside their percent, SEALED/SEALED NEXT ROUND on a sealed face; weight above 1 drops its percent ODDS_EMPHASIS.DROP_PX lower, one font step larger, ODDS_EMPHASIS.COLOUR. The weight number now lives only in the title: "Blight · weight 1 · triggered 2 times this run · Bound" then the hover sentence. Rows built face 20 first, flipped by row-reverse; .die-mod-wrap (mod names, ×N weight, trigger badges, Bound badge) stays hidden in the DOM as the source of those words. Dev force-roll click disables whenever a step wires the row as a picker instead (currentPlayerDiePickConfig()). #enemyDieList stays in the DOM, display:none — reads off #enemyBuffsValue and the die icons.
 
-DIE ICONS — #playerDieIcon in the bottom band's left column: a 104px inline SVG stroked --text, shaped by GAME_CONFIG.DIE_SIZE (20 a hexagon d20, 12 a pentagon, 6 a square, each with an inner shape and spokes), the rolled face number centred inside in --player-mod for a mod, --nat for a Nat, --blank for a blank, empty before the roll. The number itself sits on a small #000000 backing (`.die-icon-number-text`, 4px padding each side, 26px font) so the die shape's own inner lines stop short of the digits rather than crossing them. #enemyDieIcon mirrors it in the right column, stroked --enemy-mod, sized from that enemy's own die, its own number on the same black backing; beside it the buff that triggered in upper case, or NAT 20 / NAT 1 in --nat, and the die size as d20 / d12 / d6 in --muted. A normal with no die shows an empty 104px outline (D-29).
+DIE ICONS — #playerDieIcon, bottom band's left column: 104px inline SVG stroked --text, shaped by GAME_CONFIG.DIE_SIZE (20 hexagon d20, 12 pentagon, 6 square, each with an inner shape/spokes), rolled face number centred in --player-mod for a mod, --nat for a Nat, --blank for a blank, empty pre-roll. The number sits on a #000000 backing (`.die-icon-number-text`, 4px padding, 26px font) so the shape's inner lines stop short of it. #enemyDieIcon mirrors it in the right column, stroked --enemy-mod, sized from that enemy's die; beside it the triggered buff in upper case, or NAT 20/NAT 1 in --nat, and die size as d20/d12/d6 in --muted. A normal with no die: empty 104px outline (D-29).
 
-ROLL STAGE — #rollHero, one line above the face row: #rollResultNumber carries the signed value the roll produced, #rollResultLabel the mod name in upper case in --player-mod with the run trigger count as ↻N in --muted (+13 CONSECRATE ↻6). A two-mod face prints both names and both values. A blank roll reads +2 BLANK, a Nat 20 reads NAT 20 and a Nat 1 reads NAT 1 PENITENCE, both in --nat; before the roll, AWAITING ROLL in --muted. The value is taken from the number that mod's own log line already reports — nothing is recomputed. The artifact controls that act before the roll sit on this same strip, each shown only while its own window is open: #thirdEyeBtn, #secondChanceBtn (REROLL) and #gildedDieBtn, the last two added with the artifact pass. Third Eye and Gilded Die both pick their face by a click on the real die row, the same toggle-then-click pattern.
+ROLL STAGE — #rollHero, one line above the face row: #rollResultNumber carries the roll's signed value, #rollResultLabel the mod name upper case in --player-mod with the run trigger count as ↻N in --muted (+13 CONSECRATE ↻6). A two-mod face prints both. A blank roll reads +2 BLANK, Nat 20 reads NAT 20, Nat 1 reads NAT 1 PENITENCE, both --nat; pre-roll, AWAITING ROLL in --muted — values taken from the mod's own log line, nothing recomputed. Pre-roll artifact controls sit on this strip, each shown only while open: #thirdEyeBtn, #secondChanceBtn (REROLL), #gildedDieBtn. Third Eye and Gilded Die both pick their face by clicking the real die row.
 
-POST-FIGHT OVERLAY — #dieActionPanel, #cardRewardPanel, #artifactRewardPanel, #shopPanel, #eventScreenPanel, #riteScreenPanel and #resultBanner keep their ids. Every one but the rite renders through renderOfferPanel() (rendering.js, D-86): .die-action-title, then .offer-cards — three 380 by 470 .offer-card squares at the 1600 by 900 reference, 2px border, black fill, 20px padding, each holding in order the name, its tier, an art box (art/cards|mods|artifacts/<id>.png, label fallback), its synergy tags or NONE, its text and a foot line (CLICK TO CHOOSE, or CHOSEN, PICK A FACE BELOW once picked) — the chosen card's border --nat, the rest --player-mod; .offer-skip to the right; then .offer-instruction and the fight's own twenty-square row (#dieActionDieList / #eventDieList), which a face-picking step makes selectable. Card and artifact rewards show cards and no row; Strengthen and Purify the row and no cards; Load its LOAD/STRENGTHEN/PURIFY/SKIP menu, then three mod cards, then the row. The shop shows the price where the tier goes, a second .offer-small-row for artifact/Strengthen/removal, and LEAVE for SKIP; The Font its flavour as the title, ROLL then the outcome and CONTINUE in the card area. Every panel is built from gameState on each refreshInspector() — no static HTML. A panel opening below takes the art band's slack first, then the column scrolls.
+THE REWARD LAYER (BUILD 155) — #dieActionPanel, #cardRewardPanel, #artifactRewardPanel, #eventScreenPanel, #shopPanel keep their ids, now live inside #fightScreen, right before band-d. #fightScreen.reward-layer-active (any of the five with a step open) hides band-b, band-c and band-d's roll-hero/die icons by CSS, so the layer covers everything above the face row (#playerDieList) — top bar and that row untouched; #mapScreen hides the same way, so the layer shows in place of the map too (a rite's shop, an elite's artifact reward, The Font). #riteScreenPanel is not part of this — no die row of its own, stays a plain sibling over the map. All five render through renderOfferPanel() (rendering.js, D-86): .die-action-title, then .offer-cards — three 380x470 .offer-card squares at 1600x900, 2px border, black fill, 20px padding: name, tier, art box (art/cards|mods|artifacts/<id>.png, label fallback), synergy tags or NONE, text, foot line (CLICK TO CHOOSE, or CHOSEN once picked) — chosen border --nat, rest --player-mod; .offer-skip right; then .offer-instruction, above the exposed face row. A face-picking step wires #playerDieList as the picker — currentPlayerDiePickConfig() (rendering.js) is the one place isEligible/onPick/showBecomes lives. Card/artifact show cards, no instruction; Strengthen/Purify the instruction and row only; Load its menu, then three mod cards, then (once picked) instruction and row. The shop shows price where tier goes, a second .offer-small-row for artifact/Strengthen/removal, LEAVE for SKIP; The Font its flavour as title, ROLL then outcome/CONTINUE, its roll lighting the same row. Every panel builds from gameState each refreshInspector() — no static HTML. At 1600x900 nothing scrolls: band-b/band-c hidden leaves room for the full three-card layer above band-d's fixed 118px.
 
-POP NUMBERS — every HP, block, poison, soul and gold change pops a number where it happened (D-87, F46): damage and healing on #enemyArtBox/#playerArtBox, block on #playerBlockValue, stacks on #playerStatusRow/#enemyStatusRow, soul on #playerSoulValue, gold on #goldValue. GAME_CONFIG.DAMAGE_NUMBERS holds the rise, fade, step count and the six colours; motion is stepped, no easing, no shake. state.js's helpers announce, beside the [STATE] log line for the same change and after refreshInspector() so the anchor reads as it now is — never a render function; rendering owns only spawnFxNumber(), which places .fx-number in #fxLayer. A pop keys on anchor plus kind, so several hits on one target in one round (a Nat 20 sweep) climb one total, fading 600ms after the last. Block and poison pop on a gain only, soul skips its START_OF_TURN reset, and fxSuppressDepth silences the bulk resets.
+POP NUMBERS — every HP, block, poison, soul and gold change pops a number where it happened (D-87, F46): damage/healing on #enemyArtBox/#playerArtBox, block on #playerBlockValue, stacks on #playerStatusRow/#enemyStatusRow, soul on #playerSoulValue, gold on #goldValue. GAME_CONFIG.DAMAGE_NUMBERS holds the rise, fade, step count and six colours; motion is stepped, no easing, no shake. state.js's helpers announce beside the same [STATE] log line, after refreshInspector() so the anchor reads as it now is — never a render function; rendering owns only spawnFxNumber(), placing .fx-number in #fxLayer. A pop keys on anchor + kind, so several hits in one round (a Nat 20 sweep) climb one total, fading 600ms after the last. Block/poison pop on a gain only, soul skips its START_OF_TURN reset, fxSuppressDepth silences bulk resets.
 
-MAP SCREEN — #mapScreen, ACT N MAP at 20px var(--game-font). Nodes are 70px squares, 2px outlined, labels at 11px var(--game-font); the four node states (completed, current, choice, inert) and three connector states (neutral, committed, abandoned) keep their classes and colours, and dev-jump nodes stay dotted and muted. The player, elite and boss die previews keep every number and buff name they show, rendered by the same renderDieList() in its vertical form.
+MAP SCREEN — #mapScreen, ACT N MAP at 20px var(--game-font). Nodes are 70px squares, 2px outlined, labels at 11px var(--game-font); the four node states (completed, current, choice, inert) and three connector states (neutral, committed, abandoned) keep their classes/colours, dev-jump nodes stay dotted and muted. The player/elite/boss die previews keep every number and buff name, via renderDieList()'s vertical form. KI-31 (BUILD 155): enterSlot() marks the slot entered in gameState.run.act before its handler runs and refuses (logged) a second call on an already-entered slot; an entered current node reads as completed (no click handler), so a Rite whose die action panel is still open can't be walked into twice. No map node, dev-jump included, accepts a click while the reward layer is open (rewardPanelOpen, renderMapScreen()).
 
-LOG PANEL — #log in .right-col, shown only while gameState.ui.logOpen; #logToggleBtn in the action bar flips it, default closed on every page load, and it works on the map exactly as on the fight screen. Open, .right-col covers the whole play column (position fixed, inset 0, black background, 24px padding, above the fight) rather than sitting beside it — the fight keeps rendering underneath, unchanged when closed — with #log at 22px VT323, a #logViewToggleBtn (LOG: PLAY / LOG: ALL, gameState.ui.logView) and a #logCloseBtn doing what #logToggleBtn does. Play view hides `.log-state`/`.log-listener` lines (still written to the DOM); All view shows them.
+LOG PANEL — #log in .right-col, shown only while gameState.ui.logOpen; #logToggleBtn flips it, default closed every page load, works on the map as on the fight screen. Open, .right-col covers the whole play column (position fixed, inset 0, black background, 24px padding) rather than sitting beside it — the fight keeps rendering underneath, unchanged when closed — #log at 22px VT323, a #logViewToggleBtn (LOG: PLAY / LOG: ALL) and #logCloseBtn doing what #logToggleBtn does. Play view hides `.log-state`/`.log-listener` lines (still in the DOM); All view shows them.
 
-DEV DRAWER — #devChrome, below the panels in the play column, opened by #devChromeToggleBtn from the action bar. Closed on every page load; closed also makes the two dev inputs outside it (die-face force rolls, map dev-jump nodes) inert.
+DEV DRAWER — #devChrome, below the panels, opened by #devChromeToggleBtn. Closed on every page load; closed also makes the two dev inputs outside it (die-face force rolls, map dev-jump nodes) inert.
 
 ---
 
@@ -741,42 +738,45 @@ DEV DRAWER — #devChrome, below the panels in the play column, opened by #devCh
 
 Full reports for every build below live in HISTORY.md, verbatim, in order. This section is an index only — read only when a specific build's full detail (exact numbers, exact code paths, exact Playwright verification) is needed.
 
-001–067 engine, phase machine, three laws, eleven mods, fifteen cards, Nat 20 and Nat 1, Load and Strengthen, card reward, weight display. VERIFIED-PLAYWRIGHT. Lines per build in HISTORY.md.
-068–082 run scaffold, two-lane map, rites, die rewards from elites, five-slot lanes, die-row picker, run-outcome guards. VERIFIED-PLAYWRIGHT.
-083–098 dev drawer, Nat 1 and Penitence tuning, intent retunes, New Run guard, rite card removal, rolled-face highlight, file split, listener dedup, audio module and seventeen sounds, pitch chains, tone pass, boss and elite dice, enemy Nat 1 self-poison. VERIFIED-PLAYWRIGHT.
-099–104 docs rewrite (099, documentation only), Vigil proven alive, enemy roll proven resolving, js/config.js GAME_CONFIG and tests/facts.test.js, trigger-count badge, one font. VERIFIED-PLAYWRIGHT except 099.
-105–120 seeded autoplayer, DIE_SIZE per entity, trigger counts in modData, run record, facts split, Anthem, Elevation, two mods per face, badge/weight fill, hover text, Load All, trigger measurement, screenshot baseline. VERIFIED-PLAYWRIGHT except 106 (UNVERIFIED, Fervour doubling never seen live).
-121–127 stacks name poison, on-screen build stamp from GAME_CONFIG.BUILD, LOAD_PRIORITY from the ranked pool, autoplay build column live, three acts with per-act scaling, pool exhaustion converts Load to Strengthen, bot plays three acts. VERIFIED-PLAYWRIGHT.
-128–135 checkpoint 3: eight-slot lanes, tiers and offer split, synergy tags, outside-roll trigger, Bound, instant win on enemy death. VERIFIED-PLAYWRIGHT.
-136–140 on-screen text for every checkpoint 3 piece, enemy poison 3/4/5, Bound badge, six-letter names on two-mod faces, hop on trigger, ENEMY/ELITE/BOSS title, enemy face hover text, Tenet and Gradual uncapped. VERIFIED-PLAYWRIGHT.
-Stage 2.68 (BUILD 141) — three items: the poison answer (block-vs-poison, F33), enemy intent patterns (Attack/Charge/Afflict, F34), and enemy dice of any size with Wrath/Drain/Seal (F35).
-Stage 2.69 (BUILD 142) — seven items, all kept: the Seal-never-wears-off fix, act 1 HP by position, all fifteen designed enemies (F36/F37), the enemy Nat sound/visual (KI-22 answered), Hosanna and Threnody reworked (F38).
-Stage 2.70 (BUILD 143) — anti-bloat: comment rule applied to js/ and index.html, CLAUDE.md trimmed, stray files removed, guardrail tests added. No behaviour change.
-Stage 2.71 (BUILD 144) — skin pass: black palette, Press Start 2P/VT323 fonts, log toggle default closed, phase badge no underscores, stepped motion; no number/mechanic/layout change.
-Stage 2.72 (BUILD 145) — layout pass: horizontal face row 1 to 20, die icons, intent icon, art/gold/artifact placeholders, portrait cards, map restyle. No number or mechanic changed.
-Stage 2.73 (BUILD 146) — CLAUDE.md trim, window scaling, End Turn/hand-card resize, intent icon hover sentence, character art loading. No number or mechanic changed.
-Stage 2.74 (BUILD 147) — intent hover box, console filter narrowed to art/, blank rolled face holds like a loaded one, die icon number gets a black backing. No number or mechanic changed.
-Stage 2.75 (BUILD 148) — KI-28 Charge break now counts the release round's poison tick, run transcript, log Play/All views, log full screen, zoom-block check (none found).
-Stage 2.76 (BUILD 149) — the awe status, Dread, Genuflect, Kneel, Compline, Tremendum, Mysterium, card art loading.
-Stage 2.77 (BUILD 150) — break numbers -4, Bulwark, gold, shop after every rite, three artifacts (Third Eye/Loaded Die/Tolling Bell), KI-29.
-Stage 2.78 (BUILD 151) — Purify die action, event slot (The Font).
-Stage 2.79 (BUILD 152) — KI-30: build142's act.lower[3] fixed to the event/font fact, one shared CLAUDE.md byte-limit constant, .claude gitignored and excluded from the stray-files check. No game change.
-Stage 2.80 (BUILD 153) — relics renamed artifacts (8 slots, ARTIFACT_MAX 8), ten new artifacts, artifacts sold in the shop at 150, seven new cards (pool 48).
-Stage 2.81 (BUILD 154) — second UI pass: one reward panel shape (three 380x470 cards, D-86) across die action/card/artifact/shop/Font, pop numbers (D-87, F46), stamp reads BUILD only. No mechanic changed.
+001–067 engine, phase machine, three laws, eleven mods, fifteen cards, Nat 20/Nat 1, Load/Strengthen, card reward, weight display. Lines per build in HISTORY.md.
+068–082 run scaffold, two-lane map, rites, die rewards from elites, five-slot lanes, die-row picker, run-outcome guards.
+083–098 dev drawer, Nat 1/Penitence tuning, intent retunes, New Run guard, rite card removal, rolled-face highlight, file split, listener dedup, audio module + seventeen sounds, pitch chains, tone pass, boss/elite dice, enemy Nat 1 self-poison.
+099–104 docs rewrite (099, docs only, unverified), Vigil proven alive, enemy roll proven resolving, js/config.js GAME_CONFIG + tests/facts.test.js, trigger-count badge, one font.
+105–120 seeded autoplayer, DIE_SIZE per entity, trigger counts in modData, run record, facts split, Anthem, Elevation, two mods per face, badge/weight fill, hover text, Load All, trigger measurement, screenshot baseline. 106 unverified — Fervour doubling never seen live.
+121–127 stacks name poison, on-screen build stamp from GAME_CONFIG.BUILD, LOAD_PRIORITY from ranked pool, autoplay build column live, three acts per-act scaling, pool exhaustion converts Load to Strengthen, bot plays three acts.
+128–135 checkpoint 3: eight-slot lanes, tiers/offer split, synergy tags, outside-roll trigger, Bound, instant win on enemy death.
+136–140 on-screen text for every checkpoint 3 piece, enemy poison 3/4/5, Bound badge, six-letter names on two-mod faces, hop on trigger, ENEMY/ELITE/BOSS title, enemy face hover text, Tenet/Gradual uncapped.
+(BUILD 141) — poison answer (block-vs-poison, F33), enemy intent patterns (Attack/Charge/Afflict, F34), enemy dice of any size with Wrath/Drain/Seal (F35).
+(BUILD 142) — Seal-never-wears-off fix, act 1 HP by position, all fifteen designed enemies (F36/F37), enemy Nat sound/visual (KI-22), Hosanna/Threnody reworked (F38).
+(BUILD 143) — anti-bloat: comment rule on js/ and index.html, CLAUDE.md trimmed, stray files removed, guardrail tests added.
+(BUILD 144) — skin pass: black palette, Press Start 2P/VT323 fonts, log toggle default closed, phase badge no underscores, stepped motion.
+(BUILD 145) — layout pass: horizontal face row 1-20, die icons, intent icon, art/gold/artifact placeholders, portrait cards, map restyle.
+(BUILD 146) — CLAUDE.md trim, window scaling, End Turn/hand-card resize, intent icon hover sentence, character art loading.
+(BUILD 147) — intent hover box, console filter narrowed to art/, blank rolled face holds like a loaded one, die icon number gets a black backing.
+(BUILD 148) — KI-28 Charge break now counts the release round's poison tick, run transcript, log Play/All views, log full screen, zoom-block check (none found).
+(BUILD 149) — the awe status, Dread, Genuflect, Kneel, Compline, Tremendum, Mysterium, card art loading.
+(BUILD 150) — break numbers -4, Bulwark, gold, shop after every rite, three artifacts (Third Eye/Loaded Die/Tolling Bell), KI-29.
+(BUILD 151) — Purify die action, event slot (The Font).
+(BUILD 152) — KI-30: build142's act.lower[3] fixed to the event/font fact, one shared CLAUDE.md byte-limit constant, .claude gitignored and excluded from the stray-files check.
+(BUILD 153) — relics renamed artifacts (8 slots, ARTIFACT_MAX 8), ten new artifacts, sold in shop at 150, seven new cards (pool 48).
+(BUILD 154) — second UI pass: one reward panel shape (three 380x470 cards, D-86) across die action/card/artifact/shop/Font, pop numbers (D-87, F46), stamp reads BUILD only.
+(BUILD 155) — KI-31 node re-entry fix, roll odds under each face (rollOdds()), the reward layer over the fight's own face row, CLAUDE.md trimmed to a 72,000-byte ceiling.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.81 (BUILD 154) — three items, all kept.
+Stage 2.82 (BUILD 155) — four items, all kept.
 
-(A) One reward panel shape (D-86) — renderOfferPanel() (rendering.js), written up in SCREEN LAYOUT / POST-FIGHT OVERLAY. #dieActionDieList, #eventDieList, .die-action-title and .die-action-empty keep their names, so every test that indexes them still does.
+(A) KI-31 — enterSlot() marks the slot entered in gameState.run.act before its handler runs and refuses (logged) a second call on an already-entered slot; an entered current node reads as completed (no click handler) instead of current; no map node, dev-jump included, accepts a click while the reward layer is open. Written up in MAP SCREEN.
 
-(B) Pop numbers (D-87, F46), written up in SCREEN LAYOUT / POP NUMBERS. The trap worth naming: applyScale() zooms <html>, so getBoundingClientRect() comes back already multiplied while style.left reads in the zoomed context's own pixels — spawnFxNumber() divides that back out, or a pop lands off its readout.
+(B) Roll odds — rollOdds() (pipeline.js) reads the exact bag rollDie() builds (Gilded Die's extra tickets included) and returns each face's tickets/total/floored percent. The face row's own caption (die-face-caption) shows that percent instead of the bare weight number; the weight itself lives only in the square's title now (faceTitleText() already printed it). GAME_CONFIG.ODDS_EMPHASIS (DROP_PX 6, COLOUR #e8e4d0) sets a weight-above-1 face's own emphasis. Written up in DIE COLUMN.
 
-(C) #buildStamp reads DIE V1 — BUILD N from GAME_CONFIG.BUILD alone; the hand-typed, three-builds-stale stage number is gone.
+(C) The reward layer — die action/card/artifact/shop/The Font moved inside #fightScreen, right before band-d; #fightScreen.reward-layer-active hides band-b/band-c/roll-hero/die icons so the layer covers everything above the fight's own face row (#playerDieList), which a face-picking step now wires directly (currentPlayerDiePickConfig(), rendering.js) — no second die row anywhere (#dieActionDieList/#eventDieList are gone). #mapScreen hides the same way so the layer shows in place of the map too. Written up in THE REWARD LAYER (renamed from POST-FIGHT OVERLAY).
 
-Verification: build154 14/14, facts 111/111, mods 42/42, guardrails 19/19, the rest unchanged. One standing assertion moved to the new panel shape rather than being relaxed: the reward-hover fact now reads the card's visible text and its title, since that text moved from hover-only to always visible. CONFIRMED WORKING's duplicated test-count tails were dropped to hold the 80 KB rule; the counts are in HISTORY.md, which this index points at.
+(D) CLAUDE.md headroom — the previous build's CURRENT SUBSTAGE write-up moved to HISTORY.md verbatim (the standing SIZE RULE mechanism); this file back under the 72,000-byte ceiling.
+
+Verification: build155 8/8, facts 111/111, mods 42/42, build153 23/23, build154 14/14, guardrails 19/19. CLAUDE.md 79,987 to 71,965 bytes.
 
 Full write-ups for earlier builds: HISTORY.md.

@@ -200,6 +200,19 @@
     overflow: hidden;
   }
 
+  /* the reward layer. While any of die action/card/artifact/
+     shop/The Font is open, everything above the fight's own face row is
+     hidden: the art band, the HP panels, the hand, End Turn, and the roll
+     stage's own icons/hero. The face row itself (inside band-d) and the
+     top bar are untouched. */
+  #fightScreen.reward-layer-active .band-b,
+  #fightScreen.reward-layer-active .band-c,
+  #fightScreen.reward-layer-active .roll-hero,
+  #fightScreen.reward-layer-active #playerDieIcon,
+  #fightScreen.reward-layer-active #enemyDieIcon {
+    display: none;
+  }
+
   .panel {
     background: var(--panel-bg);
     border: 1px solid var(--line);
@@ -816,6 +829,12 @@
     overflow: hidden;
   }
 
+  /* ODDS_EMPHASIS (GAME_CONFIG) — one font step up; the drop
+     and colour are set inline from GAME_CONFIG so it stays one source. */
+  .die-face-caption-emphasis {
+    font-size: 20px;
+  }
+
   .die-col-h .die-row-rolled,
   .die-col-h .die-row-rolled-flash {
     transform: none;
@@ -1153,15 +1172,6 @@
     from { transform: translate(-50%, -50%); opacity: 1; }
     to { transform: translate(-50%, calc(-50% - var(--fx-rise, 40px))); opacity: 0; }
   }
-
-  .die-action-die-preview {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    margin: 22px 0 14px;
-  }
-
-  #dieActionDieList { width: 100%; }
 
   .hover-tip {
     position: absolute;
@@ -1838,6 +1848,18 @@
         </div>
       </div>
 
+      <!-- the reward layer (die action / card / artifact /
+           shop / The Font). Sits where band-b/band-c stood: those and the
+           roll stage's own icons/hero are hidden by .reward-layer-active
+           (below) while any one of these five is open, so the layer reads
+           as a cover over the fight screen with the die row exposed right
+           under it — the same row every one of these already shares. -->
+      <div class="panel" id="dieActionPanel" style="display:none;"></div>
+      <div class="panel" id="cardRewardPanel" style="display:none;"></div>
+      <div class="panel" id="artifactRewardPanel" style="display:none;"></div>
+      <div class="panel" id="eventScreenPanel" style="display:none;"></div>
+      <div class="panel" id="shopPanel" style="display:none;"></div>
+
       <div class="band-d">
         <div id="playerDieIcon"></div>
         <div class="band-d-mid">
@@ -1859,23 +1881,9 @@
 
     </div><!-- /#fightScreen -->
 
-    <!-- Post-fight die action screen and the rite die-action choice — hidden except mid-choice. -->
-    <div class="panel" id="dieActionPanel" style="display:none;"></div>
-
-    <!-- Post-fight card reward screen — hidden except mid-choice. -->
-    <div class="panel" id="cardRewardPanel" style="display:none;"></div>
-
-    <!-- Post-Elite-win / non-final-act Boss-win artifact reward — hidden except mid-choice. -->
-    <div class="panel" id="artifactRewardPanel" style="display:none;"></div>
-
-    <!-- Rite slot choice — hidden except mid-choice. -->
+    <!-- Rite slot choice — hidden except mid-choice; stays over the map,
+         not part of the reward layer (it has no die row of its own). -->
     <div class="panel" id="riteScreenPanel" style="display:none;"></div>
-
-    <!-- The Font event slot — hidden except mid-visit. -->
-    <div class="panel" id="eventScreenPanel" style="display:none;"></div>
-
-    <!-- Shop, opened after every rite resolves — hidden except mid-visit. -->
-    <div class="panel" id="shopPanel" style="display:none;"></div>
 
     <div class="controls-row">
       <div id="devChrome">

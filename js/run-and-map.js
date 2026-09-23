@@ -467,6 +467,24 @@ const SLOT_HANDLERS = {
   event: function() { openEventScreen(); }
 };
 
+// KI-31: marks the slot entered in gameState.run before any panel opens, so
+// a second click on the same still-current node (e.g. a Rite whose shop or
+// die-action panel is still showing over the map) is refused rather than
+// re-running the slot's handler a second time.
+function markSlotEntered(laneName, index) {
+  const newAct = Object.assign({}, gameState.run.act);
+  if (laneName === 'boss') {
+    newAct.boss = Object.assign({}, newAct.boss, { entered: true });
+  } else if (laneName === 'opening') {
+    newAct.opening = Object.assign({}, newAct.opening, { entered: true });
+  } else {
+    const laneArr = newAct[laneName].slice();
+    laneArr[index] = Object.assign({}, laneArr[index], { entered: true });
+    newAct[laneName] = laneArr;
+  }
+  updateRun({ act: newAct });
+}
+
 function enterSlot(laneName, index) {
   if (gameState.run.outcome !== 'active') { return; }
 
@@ -475,7 +493,14 @@ function enterSlot(laneName, index) {
   const slot = laneName === 'boss' ? gameState.run.act.boss
     : laneName === 'opening' ? gameState.run.act.opening
     : gameState.run.act[laneName][index];
+
+  if (slot.entered) {
+    log('[RUN] entry refused: ' + slot.label + ' already entered');
+    return;
+  }
+
   log('[RUN] entering slot: ' + slot.label);
+  markSlotEntered(laneName, index);
 
   const slotForDescribe = (laneName === 'opening' || laneName === 'boss') ? laneName : { lane: laneName, index: index };
   const nodeLabel = describeSlot(slotForDescribe);

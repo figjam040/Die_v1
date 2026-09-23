@@ -84,7 +84,11 @@ function refreshInspector() {
   renderRegistryInspector();
   renderStats();
   renderCardButtons();
-  renderDieList('playerDieList', gameState.die.faces, forcePlayerRoll);
+  // the fight's own face row is the only face row on screen:
+  // a die-action face-picking step wires directly onto it (no second row),
+  // so its own pickConfig disables the dev force-roll click for that render.
+  const playerDiePickConfig = currentPlayerDiePickConfig();
+  renderDieList('playerDieList', gameState.die.faces, playerDiePickConfig ? null : forcePlayerRoll, playerDiePickConfig);
   // Kept rendered but never shown: the enemy's own faces read off
   // #enemyBuffsValue and #enemyDieIcon instead.
   document.getElementById('enemyDieList').style.display = 'none';
@@ -113,11 +117,16 @@ function refreshInspector() {
   renderShopPanel();
   renderMapScreen();
 
-  // dieActionPanel/cardRewardPanel/riteScreenPanel are siblings of both
-  // screens and stay governed by their own step variables regardless of
-  // screen, since a rite's die action panel is reached from the map.
-  document.getElementById('fightScreen').style.display = (gameState.run.screen === 'fight') ? 'flex' : 'none';
-  document.getElementById('mapScreen').style.display = (gameState.run.screen === 'map') ? 'flex' : 'none';
+  // the reward layer (die action/card/artifact/shop/The Font)
+  // always shows over the fight screen, even when it was opened from the
+  // map (a rite's shop, an elite's artifact reward, The Font): the fight
+  // screen carries the one face row these all now share. riteScreenPanel
+  // is not part of this — it stays over the map, ungated by this flag.
+  const rewardLayerActive = dieActionStep !== null || cardRewardStep !== null ||
+    artifactRewardStep !== null || shopStep !== null || eventStep !== null;
+  document.getElementById('fightScreen').style.display = (gameState.run.screen === 'fight' || rewardLayerActive) ? 'flex' : 'none';
+  document.getElementById('fightScreen').classList.toggle('reward-layer-active', rewardLayerActive);
+  document.getElementById('mapScreen').style.display = (gameState.run.screen === 'map' && !rewardLayerActive) ? 'flex' : 'none';
 
   document.getElementById('devNextPhaseBtn').disabled = !(gameState.run.screen === 'fight' && gameState.run.status === 'active');
   document.getElementById('devBeginRollBtn').disabled = !(gameState.run.screen === 'fight' && gameState.run.status === 'active' && gameState.turn.phase === 'START_OF_TURN');
@@ -440,11 +449,18 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
   // ROUND" with no dimming (still fully loaded/rollable this round).
   const isPlayerDie = showTriggerBadges;
 
-  // The player's own die reads as one horizontal row of squares, face 1 at
-  // the left; every other container keeps the vertical row list.
-  const isHorizontal = (containerId === 'playerDieList' || containerId === 'dieActionDieList' || containerId === 'eventDieList');
+  // this roll's own odds, read straight off rollDie()'s own
+  // bag (pipeline.js) so Gilded Die's extra tickets show for the roll they
+  // apply to. Player die only — nothing else needs it.
+  const oddsByFace = isPlayerDie ? rollOdds(faces) : null;
 
-  const tracksRolledFace = (containerId === 'playerDieList' || containerId === 'dieActionDieList' || containerId === 'enemyDieList' || containerId === 'eventDieList');
+  // The player's own die reads as one horizontal row of squares, face 1 at
+  // the left; every other container keeps the vertical row list
+  // — this is the only face row on screen; the die action/event reward
+  // layer picks/lights faces on this same row instead of a row of its own.
+  const isHorizontal = (containerId === 'playerDieList');
+
+  const tracksRolledFace = (containerId === 'playerDieList' || containerId === 'enemyDieList');
   const isEnemyContainer = containerId === 'enemyDieList';
   const trackedRolledFaceNumber = isEnemyContainer ? gameState.turn.enemyRolledFaceNumber : gameState.turn.rolledFaceNumber;
   const trackedRollOutcome = isEnemyContainer ? gameState.turn.enemyRollOutcome : gameState.turn.rollOutcome;
@@ -659,20 +675,33 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     row.appendChild(modWrap);
 
     // The horizontal face row's own one-line caption under each square.
-    // Everything it does not have room for is in the square's title.
+    // this roll's odds replace the bare weight number; the
+    // weight itself moved into the square's own title (faceTitleText()
+    // already prints "weight N"). NAT 1/NAT 20 keep their labels, with the
+    // percent beside them.
     if (isHorizontal) {
       const caption = document.createElement('div');
       caption.className = 'die-face-caption';
+      const pctText = oddsByFace ? oddsByFace[face.number].pct + '%' : '';
       if (isPlayerDie && isFaceSealed(face.number)) {
         caption.textContent = 'SEALED';
       } else if (isPlayerDie && gameState.player.sealNextRound.indexOf(face.number) !== -1) {
         caption.textContent = 'SEALED NEXT ROUND';
       } else if (face.modId === 'NAT_ONE' || face.modId === 'ENEMY_NAT_ONE') {
-        caption.textContent = 'NAT 1';
+        caption.textContent = 'NAT 1 ' + pctText;
       } else if (face.modId === 'NAT_TWENTY' || face.modId === 'ENEMY_NAT_TWENTY') {
-        caption.textContent = 'NAT 20';
+        caption.textContent = 'NAT 20 ' + pctText;
       } else {
-        caption.textContent = face.weight;
+        caption.textContent = pctText;
+        // ODDS_EMPHASIS (GAME_CONFIG) — a weight-above-1 face's percent
+        // drops and grows, for as long as the weight stays above 1.
+        // Re-renders from state on every refreshInspector(), a Strengthen
+        // included.
+        if (face.weight > 1) {
+          caption.classList.add('die-face-caption-emphasis');
+          caption.style.transform = 'translateY(' + GAME_CONFIG.ODDS_EMPHASIS.DROP_PX + 'px)';
+          caption.style.color = GAME_CONFIG.ODDS_EMPHASIS.COLOUR;
+        }
       }
       row.appendChild(caption);
     }
@@ -1163,25 +1192,15 @@ function renderOfferPanel(panel, spec) {
   // — kept on the class the pre-154 panels used.
   if (spec.buttonRow) panel.appendChild(spec.buttonRow);
 
-  if (spec.dieListId) {
-    if (spec.instruction) {
-      const inst = document.createElement('div');
-      inst.className = 'offer-instruction';
-      inst.textContent = spec.instruction;
-      panel.appendChild(inst);
-    }
-    const dieContainer = document.createElement('div');
-    dieContainer.className = 'die-col player-die die-col-h';
-    dieContainer.id = spec.dieListId;
-
-    const dieWrap = document.createElement('div');
-    dieWrap.className = 'die-action-die-preview';
-    dieWrap.appendChild(dieContainer);
-    panel.appendChild(dieWrap);
-
-    // Must run after the container is attached — renderDieList() looks it
-    // up by id.
-    renderDieList(spec.dieListId, gameState.die.faces, null, spec.pickConfig || null);
+  // no second die row: the instruction line is the panel's
+  // own content, sitting just above the fight's own face row (#playerDieList,
+  // outside this panel entirely), which currentPlayerDiePickConfig() wires
+  // as the real picker for a face-picking step.
+  if (spec.instruction) {
+    const inst = document.createElement('div');
+    inst.className = 'offer-instruction';
+    inst.textContent = spec.instruction;
+    panel.appendChild(inst);
   }
 }
 
@@ -1712,6 +1731,45 @@ function dieActionPickPurifyFace(faceNumber) {
   closeDieActionScreen();
 }
 
+// the one place a die-action face-picking step's isEligible/
+// onPick/showBecomes live. Read both by refreshInspector() (to wire the
+// fight's own face row, #playerDieList, as the picker) and by
+// renderDieActionPanel() (nothing else needs the config itself there, only
+// the step check).
+function currentPlayerDiePickConfig() {
+  if (dieActionStep === 'load_pick_face') {
+    return {
+      isEligible: function(f) {
+        return f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && !f.modId2;
+      },
+      onPick: dieActionPickLoadFace,
+      showBecomes: false
+    };
+  }
+  if (dieActionStep === 'strengthen_pick_face') {
+    return {
+      isEligible: function(f) {
+        if (f.number === 1) return false;
+        if (f.number === GAME_CONFIG.DIE_SIZE.PLAYER) return true;
+        return f.modId !== null;
+      },
+      onPick: dieActionPickStrengthenFace,
+      showBecomes: true
+    };
+  }
+  if (dieActionStep === 'purify_pick_face') {
+    return {
+      isEligible: function(f) {
+        if (f.number === 1 || f.number === 10 || f.number === GAME_CONFIG.DIE_SIZE.PLAYER) return false;
+        return f.modId !== null;
+      },
+      onPick: dieActionPickPurifyFace,
+      showBecomes: false
+    };
+  }
+  return null;
+}
+
 function renderDieActionPanel() {
   const panel = document.getElementById('dieActionPanel');
   if (!panel) return;
@@ -1729,10 +1787,6 @@ function renderDieActionPanel() {
 
   const row = document.createElement('div');
   row.className = 'die-action-row';
-
-  // Set only for load_pick_face/strengthen_pick_face/purify_pick_face —
-  // passed to renderDieList() so the die rows themselves become the picker.
-  let pickConfig = null;
 
   if (dieActionStep === 'choose') {
     titleText = 'Fight won — choose a die action';
@@ -1797,50 +1851,25 @@ function renderDieActionPanel() {
     const chosenName = gameState.config.mods[dieActionChosenModId].name.toUpperCase();
     titleText = 'Choose a face for ' + gameState.config.mods[dieActionChosenModId].name;
     instruction = chosenName + ', CHOOSE A FACE BELOW';
-    pickConfig = {
-      isEligible: function(f) {
-        return f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && !f.modId2;
-      },
-      onPick: dieActionPickLoadFace,
-      showBecomes: false
-    };
 
   } else if (dieActionStep === 'strengthen_pick_face') {
     titleText = 'Choose a face to strengthen';
     instruction = 'CHOOSE A FACE TO STRENGTHEN';
-    pickConfig = {
-      isEligible: function(f) {
-        if (f.number === 1) return false;
-        if (f.number === GAME_CONFIG.DIE_SIZE.PLAYER) return true;
-        return f.modId !== null;
-      },
-      onPick: dieActionPickStrengthenFace,
-      showBecomes: true
-    };
 
   } else if (dieActionStep === 'purify_pick_face') {
     titleText = 'Choose a face to purify';
     instruction = 'CHOOSE A FACE TO PURIFY';
-    pickConfig = {
-      isEligible: function(f) {
-        if (f.number === 1 || f.number === 10 || f.number === GAME_CONFIG.DIE_SIZE.PLAYER) return false;
-        return f.modId !== null;
-      },
-      onPick: dieActionPickPurifyFace,
-      showBecomes: false
-    };
   }
 
-  // The player sees one die at every step of this panel, the opening
-  // Load/Strengthen/Purify/Skip menu included.
+  // no die row of this panel's own: the fight's own face row
+  // (#playerDieList) is wired as the picker by refreshInspector(), via
+  // currentPlayerDiePickConfig().
   renderOfferPanel(panel, {
     title: titleText,
     cards: cards,
     skip: null,
     buttonRow: buttonRow,
-    instruction: instruction,
-    dieListId: 'dieActionDieList',
-    pickConfig: pickConfig
+    instruction: instruction
   });
 }
 
@@ -1938,8 +1967,7 @@ function renderCardRewardPanel() {
         cardRewardPickCard(cardId);
       });
     }),
-    skip: { label: 'SKIP', onClick: function() { log('[CLICK] Skip'); cardRewardSkip(); } },
-    dieListId: null
+    skip: { label: 'SKIP', onClick: function() { log('[CLICK] Skip'); cardRewardSkip(); } }
   });
 }
 
@@ -2005,8 +2033,7 @@ function renderArtifactRewardPanel() {
         artifactRewardPick(artifactId);
       });
     }),
-    skip: { label: 'SKIP', onClick: function() { log('[CLICK] Skip'); artifactRewardSkip(); } },
-    dieListId: null
+    skip: { label: 'SKIP', onClick: function() { log('[CLICK] Skip'); artifactRewardSkip(); } }
   });
 }
 
@@ -2253,13 +2280,13 @@ function renderEventScreen() {
     row.appendChild(continueBtn);
   }
 
+  // the roll lights the fight's own face row (#playerDieList);
+  // no die row of this panel's own.
   renderOfferPanel(panel, {
     title: 'A font of black water stands where the road bends. Nothing moves in it. The die goes in.',
     cards: [],
     skip: null,
-    buttonRow: row,
-    dieListId: 'eventDieList',
-    pickConfig: null
+    buttonRow: row
   });
 }
 
@@ -2408,7 +2435,7 @@ function renderShopPanel() {
       btn.addEventListener('click', function() { log('[CLICK] ' + card.name); shopRemoveCard(index); });
       row.appendChild(btn);
     });
-    renderOfferPanel(panel, { title: 'Choose a card to remove', cards: [], skip: null, buttonRow: row, dieListId: null });
+    renderOfferPanel(panel, { title: 'Choose a card to remove', cards: [], skip: null, buttonRow: row });
     return;
   }
 
@@ -2460,8 +2487,7 @@ function renderShopPanel() {
     title: 'SHOP',
     cards: cards,
     skip: { label: 'LEAVE', onClick: function() { log('[CLICK] Leave'); closeShopScreen(); } },
-    smallRow: smallRow,
-    dieListId: null
+    smallRow: smallRow
   });
 }
 
@@ -2477,18 +2503,23 @@ function renderShopPanel() {
 // slot on a chosen lane), choice (--nat, dashed border — the fork's two
 // options before a lane is picked), inert (--muted, dim — unreachable:
 // the abandoned lane, or a not-yet-unlocked slot on the chosen one).
+// KI-31: a slot already entered (enterSlot() opened it, e.g. a Rite whose
+// panel is still open) reads as visited, not current — it must not be
+// re-entered by a second click while its own panel sits on top of the map.
 function mapNodeStateClass(slot, isCurrent, isChoice) {
-  if (isCurrent) { return 'map-node-current'; }
+  if (isCurrent && !slot.entered) { return 'map-node-current'; }
   if (isChoice) { return 'map-node-choice'; }
-  if (slot.completed) { return 'map-node-completed'; }
+  if (slot.completed || slot.entered) { return 'map-node-completed'; }
   return 'map-node-inert';
 }
 
 // Wires dev-jump onto a node that isn't the real current/choice click
-// target. Does nothing once the run is won or lost.
-function attachDevJumpIfEligible(node, laneName, index) {
+// target. Does nothing once the run is won or lost, or while any reward
+// panel (shop/artifact/card/die action) sits over the map (KI-31) — the
+// map must not accept any click, dev-jump included, while one is open.
+function attachDevJumpIfEligible(node, laneName, index, rewardPanelOpen) {
   // Lives outside #devChrome, so a closed dev chrome disables these nodes directly.
-  if (!devChromeOpen || gameState.run.outcome !== 'active') {
+  if (!devChromeOpen || gameState.run.outcome !== 'active' || rewardPanelOpen) {
     node.disabled = true;
     return;
   }
@@ -2531,6 +2562,12 @@ function renderMapScreen() {
   if (!gameState.run.act) { container.innerHTML = ''; return; }
   container.innerHTML = '';
 
+  // KI-31: while any of these sits over the map, no node accepts a click —
+  // otherwise the still-current node underneath (a Rite mid-panel, most of
+  // all) can be entered a second time.
+  const rewardPanelOpen = dieActionStep !== null || cardRewardStep !== null
+    || artifactRewardStep !== null || shopStep !== null;
+
   const title = document.createElement('div');
   title.className = 'panel-title';
   title.textContent = 'ACT ' + gameState.run.actNumber + ' MAP';
@@ -2558,10 +2595,10 @@ function renderMapScreen() {
   const openingNode = document.createElement('button');
   openingNode.className = 'map-node map-node-opening ' + mapNodeStateClass(openingSlot, openingIsCurrent, false);
   openingNode.textContent = openingSlot.label;
-  if (openingIsCurrent) {
+  if (openingIsCurrent && !openingSlot.entered && !rewardPanelOpen) {
     openingNode.addEventListener('click', function() { enterSlot('opening', null); });
   } else {
-    attachDevJumpIfEligible(openingNode, 'opening', null);
+    attachDevJumpIfEligible(openingNode, 'opening', null, rewardPanelOpen);
   }
   composition.appendChild(openingNode);
 
@@ -2595,7 +2632,7 @@ function renderMapScreen() {
 
       node.className = 'map-node ' + mapNodeStateClass(slot, isCurrent, isForkChoice);
 
-      if (isCurrent || isForkChoice) {
+      if ((isCurrent || isForkChoice) && !slot.entered && !rewardPanelOpen) {
         node.addEventListener('click', function() {
           // A single click at the divergence both picks the lane and
           // enters that lane's first slot — there is no separate
@@ -2605,7 +2642,7 @@ function renderMapScreen() {
           else { enterSlot(laneName, index); }
         });
       } else {
-        attachDevJumpIfEligible(node, laneName, index);
+        attachDevJumpIfEligible(node, laneName, index, rewardPanelOpen);
       }
 
       laneRow.appendChild(node);
@@ -2624,10 +2661,10 @@ function renderMapScreen() {
   const bossIsCurrent = gameState.run.currentSlot === 'boss';
   bossBtn.className = 'map-node map-node-boss ' + mapNodeStateClass(gameState.run.act.boss, bossIsCurrent, false);
   bossBtn.textContent = gameState.run.act.boss.label;
-  if (bossIsCurrent) {
+  if (bossIsCurrent && !gameState.run.act.boss.entered && !rewardPanelOpen) {
     bossBtn.addEventListener('click', function() { enterSlot('boss', null); });
   } else {
-    attachDevJumpIfEligible(bossBtn, 'boss', null);
+    attachDevJumpIfEligible(bossBtn, 'boss', null, rewardPanelOpen);
   }
   composition.appendChild(bossBtn);
 

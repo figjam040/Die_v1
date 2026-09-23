@@ -1054,5 +1054,15 @@ Stage 2.80 (BUILD 153) — four items, all kept.
 
 Verification: build153 23/23, facts 111/111, mods 42/42, build150 9/9, build151 11/11, guardrails 19/19, the rest unchanged. build150's Bulwark and build149's Compline block measurements now clear the turn's listeners first: a Consecrate roll (3 block per card played) made each fail about one run in twenty, and both did on this build's own npm test runs. Test-only; no game change.
 
+Stage 2.81 (BUILD 154) — three items, all kept.
+
+(A) One reward panel shape (D-86) — renderOfferPanel() (rendering.js), written up in SCREEN LAYOUT / POST-FIGHT OVERLAY. #dieActionDieList, #eventDieList, .die-action-title and .die-action-empty keep their names, so every test that indexes them still does.
+
+(B) Pop numbers (D-87, F46), written up in SCREEN LAYOUT / POP NUMBERS. The trap worth naming: applyScale() zooms <html>, so getBoundingClientRect() comes back already multiplied while style.left reads in the zoomed context's own pixels — spawnFxNumber() divides that back out, or a pop lands off its readout.
+
+(C) #buildStamp reads DIE V1 — BUILD N from GAME_CONFIG.BUILD alone; the hand-typed, three-builds-stale stage number is gone.
+
+Verification: build154 14/14, facts 111/111, mods 42/42, guardrails 19/19, the rest unchanged. One standing assertion moved to the new panel shape rather than being relaxed: the reward-hover fact now reads the card's own visible text and its title, since that text moved from hover-only to always visible. CONFIRMED WORKING's duplicated test-count tails were dropped to hold the 80 KB rule; the counts are in HISTORY.md, which this index points at.
+
 Full write-ups for earlier builds: HISTORY.md.
 

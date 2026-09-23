@@ -513,7 +513,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     const page = await freshPage(browser);
     await page.evaluate(() => { openDieActionScreen(); dieActionChooseStrengthen(); });
     const v = await page.evaluate(() => {
-      const rows = Array.from(document.querySelectorAll('#dieActionDieList .die-row'));
+      const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
       function classesFor(num) {
         const row = rows.find(function(r) { return r.querySelector('.face-btn') && r.querySelector('.face-btn').textContent === String(num); });
         return row ? row.className : null;
@@ -553,7 +553,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       openDieActionScreen();
       dieActionChooseLoad();
       dieActionPickMod(dieActionMods[0]);
-      const rows = Array.from(document.querySelectorAll('#dieActionDieList .die-row'));
+      const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
       const face2Row = rows.find(function(r) { return r.querySelector('.face-btn') && r.querySelector('.face-btn').textContent === '2'; });
       return { blankExists: blankExists, face2Classes: face2Row ? face2Row.className : null };
     });
@@ -571,7 +571,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       openDieActionScreen();
       dieActionChooseLoad();
       dieActionPickMod(dieActionMods[0]);
-      const rows = Array.from(document.querySelectorAll('#dieActionDieList .die-row'));
+      const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
       const face2Row = rows.find(function(r) { return r.querySelector('.face-btn') && r.querySelector('.face-btn').textContent === '2'; });
       return face2Row ? face2Row.className : null;
     });

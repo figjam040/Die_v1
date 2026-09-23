@@ -106,7 +106,7 @@ async function enterEventSlot(page) {
 
     for (const faceNumber of [1, 10, 20]) {
       await page.evaluate((faceNumber) => {
-        const rows = Array.from(document.querySelectorAll('#dieActionDieList .die-row'));
+        const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
         const row = rows.find(function(r) {
           const numEl = r.querySelector('.face-num');
           return numEl && parseInt(numEl.textContent, 10) === faceNumber;

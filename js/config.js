@@ -52,7 +52,13 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 154,
+  BUILD: 155,
+
+  // a weight-above-1 face's roll-odds percent drops this far, in this colour.
+  ODDS_EMPHASIS: {
+    DROP_PX: 6,
+    COLOUR: '#e8e4d0'
+  },
 
   // F46 — COLOURS keys are the announcement kinds state.js sends.
   DAMAGE_NUMBERS: {

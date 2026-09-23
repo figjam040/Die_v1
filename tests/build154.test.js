@@ -87,10 +87,10 @@ async function enterPausedFight(page) {
       const before = {
         cards: document.querySelectorAll('#dieActionPanel .offer-card').length,
         chosen: document.querySelectorAll('#dieActionPanel .offer-card-chosen').length,
-        pickable: document.querySelectorAll('#dieActionDieList .die-row-pickable').length
+        pickable: document.querySelectorAll('#playerDieList .die-row-pickable').length
       };
       dieActionPickMod(dieActionMods[0]);
-      const rows = Array.from(document.querySelectorAll('#dieActionDieList .die-row'));
+      const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
       const pickableNumbers = rows.filter(r => r.classList.contains('die-row-pickable'))
         .map(r => parseInt(r.querySelector('.face-btn').textContent, 10));
       const blankNumbers = gameState.die.faces
@@ -129,8 +129,8 @@ async function enterPausedFight(page) {
       dieActionChooseStrengthen();
       return {
         cards: document.querySelectorAll('#dieActionPanel .offer-card').length,
-        rows: document.querySelectorAll('#dieActionDieList .die-row').length,
-        pickable: document.querySelectorAll('#dieActionDieList .die-row-pickable').length,
+        rows: document.querySelectorAll('#playerDieList .die-row').length,
+        pickable: document.querySelectorAll('#playerDieList .die-row-pickable').length,
         instruction: (document.querySelector('#dieActionPanel .offer-instruction') || {}).textContent || ''
       };
     });
@@ -197,7 +197,7 @@ async function enterPausedFight(page) {
       return {
         title: (document.querySelector('#eventScreenPanel .die-action-title') || {}).textContent || '',
         buttons: Array.from(document.querySelectorAll('#eventScreenPanel button')).map(b => b.textContent),
-        rows: document.querySelectorAll('#eventDieList .die-row').length
+        rows: document.querySelectorAll('#playerDieList .die-row').length
       };
     });
     assert.ok(before.title.length > 0, "The Font's flavour must sit where the title goes");
@@ -267,12 +267,12 @@ async function enterPausedFight(page) {
       const purify = Array.from(document.querySelectorAll('#dieActionPanel button')).find(b => b.textContent === 'PURIFY');
       out.purifyTitle = purify ? purify.title : '';
       // Every face square keeps its own title, weight line and hover tip.
-      const squares = Array.from(document.querySelectorAll('#dieActionDieList .face-btn'));
+      const squares = Array.from(document.querySelectorAll('#playerDieList .face-btn'));
       out.squares = squares.length;
       out.untitledSquares = squares.filter(b => !b.title).length;
       // A blank face has never carried a hover tip — the rule is one tip
       // per loaded or Nat face, exactly as before BUILD 154.
-      out.tips = document.querySelectorAll('#dieActionDieList .die-row .hover-tip').length;
+      out.tips = document.querySelectorAll('#playerDieList .die-row .hover-tip').length;
       out.tippableFaces = gameState.die.faces.filter(f => f.modId !== null).length;
       dieActionChooseSkip();
       cardRewardSkip();
@@ -434,14 +434,13 @@ async function enterPausedFight(page) {
   // ITEM C — the stamp
   // ---------------------------------------------------------------
 
-  await runTest('Item C: the on-screen stamp reads DIE V1 — BUILD 154, with no stage number', async () => {
+  await runTest('Item C: the on-screen stamp reads DIE V1 — BUILD N from GAME_CONFIG.BUILD, with no stage number', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => ({
       stamp: document.getElementById('buildStamp').textContent.trim(),
       build: GAME_CONFIG.BUILD
     }));
-    assert.strictEqual(v.build, 154, 'GAME_CONFIG.BUILD must be 154, got ' + v.build);
-    assert.strictEqual(v.stamp, 'DIE V1 — BUILD 154', 'the stamp must read "DIE V1 — BUILD 154", got "' + v.stamp + '"');
+    assert.strictEqual(v.stamp, 'DIE V1 — BUILD ' + v.build, 'the stamp must read "DIE V1 — BUILD ' + v.build + '", got "' + v.stamp + '"');
     assert.strictEqual(/stage/i.test(v.stamp), false, 'the on-screen stamp must carry no stage number');
     await page.close();
   });
