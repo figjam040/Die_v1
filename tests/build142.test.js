@@ -99,7 +99,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   // ITEM A — act 1 lane fight HP by position
   // ---------------------------------------------------------------
 
-  await runTest('Item A: act 1 lane fight HP by position is 58/65/72/78/85 on the lower lane; the upper lane matches, elite at position 3 is 100', async () => {
+  await runTest('Item A: act 1 lane fight HP by position is 58/65/78/85 on the lower lane; the upper lane matches, elite at position 3 is 100', async () => {
     const page = await freshPage(browser);
     const act = await page.evaluate(() => buildAct(1));
     assert.strictEqual(act.lower[0].enemy.hp, 58);
@@ -349,23 +349,22 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   await runTest('Item C-g: Cardinal\'s and Pontifex\'s Nats and reads behave as written under forced rolls', async () => {
     const page = await freshPage(browser);
 
-    // Cardinal's Nat 20: two heaviest loaded faces (other than 1/20) get Sealed.
-    // Cardinal is act 2's own boss — set the live run onto act 2 before
-    // jumping (a fresh run otherwise starts on act 1's Hierophant).
+    // D-101 (BUILD 158): every boss's Nat 20, Cardinal and Pontifex
+    // included, now forces its own pattern's charge entry next round
+    // instead of its old designed sweep (Cardinal used to Seal its two
+    // heaviest loaded faces). Cardinal is act 2's own boss — set the live
+    // run onto act 2 before jumping (a fresh run otherwise starts on act
+    // 1's Hierophant).
     await page.evaluate(() => { updateRun({ act: buildAct(2) }); });
     await page.evaluate(() => { devJumpToSlot('boss', null); });
     await page.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
-    await page.evaluate(() => {
-      const newFaces = gameState.die.faces.slice();
-      newFaces[8] = Object.assign({}, newFaces[8], { modId: 'smite', weight: 3 }); // face 9
-      newFaces[13] = Object.assign({}, newFaces[13], { modId: 'blight', weight: 5 }); // face 14
-      updateDie({ faces: newFaces });
-    });
+    const cardinalChargeEntry = await page.evaluate(() => gameState.enemy.pattern.filter(function(e) { return e.kind === 'charge'; })[0]);
     await page.evaluate(() => { forcePlayerRoll(2); });
     await advanceUntilPhase(page, 'ENEMY_ROLL_PHASE');
     await page.evaluate(() => { forceEnemyRoll(20); }); // Cardinal's own Nat 20
-    const sealQueue = await page.evaluate(() => gameState.player.sealNextRound.slice().sort(function(a, b) { return a - b; }));
-    assert.deepStrictEqual(sealQueue, [9, 14], 'Cardinal\'s Nat 20 must Seal its two heaviest loaded faces');
+    const cardinalForced = await page.evaluate(() => gameState.enemy.forcedNextIntent);
+    assert.deepStrictEqual(cardinalForced, { kind: 'charge', release: cardinalChargeEntry.release, breakAt: cardinalChargeEntry.breakAt }, 'Cardinal\'s Nat 20 must force its own Charge next round');
+    assert.deepStrictEqual(await page.evaluate(() => gameState.player.sealNextRound), [], 'Cardinal\'s Nat 20 must no longer Seal any face');
 
     // Cardinal's Nat 1: heaviest loaded face triggers now, attack not cancelled.
     const page2 = await freshPage(browser);
@@ -385,36 +384,25 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.strictEqual(enemyHpBefore - v2.enemyHp, 16, 'Cardinal\'s Nat 1 must trigger its heaviest loaded face (smite, 16 damage) outside the roll');
     assert.strictEqual(v2.cancelled, false, 'Cardinal\'s Nat 1 must not cancel its own attack');
 
-    // Pontifex's Nat 20 on an Attack round deals the Attack twice; on a
-    // release round deals the release once.
+    // Pontifex's Nat 20 forces its own Charge next round (D-101), same as
+    // Cardinal's and Hierophant's.
     const page3 = await freshPage(browser);
     await page3.evaluate(() => { updateRun({ act: buildAct(3) }); });
     await page3.evaluate(() => { devJumpToSlot('boss', null); });
     await page3.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
-    // The fight's own first-round entry is already Pontifex's own opening
-    // pattern entry (an Attack) — read its real rolled value rather than
-    // assuming a number, since devSetNextIntent()'s forced override only
-    // ever takes effect NEXT round, too late to affect this one.
-    const attackEntry = await page3.evaluate(() => gameState.enemy.currentEntry);
-    assert.strictEqual(attackEntry.kind, 'attack', 'sanity: Pontifex\'s own first pattern entry must be an Attack');
-    // face 2 is blank on the player die — rolling it grants the usual 2
-    // block, which both copies of the doubled Attack must then subtract.
+    const pontifexChargeEntry = await page3.evaluate(() => gameState.enemy.pattern.filter(function(e) { return e.kind === 'charge'; })[0]);
     await page3.evaluate(() => { forcePlayerRoll(2); });
     await advanceUntilPhase(page3, 'ENEMY_ROLL_PHASE');
     await page3.evaluate(() => { forceEnemyRoll(20); }); // Pontifex's own Nat 20
-    const hpBeforeAttack = await page3.evaluate(() => gameState.player.hp);
-    const blockAtAttack = await page3.evaluate(() => gameState.player.block);
-    await advanceUntilPhase(page3, 'CHECK_WIN_LOSS');
-    const hpAfterAttack = await page3.evaluate(() => gameState.player.hp);
-    const expectedDouble = Math.max(0, attackEntry.rolledValue - blockAtAttack) * 2;
-    assert.strictEqual(hpBeforeAttack - hpAfterAttack, expectedDouble, 'Pontifex\'s Nat 20 on an Attack round must deal the (block-reduced) Attack twice');
+    const pontifexForced = await page3.evaluate(() => gameState.enemy.forcedNextIntent);
+    assert.deepStrictEqual(pontifexForced, { kind: 'charge', release: pontifexChargeEntry.release, breakAt: pontifexChargeEntry.breakAt }, 'Pontifex\'s Nat 20 must force its own Charge next round');
+    assert.strictEqual(await page3.evaluate(() => gameState.enemy.pontifexDoubleAttackThisRound), false, 'Pontifex\'s Nat 20 must no longer double that round\'s Attack');
 
     // Pontifex's own pattern is [attack, afflict, attack, charge] — walk
     // its own real rounds (forcing a harmless player roll and a harmless
     // enemy roll each time, face 2 on both dice, to keep the walk
     // deterministic) until it reaches the charge's wind-up round, force a
-    // Nat 20 there, then check the following release round deals its
-    // release value exactly once.
+    // Nat 20 there, and confirm it changes nothing (already charging).
     const page4 = await freshPage(browser);
     await page4.evaluate(() => { updateRun({ act: buildAct(3) }); });
     await page4.evaluate(() => { devJumpToSlot('boss', null); });
@@ -429,18 +417,11 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     }
     const stageCheck = await page4.evaluate(() => gameState.enemy.chargeStage);
     assert.strictEqual(stageCheck, 'windup', 'sanity: must have reached Pontifex\'s own wind-up round');
-    const releaseValue = await page4.evaluate(() => gameState.enemy.currentEntry.release);
     await page4.evaluate(() => { forcePlayerRoll(2); });
     await advanceUntilPhase(page4, 'ENEMY_ROLL_PHASE');
-    await page4.evaluate(() => { forceEnemyRoll(20); }); // Nat 20 during the wind-up round — no effect this round
-    await advanceUntilPhase(page4, 'ROLL_PHASE'); // advance into the release round
-    await page4.evaluate(() => { forcePlayerRoll(3); }); // face 3 is blank too — grants 2 block, which the release must subtract
-    const hpBeforeRelease = await page4.evaluate(() => gameState.player.hp);
-    const blockAtRelease = await page4.evaluate(() => gameState.player.block);
-    await advanceUntilPhase(page4, 'CHECK_WIN_LOSS');
-    const hpAfterRelease = await page4.evaluate(() => gameState.player.hp);
-    const expectedRelease = Math.max(0, releaseValue - blockAtRelease);
-    assert.strictEqual(hpBeforeRelease - hpAfterRelease, expectedRelease, 'a release round must deal the release value once, even after an earlier Nat 20 landed on the wind-up round');
+    await page4.evaluate(() => { forceEnemyRoll(20); }); // Nat 20 during the wind-up round — no effect
+    const forcedDuringWindup = await page4.evaluate(() => gameState.enemy.forcedNextIntent);
+    assert.strictEqual(forcedDuringWindup, null, 'a Nat 20 landing during an active wind-up must not set forcedNextIntent');
     await page.close();
     await page2.close();
     await page3.close();

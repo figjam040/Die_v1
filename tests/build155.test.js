@@ -134,27 +134,28 @@ function faceRow(page, faceNumber) {
   // ITEM B — roll odds under each face
   // ---------------------------------------------------------------
 
-  await runTest('Item B: a fresh die shows 5% under every face', async () => {
+  await runTest('Item B: a fresh die shows 5.0% under every face', async () => {
+    // D-99 (BUILD 158): rollOdds() reads to one decimal, rounded, not floored.
     const page = await freshPage(browser);
     const captions = await page.evaluate(() =>
       Array.from(document.querySelectorAll('#playerDieList .die-face-caption')).map(function(c) { return c.textContent; })
     );
     assert.strictEqual(captions.length, 20, 'expected twenty face captions, got ' + captions.length);
     captions.forEach(function(text) {
-      assert.ok(/(^|\s)5%$/.test(text), 'every fresh face must read 5%, got "' + text + '"');
+      assert.ok(/(^|\s)5\.0%$/.test(text), 'every fresh face must read 5.0%, got "' + text + '"');
     });
     await page.close();
   });
 
-  await runTest('Item B: strengthening face 5 to weight 2 shows 9% under it (2 of 21), dropped and larger; 5% elsewhere becomes 4%', async () => {
+  await runTest('Item B: strengthening face 5 to weight 2 shows 9.5% under it (2 of 21), dropped and larger; 5.0% elsewhere becomes 4.8%', async () => {
     const page = await freshPage(browser);
     await page.evaluate(() => { strengthenFace(5); });
     const face5 = await faceRow(page, 5);
     const face6 = await faceRow(page, 6);
-    assert.strictEqual(face5.captionText, '9%', 'face 5 at weight 2 of 21 total must read 9%, got "' + face5.captionText + '"');
+    assert.strictEqual(face5.captionText, '9.5%', 'face 5 at weight 2 of 21 total must read 9.5%, got "' + face5.captionText + '"');
     assert.ok(face5.emphasis, 'a weight-above-1 face must carry the ODDS_EMPHASIS class');
     assert.ok(face5.title.indexOf('weight 2') !== -1, 'face 5\'s own weight must still read in its title: "' + face5.title + '"');
-    assert.strictEqual(face6.captionText, '4%', 'an untouched face must drop to 4% once the bag grows to 21, got "' + face6.captionText + '"');
+    assert.strictEqual(face6.captionText, '4.8%', 'an untouched face must drop to 4.8% once the bag grows to 21, got "' + face6.captionText + '"');
     assert.strictEqual(face6.emphasis, false, 'a weight-1 face must not carry the emphasis class');
     await page.close();
   });
@@ -182,10 +183,10 @@ function faceRow(page, faceNumber) {
     const page = await freshFightPage(browser, ['gilded_die']);
     await page.evaluate(() => { updateRun({ gold: 50 }); gildedDiePayForFace(7); });
     const during = await faceRow(page, 7);
-    assert.strictEqual(during.captionText, '13%', '3 of 22 tickets floors to 13%, got "' + during.captionText + '"');
+    assert.strictEqual(during.captionText, '13.6%', '3 of 22 tickets rounds to 13.6%, got "' + during.captionText + '"');
     await page.evaluate(() => { updateTurn({ gildedFace: null }); });
     const after = await faceRow(page, 7);
-    assert.strictEqual(after.captionText, '5%', 'face 7 must return to 5% once the paid-for roll is spent, got "' + after.captionText + '"');
+    assert.strictEqual(after.captionText, '5.0%', 'face 7 must return to 5.0% once the paid-for roll is spent, got "' + after.captionText + '"');
     await page.close();
   });
 
@@ -201,7 +202,7 @@ function faceRow(page, faceNumber) {
       const panelRect = document.getElementById('dieActionPanel').getBoundingClientRect();
       const rowRect = document.getElementById('playerDieList').getBoundingClientRect();
       return {
-        cardsShown: document.querySelectorAll('#dieActionPanel .offer-card').length,
+        cardsShown: document.querySelectorAll('#dieActionPanel .offer-die-card').length,
         panelBottom: panelRect.bottom,
         rowTop: rowRect.top,
         bandBDisplay: getComputedStyle(document.querySelector('.band-b')).display,
@@ -212,7 +213,7 @@ function faceRow(page, faceNumber) {
         innerHeight: window.innerHeight
       };
     });
-    assert.strictEqual(v.cardsShown, 3, 'the Load step must show three mod cards, got ' + v.cardsShown);
+    assert.strictEqual(v.cardsShown, 3, 'the Load step must show three die frames, got ' + v.cardsShown);
     assert.ok(v.panelBottom <= v.rowTop + 1, 'the reward layer (bottom ' + v.panelBottom + ') must sit above the face row (top ' + v.rowTop + ')');
     assert.strictEqual(v.bandBDisplay, 'none', 'the art band must be hidden while the reward layer is open');
     assert.strictEqual(v.bandCDisplay, 'none', 'the stats/hand band must be hidden while the reward layer is open');

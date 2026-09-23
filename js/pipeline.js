@@ -119,8 +119,8 @@ function rollDie(faces) {
 // the exact bag rollDie() builds, read without consuming a
 // roll. Gilded Die's extra tickets on one face count here the same way
 // they count in the real pool, so the face row's own odds match what a
-// roll actually draws from. Keyed by face number; pct is Math.floor'd, not
-// rounded (a face never reads a higher share than its tickets earn it).
+// roll actually draws from. Keyed by face number; pct is rounded to one
+// decimal place, nearest, not floored (D-99).
 function rollOdds(faces) {
   const gilded = gameState.turn.gildedFace;
   const tickets = faces.map(function(face) {
@@ -130,7 +130,7 @@ function rollOdds(faces) {
   const total = tickets.reduce(function(a, b) { return a + b; }, 0);
   const odds = {};
   faces.forEach(function(face, i) {
-    odds[face.number] = { tickets: tickets[i], total: total, pct: total > 0 ? Math.floor((tickets[i] / total) * 100) : 0 };
+    odds[face.number] = { tickets: tickets[i], total: total, pct: total > 0 ? Math.round((tickets[i] / total) * 1000) / 10 : 0 };
   });
   return odds;
 }
@@ -335,19 +335,6 @@ function pickHeaviestLoadedFaceForSeal() {
     if (f.weight === best.weight && f.number < best.number) { return f; }
     return best;
   });
-}
-
-// Same candidates/tie rule as pickHeaviestLoadedFaceForSeal(), but returns
-// up to n of them — Cardinal's Nat 20 Seals its two heaviest at once.
-function pickTopLoadedFacesForSeal(n) {
-  const candidates = gameState.die.faces.filter(function(f) {
-    return f.number !== 1 && f.number !== GAME_CONFIG.DIE_SIZE.PLAYER && f.modId !== null && !isFaceSealed(f.number);
-  });
-  candidates.sort(function(a, b) {
-    if (b.weight !== a.weight) { return b.weight - a.weight; }
-    return a.number - b.number;
-  });
-  return candidates.slice(0, n);
 }
 
 // ---------- ENEMY DICE OF ANY SIZE ----------

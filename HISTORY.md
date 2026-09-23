@@ -1101,3 +1101,20 @@ Stage 2.83 (BUILD 156) — three items, kept.
 Verification: build156 7/7, facts 111/111, mods 42/42, build155 8/8, build145 23/23, guardrails 19/19.
 
 Full write-ups for earlier builds: HISTORY.md.
+
+
+---
+
+# BUILD 157 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 158)
+
+Stage 2.84 (BUILD 157) — three items, kept.
+
+(A) KI-34 — face 1/20's caption clipped in its 56px column. Wraps to two lines (label, then percent) at a smaller font (die-face-caption-nat), in a fixed-height box every face shares so all twenty rows stay equal. See DIE COLUMN.
+
+(B) KI-35 — the artifact slot's text fallback clipped a held artifact's name. Wraps up to two lines, one font step smaller (-webkit-line-clamp: 2), never overflowing the 26px slot; hover keeps the full name/text. See ACTION BAR.
+
+(C) KI-36 — RUN_RECORD_CSV_HEADER gains a last column, build; every flushed line ends with GAME_CONFIG.BUILD. Opening the shop logs one [SHOP] opened: line and a matching SHOP stock transcript line, naming each card/artifact/Strengthen/Removal at its live price. See RUN RECORD, THE FONT/SHOP.
+
+Verification: build157 6/6, facts 111/111, mods 42/42, build156 7/7, guardrails 19/19.
+
+Full write-ups for earlier builds: HISTORY.md.

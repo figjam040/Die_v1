@@ -347,15 +347,7 @@ function faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount) {
   if (face.modId === 'NAT_TWENTY' || face.modId === 'NAT_ONE') {
     text = NAT_DESCRIPTION[face.modId] || null;
   } else if (face.modId === 'ENEMY_NAT_TWENTY') {
-    if (enemyName === 'Cardinal') {
-      text = "the player's two heaviest loaded faces, other than 1 and 20, count as blank next round.";
-    } else if (enemyName === 'Pontifex') {
-      text = 'an Attack this round resolves twice.';
-    } else if (enemyName === 'Hierophant') {
-      text = 'Nat 20: every loaded buff triggers, in ascending order.';
-    } else {
-      text = 'fires every loaded poison face this turn, ascending face order, each applying ' + buffPoisonStacks + ' stacks of poison to you';
-    }
+    text = 'forces ' + (enemyName || 'the boss') + "'s Charge next round; loaded buff faces trigger only when rolled.";
   } else if (face.modId === 'ENEMY_NAT_ONE') {
     if (enemyName === 'Cardinal') {
       text = "the player's heaviest loaded face triggers. Once per fight.";
@@ -684,7 +676,7 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     if (isHorizontal) {
       const caption = document.createElement('div');
       caption.className = 'die-face-caption';
-      const pctText = oddsByFace ? oddsByFace[face.number].pct + '%' : '';
+      const pctText = oddsByFace ? oddsByFace[face.number].pct.toFixed(1) + '%' : '';
       if (isPlayerDie && isFaceSealed(face.number)) {
         caption.textContent = 'SEALED';
       } else if (isPlayerDie && gameState.player.sealNextRound.indexOf(face.number) !== -1) {
@@ -833,7 +825,7 @@ function renderEnemyIntent() {
   // intent text would otherwise show, for the rest of this round.
   if (gameState.turn.enemyRollOutcome === 'nat_twenty') {
     labelEl.textContent = '';
-    setValue('NAT 20', 'Nat 20: every loaded buff triggers this round.');
+    setValue('NAT 20', 'Nat 20: forces the boss\'s Charge next round; loaded buff faces trigger only when rolled.');
     return;
   }
   if (gameState.turn.enemyRollOutcome === 'nat_one') {
@@ -1140,6 +1132,77 @@ function renderOfferCard(spec) {
   return card;
 }
 
+// D-102/KI-37 — the Load offer's own card shape: a d20 wireframe
+// (art/die_frame.png, text fallback DIE) instead of the card frame, the
+// mod's symbol (art/mods/<id>.png, text fallback the mod's name) drawn
+// centred on the frame's top face. Same footprint/position and the same
+// name/tier/tag/text/foot classes as renderOfferCard() below it.
+function renderOfferDieCard(spec) {
+  const card = document.createElement('div');
+  card.className = 'offer-die-card' + (spec.chosen ? ' offer-card-chosen' : '') + (spec.disabled ? ' offer-card-disabled' : '');
+  card.dataset.offerId = spec.id;
+  card.title = spec.name + ' — ' + spec.text;
+
+  const name = document.createElement('div');
+  name.className = 'offer-card-name';
+  name.textContent = spec.name;
+  card.appendChild(name);
+
+  const tier = document.createElement('div');
+  tier.className = 'offer-card-tier';
+  tier.textContent = spec.tierText;
+  card.appendChild(tier);
+
+  const frame = document.createElement('div');
+  frame.className = 'offer-die-frame';
+  const frameLabel = document.createElement('span');
+  frameLabel.className = 'offer-card-art-label';
+  frameLabel.textContent = 'DIE';
+  frame.appendChild(frameLabel);
+  const frameImg = document.createElement('img');
+  frameImg.className = 'offer-die-frame-img';
+  frameImg.alt = '';
+  frameImg.onload = function() { frameLabel.style.display = 'none'; };
+  frameImg.onerror = function() { frameImg.style.display = 'none'; };
+  frameImg.src = 'art/die_frame.png';
+  frame.appendChild(frameImg);
+
+  const symbolLabel = document.createElement('span');
+  symbolLabel.className = 'offer-die-symbol-label';
+  symbolLabel.textContent = spec.name;
+  frame.appendChild(symbolLabel);
+  if (spec.artPath) {
+    const symbolImg = document.createElement('img');
+    symbolImg.className = 'offer-die-symbol-img';
+    symbolImg.alt = '';
+    symbolImg.onload = function() { symbolLabel.style.display = 'none'; };
+    symbolImg.onerror = function() { symbolImg.style.display = 'none'; };
+    symbolImg.src = spec.artPath;
+    frame.appendChild(symbolImg);
+  }
+  card.appendChild(frame);
+
+  const tag = document.createElement('div');
+  tag.className = 'offer-card-tag';
+  tag.textContent = spec.tagText;
+  card.appendChild(tag);
+
+  const text = document.createElement('div');
+  text.className = 'offer-card-text';
+  text.textContent = spec.text;
+  card.appendChild(text);
+
+  const foot = document.createElement('div');
+  foot.className = 'offer-card-foot';
+  foot.textContent = spec.footText;
+  card.appendChild(foot);
+
+  if (spec.onClick && !spec.disabled) {
+    card.addEventListener('click', spec.onClick);
+  }
+  return card;
+}
+
 // The tag line every card shows — a piece's synergy tags, or NONE.
 function offerTagText(tags) {
   return (tags && tags.length) ? tags.join(' ').toUpperCase() : 'NONE';
@@ -1163,7 +1226,8 @@ function renderOfferPanel(panel, spec) {
 
     const cards = document.createElement('div');
     cards.className = 'offer-cards';
-    (spec.cards || []).forEach(function(c) { cards.appendChild(renderOfferCard(c)); });
+    const cardRenderer = spec.cardRenderer || renderOfferCard;
+    (spec.cards || []).forEach(function(c) { cards.appendChild(cardRenderer(c)); });
     body.appendChild(cards);
 
     if (spec.skip) {
@@ -1886,9 +1950,11 @@ function renderDieActionPanel() {
   // no die row of this panel's own: the fight's own face row
   // (#playerDieList) is wired as the picker by refreshInspector(), via
   // currentPlayerDiePickConfig().
+  const isLoadStep = dieActionStep === 'load_pick_mod' || dieActionStep === 'load_pick_face';
   renderOfferPanel(panel, {
     title: titleText,
     cards: cards,
+    cardRenderer: isLoadStep ? renderOfferDieCard : undefined,
     skip: null,
     buttonRow: buttonRow,
     instruction: instruction

@@ -209,11 +209,6 @@ function runPhase(phase) {
       updateEnemy({ pontifexDoubleAttackThisRound: false });
     }
 
-    // The enemy's own die (a separate mechanism from the pattern intent
-    // above) rolled Nat 20 this round — a buff sweep, reported in place of
-    // whatever the pattern intent also did.
-    const enemyBuffSweep = gameState.turn.enemyRollOutcome === 'nat_twenty';
-
     let actionSummary;
 
     if (entry && entry.kind === 'charge') {
@@ -269,7 +264,7 @@ function runPhase(phase) {
       advanceEnemyPattern();
     }
 
-    appendRoundTranscript(enemyBuffSweep ? 'nat 20 buffs' : actionSummary);
+    appendRoundTranscript(actionSummary);
   }
 
   if (phase === 'CHECK_WIN_LOSS') {

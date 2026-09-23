@@ -108,8 +108,8 @@ function buildAct(actNumber) {
         fightSlot('Fight', 'asperser', laneHp[1]),
         fightSlot('Elite', 'lector', GAME_CONFIG.HP.ELITE),
         rite(),
-        fightSlot('Fight', 'thurifer', laneHp[3]),
-        fightSlot('Fight', 'asperser', laneHp[4]),
+        fightSlot('Fight', 'thurifer', laneHp[2]),
+        fightSlot('Fight', 'asperser', laneHp[3]),
         rite()
       ],
       lower: [
@@ -118,8 +118,8 @@ function buildAct(actNumber) {
         fightSlot('Fight', 'asperser', laneHp[1]),
         event(),
         rite(),
-        fightSlot('Fight', 'thurifer', laneHp[3]),
-        fightSlot('Fight', 'asperser', laneHp[4]),
+        fightSlot('Fight', 'thurifer', laneHp[2]),
+        fightSlot('Fight', 'asperser', laneHp[3]),
         rite()
       ],
       boss: fightSlot('Boss', 'hierophant', GAME_CONFIG.HP.BOSS)

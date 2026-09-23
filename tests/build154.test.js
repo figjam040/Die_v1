@@ -79,13 +79,15 @@ async function enterPausedFight(page) {
     await page.close();
   });
 
-  await runTest('Item A: the Load offer shows three mod cards; a pick marks one gold and opens the face row', async () => {
+  await runTest('Item A: the Load offer shows three die frames; a pick marks one gold and opens the face row', async () => {
+    // D-102/KI-37 (BUILD 158): the Load offer renders wireframe die frames
+    // (.offer-die-card), not the card frame (.offer-card) — see build158.test.js.
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
       openDieActionScreen();
       dieActionChooseLoad();
       const before = {
-        cards: document.querySelectorAll('#dieActionPanel .offer-card').length,
+        cards: document.querySelectorAll('#dieActionPanel .offer-die-card').length,
         chosen: document.querySelectorAll('#dieActionPanel .offer-card-chosen').length,
         pickable: document.querySelectorAll('#playerDieList .die-row-pickable').length
       };
@@ -98,7 +100,7 @@ async function enterPausedFight(page) {
         .map(f => f.number);
       return {
         before: before,
-        cards: document.querySelectorAll('#dieActionPanel .offer-card').length,
+        cards: document.querySelectorAll('#dieActionPanel .offer-die-card').length,
         chosen: document.querySelectorAll('#dieActionPanel .offer-card-chosen').length,
         chosenFoot: (document.querySelector('#dieActionPanel .offer-card-chosen .offer-card-foot') || {}).textContent || '',
         instruction: (document.querySelector('#dieActionPanel .offer-instruction') || {}).textContent || '',
@@ -106,10 +108,10 @@ async function enterPausedFight(page) {
         blankNumbers: blankNumbers
       };
     });
-    assert.strictEqual(v.before.cards, 3, 'the Load offer must show three mod cards, got ' + v.before.cards);
+    assert.strictEqual(v.before.cards, 3, 'the Load offer must show three die frames, got ' + v.before.cards);
     assert.strictEqual(v.before.chosen, 0, 'no card is chosen before a pick');
     assert.strictEqual(v.before.pickable, 0, 'no face is selectable before a mod is picked');
-    assert.strictEqual(v.cards, 3, 'the three cards stay on screen after a pick');
+    assert.strictEqual(v.cards, 3, 'the three die frames stay on screen after a pick');
     assert.strictEqual(v.chosen, 1, 'exactly one card turns gold after a pick, got ' + v.chosen);
     assert.ok(v.chosenFoot.indexOf('CHOSEN') === 0, 'the chosen card must read CHOSEN..., got "' + v.chosenFoot + '"');
     assert.ok(v.instruction.length > 0, 'the face row must carry a one-line instruction');
@@ -254,7 +256,7 @@ async function enterPausedFight(page) {
       // Load: every mod card carries its MOD_DESCRIPTION text.
       openDieActionScreen();
       dieActionChooseLoad();
-      const modCard = document.querySelector('#dieActionPanel .offer-card');
+      const modCard = document.querySelector('#dieActionPanel .offer-die-card');
       out.modId = modCard.dataset.offerId;
       out.modText = modCard.querySelector('.offer-card-text').textContent;
       out.modTitle = modCard.title;

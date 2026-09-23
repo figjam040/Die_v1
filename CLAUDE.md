@@ -536,11 +536,11 @@ The rest (Smite, Penance, Offering, Blight, Virulence, Sanctuary, Largesse, Tith
 
 # ENEMY DIE PER TYPE
 
-Every fight-type slot's enemy is a named entry in GAME_CONFIG.ENEMIES, keyed by id (buildAct(), run-and-map.js, assembles each act's opening/lanes/elite/boss from these). Fifteen: act 1 — Verger (opening, lower lane position 3), Thurifer, Asperser, Lector (elite), Hierophant (boss); act 2 — Chorister, Cantor, Flagellant, Archdeacon (elite), Cardinal (boss); act 3 — Anchorite, Mendicant, Inquisitor, Exarch (elite), Pontifex (boss). Each carries `name`, a literal `pattern` (ACT_INTENT_MULTIPLIER scales only buff poison, never a pattern's own numbers), and, except the three plain act-1 lane normals (hasDie:false), a `dieSpec` (buildEnemyDieFromSpec(), pipeline.js). DIE_SIZE.NORMAL (6)/ELITE (12) are real sizes; bosses stay 20-sided, both Nats. HP: Math.ceil(base × ACT_HP_MULTIPLIER) — act 1's five lane positions read ACT1_LANE_FIGHT_HP ([58,65,72,78,85]) directly. enemy.name (beginFightFromSlot()) is the enemy's identity, distinct from `id` ('Fight'/'Elite'/'Boss', which the panel title keys off).
+Every fight-type slot's enemy is a named entry in GAME_CONFIG.ENEMIES, keyed by id (buildAct(), run-and-map.js, assembles each act's opening/lanes/elite/boss from these). Fifteen: act 1 — Verger (opening only), Thurifer, Asperser, Lector (elite), Hierophant (boss); act 2 — Chorister, Cantor, Flagellant, Archdeacon (elite), Cardinal (boss); act 3 — Anchorite, Mendicant, Inquisitor, Exarch (elite), Pontifex (boss). Each carries `name`, a literal `pattern` (ACT_INTENT_MULTIPLIER scales only buff poison, never a pattern's own numbers), and, except the three plain act-1 lane normals (hasDie:false), a `dieSpec` (buildEnemyDieFromSpec(), pipeline.js). DIE_SIZE.NORMAL (6)/ELITE (12) are real sizes; bosses stay 20-sided, both Nats. HP: Math.ceil(base × ACT_HP_MULTIPLIER) — act 1's four lane positions read ACT1_LANE_FIGHT_HP ([58,65,78,85]) directly. enemy.name (beginFightFromSlot()) is the enemy's identity, distinct from `id` ('Fight'/'Elite'/'Boss', which the panel title keys off).
 
-Enemy buff/Nat mechanics — registered unconditionally in init() (cards-mods.js): enemy_buff_poison/wrath/drain/seal via enemy_buff_dispatch; ENEMY_NAT_TWENTY sweeps every loaded buff ascending; ENEMY_NAT_ONE cancels the attack + self-poisons 5, once per fight — default unless named below. wrathPerTrigger is each enemy's own Wrath amount, falling back to ENEMY_WRATH_AMOUNT.
+Enemy buff/Nat mechanics — registered unconditionally in init() (cards-mods.js): enemy_buff_poison/wrath/drain/seal via enemy_buff_dispatch, each triggering only when its own face is actually rolled; ENEMY_NAT_ONE cancels the attack + self-poisons 5, once per fight — default unless named below. ENEMY_NAT_TWENTY (D-101, BUILD 158): every boss with Nat faces (Hierophant, Cardinal, Pontifex) forces its next intent to its own pattern's charge entry via forcedNextIntent, unless already winding up/releasing (then nothing extra happens) — winds up next round, releases the round after, breakable as any Charge; buff faces no longer sweep. wrathPerTrigger is each enemy's own Wrath amount, falling back to ENEMY_WRATH_AMOUNT.
 
-Cardinal and Pontifex replace the default Nat behaviour entirely (branch on enemy.name): Cardinal's Nat 20 Seals its two heaviest loaded faces, no buff sweep; Nat 1 triggers the player's heaviest loaded face outside the roll, no attack cancel. Pontifex's Nat 20 doubles that round's Attack (pontifexDoubleAttackThisRound); Nat 1 zeroes both wrath fields, once per fight, no attack cancel.
+Cardinal and Pontifex keep their own Nat 1 (branch on enemy.name): Cardinal's triggers the player's heaviest loaded face outside the roll, no attack cancel; Pontifex's zeroes both wrath fields, once per fight, no attack cancel. Their Nat 20 follows the shared forced-Charge behaviour above.
 
 Per-enemy "reads" — applyEnemyReads() (pipeline.js), once per round, reading the player's roll: Lector triggers Drain on face 6; Hierophant's Nat 1 also fires on a player Nat 1; Pontifex triggers Wrath on the player's heaviest loaded face.
 
@@ -750,37 +750,30 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 121–127 stacks name poison, build stamp from GAME_CONFIG.BUILD, LOAD_PRIORITY from ranked pool, three acts per-act scaling, pool exhaustion converts Load to Strengthen, bot plays three acts.
 128–135 checkpoint 3: eight-slot lanes, tiers/offer split, synergy tags, outside-roll trigger, Bound, instant win on enemy death.
 136–140 checkpoint 3 on-screen text, enemy poison 3/4/5, Bound badge, two-mod face names, hop on trigger, ENEMY/ELITE/BOSS title, enemy hover text, Tenet/Gradual uncapped.
-(BUILD 141) — poison answer (F33), enemy intent patterns (F34), enemy dice of any size with Wrath/Drain/Seal (F35).
-(BUILD 142) — Seal-never-wears-off fix, act 1 HP by position, all fifteen designed enemies (F36/F37), enemy Nat sound/visual (KI-22), Hosanna/Threnody reworked (F38).
-(BUILD 143) — anti-bloat: comment rule on js/ and index.html, CLAUDE.md trimmed, stray files removed, guardrail tests added.
-(BUILD 144) — skin pass: black palette, Press Start 2P/VT323 fonts, log toggle default closed, phase badge no underscores, stepped motion.
-(BUILD 145) — layout pass: horizontal face row 1-20, die icons, intent icon, art/gold/artifact placeholders, portrait cards, map restyle.
-(BUILD 146) — CLAUDE.md trim, window scaling, End Turn/hand-card resize, intent icon hover sentence, character art loading.
-(BUILD 147) — intent hover box, console filter narrowed to art/, blank rolled face holds like a loaded one, die icon number gets a black backing.
-(BUILD 148) — KI-28 Charge break counts the release round's poison tick, run transcript, log Play/All views, log full screen.
-(BUILD 149) — the awe status, Dread, Genuflect, Kneel, Compline, Tremendum, Mysterium, card art loading.
-(BUILD 150) — break numbers -4, Bulwark, gold, shop after every rite, three artifacts (Third Eye/Loaded Die/Tolling Bell), KI-29.
-(BUILD 151) — Purify die action, event slot (The Font).
-(BUILD 152) — KI-30: build142's act.lower[3] fixed to the event/font fact, shared CLAUDE.md byte-limit constant, .claude gitignored, excluded from the stray-files check.
+141–145 poison answer (F33), enemy intent patterns (F34), enemy dice of any size w/ Wrath/Drain/Seal (F35), all fifteen designed enemies (F36/F37) + enemy Nat sound/visual (KI-22), anti-bloat pass (comment rule, guardrail tests), black-palette skin pass, horizontal face-row layout pass.
+146–152 CLAUDE.md/window trims, intent hover box, KI-28 Charge/poison-tick fix + run transcript, the awe status + Dread/Genuflect/Kneel/Compline/Tremendum/Mysterium, break numbers -4 + Bulwark + gold/shop + artifacts (KI-29), Purify + The Font, KI-30 lower[3] fix.
 (BUILD 153) — relics renamed artifacts (8 slots, ARTIFACT_MAX 8), ten new artifacts, sold in shop at 150, seven new cards (pool 48).
 (BUILD 154) — second UI pass: one reward panel shape (three 380x470 cards, D-86) across die action/card/artifact/shop/Font, pop numbers (D-87, F46), stamp reads BUILD only.
 (BUILD 155) — KI-31 node re-entry fix, roll odds under each face (rollOdds()), the reward layer over the fight's own face row, CLAUDE.md trimmed to a 72,000-byte ceiling.
 (BUILD 156) — KI-32 face row fix, map screen reduced to the map (D-98), DIE/ARTIFACTS/CARDS info layers, act backgrounds (D-97).
 (BUILD 157) — KI-34 NAT caption wrap, KI-35 artifact slot text wrap, KI-36 run record build column + shop-opened log line.
+(BUILD 158) — D-99 odds to one decimal, D-100 dead act 1 lane/die constants deleted, D-101 boss Nat 20 forces a Charge, D-102/KI-37 Load offer as wireframe d20s + fixed card art box height.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.84 (BUILD 157) — three items, kept.
+Stage 2.85 (BUILD 158) — four items, kept.
 
-(A) KI-34 — face 1/20's caption clipped in its 56px column. Wraps to two lines (label, then percent) at a smaller font (die-face-caption-nat), in a fixed-height box every face shares so all twenty rows stay equal. See DIE COLUMN.
+(A) D-99 — rollOdds() returns pct rounded to one decimal, nearest, not floored (3.8%, 19.2%). See DIE COLUMN, WEIGHTED ROLL ALGORITHM.
 
-(B) KI-35 — the artifact slot's text fallback clipped a held artifact's name. Wraps up to two lines, one font step smaller (-webkit-line-clamp: 2), never overflowing the 26px slot; hover keeps the full name/text. See ACTION BAR.
+(B) D-100 — dead act 1 constants deleted: ACT1_LANE_FIGHT_HP drops its unused value ([58,65,78,85]); ENEMIES.verger_lane, ELITE_DIE, BOSS_DIE (never read) gone. buildAct() reads the four lane values by index 0-3. See ACTS, ENEMY DIE PER TYPE.
 
-(C) KI-36 — RUN_RECORD_CSV_HEADER gains a last column, build; every flushed line ends with GAME_CONFIG.BUILD. Opening the shop logs one [SHOP] opened: line and a matching SHOP stock transcript line, naming each card/artifact/Strengthen/Removal at its live price. See RUN RECORD, THE FONT/SHOP.
+(C) D-101 — a boss's Nat 20 (Hierophant, Cardinal, Pontifex) no longer sweeps loaded buff faces. Unless already winding up/releasing, it forces its next intent to its own pattern's charge entry via forcedNextIntent — winds up next round, releases the round after, breakable as any Charge. See ENEMY DIE PER TYPE.
 
-Verification: build157 6/6, facts 111/111, mods 42/42, build156 7/7, guardrails 19/19.
+(D) D-102/KI-37 — the Load offer renders three d20 wireframes (art/die_frame.png, fallback DIE) with the mod's symbol centred on the top face, instead of the card frame; same name/tier/tag/text/foot below. .offer-card-art (card/artifact/shop offers) is now a fixed 240px height so art boxes and CLICK TO CHOOSE line up regardless of text length. See THE REWARD LAYER.
+
+Verification: npm test all green (build158 8/8, facts 111/111, mods 42/42, guardrails 19/19, every prior suite). D-101/D-102 required correcting pre-existing assertions in build142/154/155/156 that hardcoded the old Nat 20/Load-card behaviour. facts.test.js's autoplay-bot test (pre-existing) intermittently crashes its tab here, same on an unmodified prior copy — environment flake, not a regression.
 
 Full write-ups: HISTORY.md.

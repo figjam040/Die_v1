@@ -251,13 +251,12 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     const cfg = await page.evaluate(() => GAME_CONFIG);
     assert.strictEqual(act.opening.enemy.hp, cfg.HP.OPENING);
     assert.strictEqual(act.opening.enemy.name, 'Verger', 'act 1 opening enemy must be the Verger');
-    specOnlyDeepEqual(cfg.ACT1_LANE_FIGHT_HP, [58, 65, 72, 78, 85], 'F17: GAME_CONFIG.ACT1_LANE_FIGHT_HP === [58,65,72,78,85] (documented fact, no independent oracle)');
+    specOnlyDeepEqual(cfg.ACT1_LANE_FIGHT_HP, [58, 65, 78, 85], 'F17: GAME_CONFIG.ACT1_LANE_FIGHT_HP === [58,65,78,85] (documented fact, no independent oracle)');
     assert.strictEqual(act.upper[0].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[0]);
     assert.strictEqual(act.upper[2].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[1]);
     assert.strictEqual(act.lower[0].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[0]);
     assert.strictEqual(act.lower[2].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[1]);
-    // BUILD 151 (F44): lower[3] is now the event slot (The Font), not a
-    // fight — ACT1_LANE_FIGHT_HP[2] (72) is no longer consumed anywhere.
+    // BUILD 151 (F44): lower[3] is now the event slot (The Font), not a fight.
     assert.strictEqual(act.lower[3].type, 'event');
     assert.strictEqual(act.lower[3].label, 'Event');
     [act.upper[0], act.upper[2], act.lower[0], act.lower[2]].forEach(function(s) {
@@ -613,22 +612,22 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.close();
   });
 
-  await runTest('F22 enemy Nat 20 repeatable — every loaded buff triggers each time', async () => {
+  await runTest('F22 (BUILD 158) enemy Nat 20 forces the boss\'s Charge next round; loaded buff faces trigger only when rolled', async () => {
     const page = await freshPage(browser);
     await page.click('#startGameBtn');
     await page.evaluate(() => { devJumpToSlot('boss', null); });
     await advanceUntilPhase(page, 'ENEMY_ROLL_PHASE');
-    const before1 = await page.evaluate(() => gameState.player.poisonStacks);
+    const before = await page.evaluate(() => gameState.player.poisonStacks);
+    const chargeEntry = await page.evaluate(() => gameState.enemy.pattern.filter(function(e) { return e.kind === 'charge'; })[0]);
     await page.evaluate(() => { forceEnemyRoll(20); }); // boss face 20 = ENEMY_NAT_TWENTY
-    const after1 = await page.evaluate(() => gameState.player.poisonStacks);
-    assert.strictEqual(after1 - before1, 9, 'three loaded poison faces (3 stacks each, act 1) must all trigger once, ascending');
+    const after = await page.evaluate(() => ({ poison: gameState.player.poisonStacks, forced: gameState.enemy.forcedNextIntent }));
+    assert.strictEqual(after.poison, before, 'a boss Nat 20 must no longer trigger its loaded buff faces');
+    assert.deepStrictEqual(after.forced, { kind: 'charge', release: chargeEntry.release, breakAt: chargeEntry.breakAt }, 'a boss Nat 20 must force its next intent to its own pattern\'s charge entry');
 
     await page.evaluate(() => { nextPhase(); }); // ENEMY_ROLL_PHASE -> ENEMY_ACT_PHASE
-    await advanceUntilPhase(page, 'ENEMY_ROLL_PHASE');
-    const before2 = await page.evaluate(() => gameState.player.poisonStacks);
-    await page.evaluate(() => { forceEnemyRoll(20); });
-    const after2 = await page.evaluate(() => gameState.player.poisonStacks);
-    assert.strictEqual(after2 - before2, 9, 'enemy Nat 20 must trigger the same three faces again next round — repeatable');
+    await advanceUntilPhase(page, 'ENEMY_ROLL_PHASE'); // next round's own roll phase, forced charge now live
+    const stage = await page.evaluate(() => gameState.enemy.chargeStage);
+    assert.strictEqual(stage, 'windup', 'the forced Charge must begin its wind-up the round after the Nat 20');
     await page.close();
   });
 
@@ -1183,6 +1182,8 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.strictEqual(acts.act1.opening.enemy.hp, 50, 'act 1 opening HP must be unchanged');
     assert.strictEqual(acts.act1.upper[0].enemy.hp, 58, 'act 1 lane position 1 HP must be ACT1_LANE_FIGHT_HP[0] (58)');
     assert.strictEqual(acts.act1.upper[2].enemy.hp, 65, 'act 1 lane position 2 HP must be ACT1_LANE_FIGHT_HP[1] (65)');
+    assert.strictEqual(acts.act1.upper[5].enemy.hp, 78, 'act 1 lane position 3 HP must be ACT1_LANE_FIGHT_HP[2] (78)');
+    assert.strictEqual(acts.act1.upper[6].enemy.hp, 85, 'act 1 lane position 4 HP must be ACT1_LANE_FIGHT_HP[3] (85)');
     assert.strictEqual(acts.act1.upper[3].enemy.hp, 100, 'act 1 elite HP must be unchanged');
     assert.strictEqual(acts.act1.boss.enemy.hp, 100, 'act 1 boss HP must be unchanged');
     assert.strictEqual(acts.act1.boss.enemy.name, 'Hierophant', 'act 1 boss must be the Hierophant');

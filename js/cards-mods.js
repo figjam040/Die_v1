@@ -963,33 +963,25 @@ function init() {
     }
   }, 'permanent');
 
-  // Every loaded buff face on the enemy die fires, ascending by face
-  // number. Not capped, not once per fight — mirrors the player exactly.
+  // D-101: a boss's Nat 20 no longer sweeps its loaded buff faces — those
+  // trigger only when actually rolled. Instead, unless the boss is
+  // already mid-Charge, its next intent is forced to its own pattern's
+  // charge entry, so it winds up next round and releases the
+  // round after, breakable exactly like any other Charge.
   registerListener('ENEMY_NAT_TWENTY', 'boss_nat_twenty_passive', function() {
-    // Cardinal and Pontifex each replace the generic sweep with their own
-    // designed Nat 20.
-    if (gameState.enemy.name === 'Cardinal') {
-      const targets = pickTopLoadedFacesForSeal(2);
-      if (targets.length === 0) {
-        log('[ENEMY] Cardinal\'s Nat 20: no loaded face to seal');
-      } else {
-        updatePlayer({ sealNextRound: gameState.player.sealNextRound.concat(targets.map(function(f) { return f.number; })) });
-        log('[ENEMY] Cardinal\'s Nat 20 seals face' + (targets.length === 1 ? '' : 's') + ' ' + targets.map(function(f) { return f.number; }).join(' and ') + '.');
-      }
+    const enemy = gameState.enemy;
+    if (enemy.chargeStage === 'windup' || enemy.chargeStage === 'release') {
+      log('[ENEMY] Nat 20: ' + enemy.name + ' is already charging.');
       return;
     }
-    if (gameState.enemy.name === 'Pontifex') {
-      updateEnemy({ pontifexDoubleAttackThisRound: true });
-      log('[ENEMY] Pontifex\'s Nat 20: the Attack resolves twice.');
+    const chargeEntry = (enemy.pattern || []).filter(function(e) { return e.kind === 'charge'; })[0];
+    if (!chargeEntry) {
+      log('[ENEMY] Nat 20: ' + enemy.name + ' has no Charge to begin.');
       return;
     }
-    const loadedFaces = gameState.enemy.die.faces.filter(function(f) {
-      return f.modId !== null && f.modId !== 'ENEMY_NAT_ONE' && f.modId !== 'ENEMY_NAT_TWENTY';
-    });
-    log('[ENEMY] Nat 20: ' + loadedFaces.length + ' loaded face' + (loadedFaces.length === 1 ? '' : 's') + ' trigger' + (loadedFaces.length === 1 ? 's' : ''));
-    loadedFaces.forEach(function(f) {
-      callListeners('ENEMY_BUFF_TRIGGER', { buffId: f.modId, faceNumber: f.number });
-    });
+    updateEnemy({ forcedNextIntent: { kind: 'charge', release: chargeEntry.release, breakAt: chargeEntry.breakAt } });
+    log('[ENEMY] Nat 20: ' + enemy.name + ' begins to charge. Release ' + chargeEntry.release + ' next round.');
+    appendTranscript('enemy nat 20 charge');
   }, 'permanent');
 
   // The die turns on its wielder: this turn's attack is cancelled entirely

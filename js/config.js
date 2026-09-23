@@ -1,20 +1,15 @@
 // ============================================================
-// CONFIG.JS — BUILD 102
-// One constants file, loaded first, before state.js — this is now file 1
-// of eleven (see PROJECT, CLAUDE.md). Every tunable number and structural
-// constant enumerated in the BUILD 102 prompt lives here, on one object,
-// GAME_CONFIG. This is the only file that defines these values; every
-// other file reads them off GAME_CONFIG instead of repeating a literal.
-// No gameplay change: every value below is copied verbatim from wherever
-// it was previously hardcoded (see BUILD 102's paste-back for the full
-// per-constant source list).
+// CONFIG.JS
+// One constants file, loaded first, before state.js — file 1 of eleven
+// (see PROJECT, CLAUDE.md). Every tunable number/structural constant lives
+// here, on one object, GAME_CONFIG; every other file reads it from here.
 //
 // FACTS — copied verbatim from the Notion "Die — V1" page's FACTS block,
-// F01 to F28, one line per fact, kept beside the GAME_CONFIG field(s) that
-// implement it below. This is the one place the F-numbers live in code.
-// A build that changes any GAME_CONFIG value updates the F-line comment
-// beside it and the FACTS block on the Notion page in the same build (see
-// CLAUDE.md's WHO EDITS THIS FILE / ownership rule).
+// one line per fact, kept beside the GAME_CONFIG field(s) that implement
+// it below. The one place the F-numbers live in code. A build that
+// changes any GAME_CONFIG value updates the F-line comment beside it and
+// the FACTS block on Notion in the same build (see CLAUDE.md's WHO EDITS
+// THIS FILE / ownership rule).
 //
 // F01 player HP 70 · F02 soul 3 · F03 draw 5 · F04 starting deck 5 Strike 4 Ward 1 Rite · F05 blank roll 2 block
 // F06 Strike 1 soul 5 dmg · F07 Ward 1 soul 5 block · F08 Rite 2 soul 5 dmg 6 block
@@ -23,19 +18,19 @@
 // F12 Strengthen targets face 20, never face 1 · F13 Load offer is 3 mods, excluding the anchor and loaded mods
 // F14 die rewards as built: every fight win grants 1, an elite win 2, a rite 1 (or heal or removal); the boss grants none (D-22) · F15 rite heal 20
 // F16 (checkpoint 3 map) lanes 2, slots per lane 8, three rites per lane (slots 2, 5, 8), the elite is slot 4 of the upper lane
-// F17 (BUILD 142) act 1 HP: opening 50, lane fights by position 58/65/72/78/85, elite 100, boss 100
+// F17 act 1 HP: opening 50, lane fights by position 58/65/78/85, elite 100, boss 100
 // F18 (BUILD 142) intent: opening 4–12, normals 6–18, elite 10–18, boss 10–20 — every enemy acts from a pattern (F36, F37)
-// F19 enemy buff applies 3 stacks of poison (act 1), scaled per act to 4 (act 2) and 5 (act 3) · F20 (BUILD 142) act 1 elite (Lector) buff faces 3 and 9, both poison, 12-sided, no Nat faces · F21 (BUILD 142) act 1 boss (Hierophant) buff faces 5, 10, 15, all poison, plus Nat 20 and Nat 1
-// F22 enemy Nat 20 every loaded buff triggers, ascending, repeatable · F23 enemy Nat 1 attack cancelled, self-applies a flat 5 stacks of poison, once per fight
+// F19 enemy buff applies 3 stacks of poison (act 1), scaled per act to 4 (act 2) and 5 (act 3) · F20 act 1 elite (Lector) buff faces 3 and 9, both poison, 12-sided, no Nat faces · F21 act 1 boss (Hierophant) buff faces 5, 10, 15, all poison, plus Nat 20 and Nat 1
+// F22 enemy Nat 20 forces the boss's Charge next round (forcedNextIntent, breakable as any Charge); buff faces trigger only when rolled · F23 enemy Nat 1 attack cancelled, self-applies a flat 5 stacks of poison, once per fight
 // F24 mods 27 (BUILD 149: +Dread, Genuflect; 26 offerable plus Consecrate, tiers 13/9/4), each asserted by tests/mods.test.js
 // F25 cards 48 (BUILD 153: +Venom, Ballast, Refrain, Second Sight, Cadence, Watchword, Blight Weight; tiers 25/16/7), each asserted by tests/facts.test.js
 // F26 files under /js/: eleven — config, state, listener-registry, audio, pipeline, cards-mods, run-and-map, phase-machine, rendering, dev-tools, bootstrap
 // F27 pitch chains cap 8, reset at START_OF_TURN
-// F28 (corrected BUILD 102 — see paste-back) sound duration ceiling 200 ms holds for every frequent sound (roll, card plays, damage, block, end turn, mod trigger, die action, card reward, fight_start_normal/elite); nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it — all six are rare, at most once per fight-ending event, boss fight, or Nat roll, measured live via tests/facts.test.js, not just the two Nat sounds the fact previously named
+// F28 sound duration ceiling 200 ms holds for every frequent sound (roll, card plays, damage, block, end turn, mod trigger, die action, card reward, fight_start_normal/elite); nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it — all six are rare, at most once per fight-ending event, boss fight, or Nat roll
 // F33 (BUILD 141) at START_OF_TURN, before poison ticks and before block clears, every 5 block the player holds removes 1 stack of poison from the player
-// F34 (BUILD 141, KI-28 BUILD 148) enemies act from a repeating pattern of 1 to 4 intents: Attack (a number rolled evenly in its range), Charge (a no-damage wind-up round, then a release; broken if HP lost from the wind-up's start through the release's own tick reaches the break number) and Afflict (stacks of poison, no damage); an enemy Nat 1 cancels that round's intent
+// F34 (KI-28) enemies act from a repeating pattern of 1 to 4 intents: Attack (a number rolled evenly in its range), Charge (a no-damage wind-up round, then a release; broken if HP lost from the wind-up's start through the release's own tick reaches the break number) and Afflict (stacks of poison, no damage); an enemy Nat 1 cancels that round's intent
 // F35 (BUILD 141) any enemy can carry a die of any size from GAME_CONFIG.DIE_SIZE; buffs are poison, Wrath (adds to every Attack from the next round on), Drain (1 less soul next round) and Seal (the player's heaviest loaded face other than 1 and 20 counts as blank next round, for every rule)
-// F36 (BUILD 142) act 1 enemies: Verger (opening at 6–9, position 3 at 9–12), Thurifer (positions 1 and 4), Asperser (positions 2 and 5), Lector (elite), Hierophant (boss); an enemy Nat 20 or Nat 1 has its own sound and a pulse on the rolled row (KI-22)
+// F36 act 1 enemies: Verger (opening, 6–9), Thurifer (lane positions 1, 3), Asperser (lane positions 2, 4), Lector (elite), Hierophant (boss); an enemy Nat 20 or Nat 1 has its own sound and a pulse on the rolled row (KI-22)
 // F37 (BUILD 142) acts 2 and 3 enemies: Chorister, Cantor, Flagellant, Archdeacon, Cardinal; Anchorite, Mendicant, Inquisitor, Exarch, Pontifex; normals roll 6-sided dice, elites 12-sided, bosses 20-sided with their own Nat pair; the Pontifex reads the player's heaviest face
 // F38 (BUILD 142) Threnody's face is set once per run, 2 to 19, in gameState.run
 // F39 (BUILD 142) a Seal lasts one round: the sealed list is replaced at every START_OF_TURN and emptied at fight start
@@ -52,7 +47,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 157,
+  BUILD: 158,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -104,7 +99,7 @@ const GAME_CONFIG = {
     BOSS: { MIN: 10, MAX: 20 }
   },
 
-  ACT1_LANE_FIGHT_HP: [58, 65, 72, 78, 85],
+  ACT1_LANE_FIGHT_HP: [58, 65, 78, 85],
 
   POISON_ANSWER_BLOCK_PER_STACK: 5,
 
@@ -117,17 +112,10 @@ const GAME_CONFIG = {
 
   DEV_TEST_DIE_SIZES: [6, 12, 20],
 
-  ELITE_DIE: { POISON_FACES: [7, 14], INCLUDE_NATS: false },
-  BOSS_DIE: { POISON_FACES: [5, 10, 15], INCLUDE_NATS: true },
-
   ENEMIES: {
     verger_opening: {
       name: 'Verger',
       pattern: [{ kind: 'attack', min: 6, max: 9 }, { kind: 'attack', min: 6, max: 9 }]
-    },
-    verger_lane: {
-      name: 'Verger',
-      pattern: [{ kind: 'attack', min: 9, max: 12 }, { kind: 'attack', min: 9, max: 12 }]
     },
     thurifer: {
       name: 'Thurifer',
