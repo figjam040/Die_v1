@@ -121,6 +121,46 @@
     gap: 4px;
   }
 
+  .top-bar-info-buttons {
+    display: flex;
+    gap: 6px;
+  }
+
+  .top-bar-info-buttons button {
+    height: 26px;
+    font-size: 11px;
+  }
+
+  /* D-98 — full-screen cover, same shape as the log's own full-screen
+     .right-col: the map/fight screen keeps rendering underneath,
+     unchanged when closed. */
+  .info-layer {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 20;
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  .info-layer-inner {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .info-layer-close {
+    margin-top: 16px;
+  }
+
+  .info-list-row {
+    font-family: var(--game-font-2);
+    font-size: 20px;
+    line-height: 1.3;
+    color: var(--text);
+    border-bottom: 1px solid var(--line);
+    padding: 6px 0;
+  }
+
   #thirdEyeBtn,
   #secondChanceBtn,
   #gildedDieBtn {
@@ -193,10 +233,40 @@
      a panel opening below shrinks band B's slack first, and once that is
      gone .left-col scrolls rather than this box spilling over itself. */
   #fightScreen {
-    display: flex;
-    flex-direction: column;
+    position: relative;
     flex: 1 1 auto;
     min-height: 546px;
+    overflow: hidden;
+  }
+
+  /* D-97 — same footprint as .band-top below (top bar to just above the
+     face row), painted first so band-top/band-d's own opaque backgrounds
+     cover it wherever they have content. */
+  .act-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 118px;
+    width: 100%;
+    height: calc(100% - 118px);
+    object-fit: cover;
+    image-rendering: pixelated;
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* KI-32: absolutely positioned so a reward panel's own content height
+     never changes band-d's position — band-top always fills exactly the
+     space above the fixed-height face row (band-d), never less, never more. */
+  .band-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 118px;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
   }
 
@@ -511,14 +581,29 @@
 
   /* ---------- BAND D — DIE ICONS, ROLL STAGE, FACE ROW ---------- */
 
+  /* Pinned to the fight screen's own bottom edge — see .band-top above;
+     this is the one element a reward panel's height can never move. */
   .band-d {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
     height: 118px;
-    flex-shrink: 0;
     display: grid;
     grid-template-columns: 180px 1fr 180px;
     align-items: center;
     gap: 0;
   }
+
+  /* KI-32: #playerDieIcon/#enemyDieIcon go display:none while the reward
+     layer is open (see .reward-layer-active above); a display:none grid
+     item drops out of grid placement entirely, so without an explicit
+     column this auto-placed into column 1 (180px) instead of the middle
+     1fr track once both flanking items vanished — the face row was never
+     resized, it was just placed in the wrong, much narrower column. */
+  #playerDieIcon { grid-column: 1; }
+  .band-d-mid { grid-column: 2; }
+  #enemyDieIcon { grid-column: 3; }
 
   .band-d-mid {
     display: flex;
@@ -1278,19 +1363,22 @@
   #mapScreen {
     flex-direction: column;
     align-items: center;
+    justify-content: center;
   }
 
-  #mapScreen .panel-title {
-    align-self: flex-start;
-    font-size: 20px;
-  }
-
+  /* D-98 — the map is the only thing this screen draws now (no title, no
+     die previews), so it gets to run bigger: zoom is the same technique
+     applyScale() already uses to scale the whole screen, applied here to
+     just the node/connector composition. */
   .map-composition {
     display: flex;
     align-items: stretch;
     justify-content: center;
     gap: 0;
-    margin: 18px 0;
+    margin: 40px 0;
+    /* ~1.5x the map's earlier size, trimmed just enough (19 nodes across
+       two lanes plus Start/Boss) that nothing clips at 1600px wide. */
+    zoom: 1.4;
   }
 
   .map-start-node,
@@ -1366,7 +1454,7 @@
 
   .map-node {
     font-family: var(--game-font);
-    font-size: 11px;
+    font-size: 10px;
     line-height: 1.4;
     width: 70px;
     height: 70px;
@@ -1426,32 +1514,17 @@
     color: #0a0a0f;
   }
 
-  .map-die-preview-row {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    gap: 28px;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--line);
-  }
-
-  #bossPreview, #mapPlayerPreview, #elitePreview {
-    font-family: var(--game-font-2);
-    font-size: 20px;
-    color: var(--text);
-    line-height: 1.3;
-  }
-
-  #bossDiePreviewList, #mapPlayerDieList, #eliteDiePreviewList {
+  /* D-98 — what ELITE PREVIEW/ELITE DIE and BOSS PREVIEW/BOSS DIE showed
+     inline now shows on hover instead (information moved, not lost). */
+  .map-node .hover-tip {
+    width: 260px;
     max-width: 260px;
+    text-align: left;
   }
 
-  /* A single hairline divider between the two die groups. */
-  .map-die-preview-divider {
-    align-self: stretch;
-    width: 1px;
-    background: var(--line);
+  .map-node:hover .hover-tip {
+    opacity: 1;
+    visibility: visible;
   }
 
   /* ---------- CONTROLS ---------- */
@@ -1756,6 +1829,14 @@
           <div class="artifact-slot"></div>
           <div class="artifact-slot"></div>
         </div>
+        <!-- D-98: what the map screen used to show inline (PLAYER DIE/
+             ARTIFACTS/CARDS) now lives behind these three, available on
+             both the map and the fight screen. -->
+        <div class="top-bar-info-buttons">
+          <button id="dieInfoBtn">DIE</button>
+          <button id="artifactsInfoBtn">ARTIFACTS</button>
+          <button id="cardsInfoBtn">CARDS</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1791,6 +1872,20 @@
     <div class="panel" id="mapScreen" style="display:none;"></div>
 
     <div id="fightScreen">
+
+      <!-- D-97: art/background_act<N>.png for the current act, drawn
+           behind the art band and HP panels only (same footprint as
+           band-top below); nothing shows while the file is missing
+           (setArtImage()'s own onload/onerror pattern), no art ships in
+           this build so /art/ stays empty and this stays hidden. -->
+      <img id="actBackgroundImg" class="act-background" style="display:none;" alt="">
+
+      <!-- KI-32: everything except the face row sits in this absolutely
+           positioned top area, sized to the space above band-d — a reward
+           panel's own content height (which varies) never pushes band-d
+           out of position; band-d stays pinned at the fight screen's own
+           bottom edge regardless of what band-top is showing. -->
+      <div class="band-top">
 
       <div class="band-b">
         <div class="art-box" id="playerArtBox">
@@ -1859,6 +1954,8 @@
       <div class="panel" id="artifactRewardPanel" style="display:none;"></div>
       <div class="panel" id="eventScreenPanel" style="display:none;"></div>
       <div class="panel" id="shopPanel" style="display:none;"></div>
+
+      </div><!-- /.band-top -->
 
       <div class="band-d">
         <div id="playerDieIcon"></div>
@@ -1996,6 +2093,32 @@
     <div id="log"></div>
   </div>
 
+</div>
+
+<!-- D-98 — DIE/ARTIFACTS/CARDS info layers. Same top-bar buttons open
+     these over the map screen and the fight screen alike; each renders
+     from gameState fresh on every refreshInspector() (KI-3), closes on
+     its own CLOSE button or Escape. -->
+<div class="info-layer" id="dieInfoLayer" style="display:none;">
+  <div class="info-layer-inner">
+    <div class="die-action-title">Player die</div>
+    <div id="dieInfoContent"></div>
+    <button class="info-layer-close" id="dieInfoCloseBtn">CLOSE</button>
+  </div>
+</div>
+<div class="info-layer" id="artifactsInfoLayer" style="display:none;">
+  <div class="info-layer-inner">
+    <div class="die-action-title">Artifacts</div>
+    <div id="artifactsInfoContent"></div>
+    <button class="info-layer-close" id="artifactsInfoCloseBtn">CLOSE</button>
+  </div>
+</div>
+<div class="info-layer" id="cardsInfoLayer" style="display:none;">
+  <div class="info-layer-inner">
+    <div class="die-action-title">Deck</div>
+    <div id="cardsInfoContent"></div>
+    <button class="info-layer-close" id="cardsInfoCloseBtn">CLOSE</button>
+  </div>
 </div>
 
 <!-- Loaded via ordinary <script src> tags, no type="module" — the game

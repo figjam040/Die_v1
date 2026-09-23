@@ -1066,3 +1066,21 @@ Verification: build154 14/14, facts 111/111, mods 42/42, guardrails 19/19, the r
 
 Full write-ups for earlier builds: HISTORY.md.
 
+
+---
+
+# BUILD 155 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 156)
+
+Stage 2.82 (BUILD 155) — four items, all kept.
+
+(A) KI-31 — enterSlot() marks the slot entered in gameState.run.act before its handler runs and refuses (logged) a second call on an already-entered slot; an entered current node reads as completed (no click handler) instead of current; no map node, dev-jump included, accepts a click while the reward layer is open. Written up in MAP SCREEN.
+
+(B) Roll odds — rollOdds() (pipeline.js) reads the exact bag rollDie() builds (Gilded Die's extra tickets included) and returns each face's tickets/total/floored percent. The face row's own caption (die-face-caption) shows that percent instead of the bare weight number; the weight itself lives only in the square's title now (faceTitleText() already printed it). GAME_CONFIG.ODDS_EMPHASIS (DROP_PX 6, COLOUR #e8e4d0) sets a weight-above-1 face's own emphasis. Written up in DIE COLUMN.
+
+(C) The reward layer — die action/card/artifact/shop/The Font moved inside #fightScreen, right before band-d; #fightScreen.reward-layer-active hides band-b/band-c/roll-hero/die icons so the layer covers everything above the fight's own face row (#playerDieList), which a face-picking step now wires directly (currentPlayerDiePickConfig(), rendering.js) — no second die row anywhere (#dieActionDieList/#eventDieList are gone). #mapScreen hides the same way so the layer shows in place of the map too. Written up in THE REWARD LAYER (renamed from POST-FIGHT OVERLAY).
+
+(D) CLAUDE.md headroom — the previous build's CURRENT SUBSTAGE write-up moved to HISTORY.md verbatim (the standing SIZE RULE mechanism); this file back under the 72,000-byte ceiling.
+
+Verification: build155 8/8, facts 111/111, mods 42/42, build153 23/23, build154 14/14, guardrails 19/19. CLAUDE.md 79,987 to 71,965 bytes.
+
+Full write-ups for earlier builds: HISTORY.md.

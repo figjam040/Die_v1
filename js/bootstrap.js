@@ -120,6 +120,36 @@ document.getElementById('logCloseBtn').addEventListener('click', function() {
   updateUi({ logOpen: false });
 });
 
+// D-98 — DIE/ARTIFACTS/CARDS info layers. Same buttons on the top bar
+// work from the map screen and the fight screen alike.
+document.getElementById('dieInfoBtn').addEventListener('click', function() {
+  log('[CLICK] DIE info');
+  updateUi({ dieInfoOpen: true });
+});
+document.getElementById('dieInfoCloseBtn').addEventListener('click', function() {
+  updateUi({ dieInfoOpen: false });
+});
+document.getElementById('artifactsInfoBtn').addEventListener('click', function() {
+  log('[CLICK] ARTIFACTS info');
+  updateUi({ artifactsInfoOpen: true });
+});
+document.getElementById('artifactsInfoCloseBtn').addEventListener('click', function() {
+  updateUi({ artifactsInfoOpen: false });
+});
+document.getElementById('cardsInfoBtn').addEventListener('click', function() {
+  log('[CLICK] CARDS info');
+  updateUi({ cardsInfoOpen: true });
+});
+document.getElementById('cardsInfoCloseBtn').addEventListener('click', function() {
+  updateUi({ cardsInfoOpen: false });
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  if (gameState.ui.dieInfoOpen || gameState.ui.artifactsInfoOpen || gameState.ui.cardsInfoOpen) {
+    updateUi({ dieInfoOpen: false, artifactsInfoOpen: false, cardsInfoOpen: false });
+  }
+});
+
 document.getElementById('devPauseBeforeRollCheckbox').addEventListener('change', function() {
   devPauseBeforeFirstRoll = this.checked;
   log('[DEV] pause before first roll: ' + (devPauseBeforeFirstRoll ? 'on' : 'off'));

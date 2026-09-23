@@ -135,7 +135,10 @@ const gameState = {
   // Display-only flags, never part of the run record.
   ui: {
     logOpen: false,
-    logView: 'play'
+    logView: 'play',
+    dieInfoOpen: false,
+    artifactsInfoOpen: false,
+    cardsInfoOpen: false
   }
 
 };

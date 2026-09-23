@@ -105,6 +105,7 @@ function refreshInspector() {
   renderDieList('enemyDieList', gameState.enemy.die.faces, forceEnemyRoll, null, gameState.enemy.buffPoisonStacks, gameState.enemy.name, gameState.enemy.wrathPerTrigger);
   renderDieIcons();
   renderArtBoxes();
+  renderActBackground();
   renderTopBarTokens();
   renderThirdEyeButton();
   renderPhaseBadge();
@@ -116,6 +117,7 @@ function refreshInspector() {
   renderEventScreen();
   renderShopPanel();
   renderMapScreen();
+  renderInfoLayers();
 
   // the reward layer (die action/card/artifact/shop/The Font)
   // always shows over the fight screen, even when it was opened from the
@@ -1209,6 +1211,21 @@ function renderArtBoxes() {
   const enemyName = gameState.enemy.name;
   setArtImage('enemyArtImg', 'enemyArtLabel', 'art/' + (enemyName || '').toLowerCase() + '.png',
     (enemyName ? enemyName.toUpperCase() + ' ' : '') + 'ART');
+}
+
+// D-97 — no art ships this build (/art/ stays empty), so this stays
+// hidden; the moment art/background_act<N>.png exists it draws itself,
+// same load/error pattern setArtImage() already uses for character art.
+function renderActBackground() {
+  const img = document.getElementById('actBackgroundImg');
+  if (!img) return;
+  const src = 'art/background_act' + gameState.run.actNumber + '.png';
+  if (img.getAttribute('data-bg-src') !== src) {
+    img.setAttribute('data-bg-src', src);
+    img.onload = function() { img.style.display = 'block'; };
+    img.onerror = function() { img.style.display = 'none'; };
+    img.src = src;
+  }
 }
 
 // No gold mechanic exists in V1; the field is read if it is ever added.
@@ -2525,10 +2542,19 @@ function attachDevJumpIfEligible(node, laneName, index, rewardPanelOpen) {
   }
   node.disabled = false;
   node.classList.add('map-node-dev-jump');
-  const tip = document.createElement('span');
-  tip.className = 'hover-tip';
-  tip.textContent = 'Dev: jump here — skips earlier slots, grants no rewards';
-  node.appendChild(tip);
+  const devText = 'Dev: jump here — skips earlier slots, grants no rewards';
+  // The Elite/Boss node may already carry its own preview hover-tip
+  // (enemyPreviewHoverText()) — append to it rather than laying a second
+  // absolutely positioned tip over the same spot.
+  const existingTip = node.querySelector('.hover-tip');
+  if (existingTip) {
+    existingTip.textContent += ' ' + devText;
+  } else {
+    const tip = document.createElement('span');
+    tip.className = 'hover-tip';
+    tip.textContent = devText;
+    node.appendChild(tip);
+  }
   node.addEventListener('click', function() { devJumpToSlot(laneName, index); });
 }
 
@@ -2552,6 +2578,17 @@ function formatPatternWords(pattern) {
   }).join(', ');
 }
 
+// D-98 — the same summary ELITE PREVIEW/ELITE DIE and BOSS PREVIEW/BOSS
+// DIE used to print inline, now a hover-tip on that node instead. Reuses
+// the same loaded-face naming #enemyBuffsValue already shows (renderStats()).
+function enemyPreviewHoverText(enemy) {
+  const loaded = enemy.die.faces
+    .filter(function(f) { return f.modId !== null; })
+    .map(function(f) { return modDisplayName(f.modId) + ' ' + f.number; });
+  return enemy.name + ' — HP ' + enemy.hp + '. ' + formatPatternWords(enemy.pattern) +
+    '. Loaded: ' + (loaded.length ? loaded.join(', ') : 'none') + '.';
+}
+
 function renderMapScreen() {
   const container = document.getElementById('mapScreen');
   if (!container) return;
@@ -2568,11 +2605,8 @@ function renderMapScreen() {
   const rewardPanelOpen = dieActionStep !== null || cardRewardStep !== null
     || artifactRewardStep !== null || shopStep !== null;
 
-  const title = document.createElement('div');
-  title.className = 'panel-title';
-  title.textContent = 'ACT ' + gameState.run.actNumber + ' MAP';
-  container.appendChild(title);
-
+  // D-98 — the map screen shows the top bar and the map only; the act
+  // number already reads on the top bar's own #actStamp.
   const composition = document.createElement('div');
   composition.className = 'map-composition';
 
@@ -2632,6 +2666,17 @@ function renderMapScreen() {
 
       node.className = 'map-node ' + mapNodeStateClass(slot, isCurrent, isForkChoice);
 
+      // D-98 — the Elite node carries the same summary ELITE PREVIEW/ELITE
+      // DIE used to print inline, now a hover-tip instead. Reads the
+      // slot's own static enemy, never the live gameState.enemy (that
+      // would go stale once any other fight is entered).
+      if (slot.label === 'Elite' && slot.enemy) {
+        const tip = document.createElement('span');
+        tip.className = 'hover-tip';
+        tip.textContent = enemyPreviewHoverText(slot.enemy);
+        node.appendChild(tip);
+      }
+
       if ((isCurrent || isForkChoice) && !slot.entered && !rewardPanelOpen) {
         node.addEventListener('click', function() {
           // A single click at the divergence both picks the lane and
@@ -2661,6 +2706,11 @@ function renderMapScreen() {
   const bossIsCurrent = gameState.run.currentSlot === 'boss';
   bossBtn.className = 'map-node map-node-boss ' + mapNodeStateClass(gameState.run.act.boss, bossIsCurrent, false);
   bossBtn.textContent = gameState.run.act.boss.label;
+  // D-98 — same hover-tip treatment as the Elite node above.
+  const bossTip = document.createElement('span');
+  bossTip.className = 'hover-tip';
+  bossTip.textContent = enemyPreviewHoverText(gameState.run.act.boss.enemy);
+  bossBtn.appendChild(bossTip);
   if (bossIsCurrent && !gameState.run.act.boss.entered && !rewardPanelOpen) {
     bossBtn.addEventListener('click', function() { enterSlot('boss', null); });
   } else {
@@ -2669,86 +2719,59 @@ function renderMapScreen() {
   composition.appendChild(bossBtn);
 
   container.appendChild(composition);
+}
 
-  // Die preview row — the player's own current die alongside the boss
-  // die, so the map reads as a comparison. Both halves reuse renderDieList().
-  const previewRow = document.createElement('div');
-  previewRow.className = 'map-die-preview-row';
+// ---------- INFO LAYERS (D-98) ----------
+// What the map screen used to print inline (PLAYER DIE/ARTIFACTS/CARDS)
+// now lives behind the top bar's DIE/ARTIFACTS/CARDS buttons — available
+// on the map and the fight screen alike. Each renders straight from
+// gameState (KI-3), every refreshInspector() call, gated only on the
+// matching gameState.ui.*InfoOpen flag.
 
-  const playerPreview = document.createElement('div');
-  playerPreview.id = 'mapPlayerPreview';
-  playerPreview.innerHTML =
-    '<div class="panel-title">YOUR DIE</div>' +
-    '<div>HP ' + gameState.player.hp + ' / ' + gameState.player.maxHp + '</div>';
-  previewRow.appendChild(playerPreview);
+function renderInfoLayers() {
+  const dieLayer = document.getElementById('dieInfoLayer');
+  const artifactsLayer = document.getElementById('artifactsInfoLayer');
+  const cardsLayer = document.getElementById('cardsInfoLayer');
+  if (!dieLayer || !artifactsLayer || !cardsLayer) return;
 
-  const playerDieContainer = document.createElement('div');
-  playerDieContainer.className = 'die-col player-die';
-  playerDieContainer.id = 'mapPlayerDieList';
-  const playerDieTitle = document.createElement('div');
-  playerDieTitle.className = 'panel-title';
-  playerDieTitle.textContent = 'PLAYER DIE';
-  playerDieContainer.appendChild(playerDieTitle);
-  previewRow.appendChild(playerDieContainer);
+  dieLayer.style.display = gameState.ui.dieInfoOpen ? 'block' : 'none';
+  artifactsLayer.style.display = gameState.ui.artifactsInfoOpen ? 'block' : 'none';
+  cardsLayer.style.display = gameState.ui.cardsInfoOpen ? 'block' : 'none';
 
-  const dividerBeforeElite = document.createElement('div');
-  dividerBeforeElite.className = 'map-die-preview-divider';
-  previewRow.appendChild(dividerBeforeElite);
+  if (gameState.ui.dieInfoOpen) {
+    const content = document.getElementById('dieInfoContent');
+    let html = '<div class="info-list-row">HP ' + gameState.player.hp + ' / ' + gameState.player.maxHp + '</div>';
+    html += gameState.die.faces.map(function(face) {
+      return '<div class="info-list-row">Face ' + face.number + ' — ' + faceTitleText(face, true, true) + '</div>';
+    }).join('');
+    content.innerHTML = html;
+  }
 
-  // Reads the elite slot's own static enemy.die.faces, never
-  // gameState.enemy — the live die only reflects whichever fight was most
-  // recently entered, so a preview reading it would go stale.
-  const eliteSlot = gameState.run.act.upper.find(function(s) { return s.label === 'Elite'; });
-  const eliteEnemy = eliteSlot.enemy;
-  const elitePreview = document.createElement('div');
-  elitePreview.id = 'elitePreview';
-  elitePreview.innerHTML =
-    '<div class="panel-title">ELITE PREVIEW</div>' +
-    '<div>HP ' + eliteEnemy.hp + '</div>' +
-    '<div>' + eliteEnemy.name + ' — ' + formatPatternWords(eliteEnemy.pattern) + '</div>';
-  previewRow.appendChild(elitePreview);
+  if (gameState.ui.artifactsInfoOpen) {
+    const content = document.getElementById('artifactsInfoContent');
+    const artifacts = gameState.run.artifacts;
+    content.innerHTML = artifacts.length
+      ? artifacts.map(function(id) {
+          const artifact = gameState.config.artifacts[id];
+          return '<div class="info-list-row">' + (artifact ? artifact.name + ' — ' + artifact.text : id) + '</div>';
+        }).join('')
+      : '<div class="info-list-row">No artifacts held.</div>';
+  }
 
-  const eliteDieContainer = document.createElement('div');
-  eliteDieContainer.className = 'die-col enemy-die';
-  eliteDieContainer.id = 'eliteDiePreviewList';
-  const eliteDieTitle = document.createElement('div');
-  eliteDieTitle.className = 'panel-title';
-  eliteDieTitle.textContent = 'ELITE DIE';
-  eliteDieContainer.appendChild(eliteDieTitle);
-  previewRow.appendChild(eliteDieContainer);
-
-  const dividerBeforeBoss = document.createElement('div');
-  dividerBeforeBoss.className = 'map-die-preview-divider';
-  previewRow.appendChild(dividerBeforeBoss);
-
-  const bossEnemy = gameState.run.act.boss.enemy;
-  const bossPreview = document.createElement('div');
-  bossPreview.id = 'bossPreview';
-  bossPreview.innerHTML =
-    '<div class="panel-title">BOSS PREVIEW</div>' +
-    '<div>HP ' + bossEnemy.hp + '</div>' +
-    '<div>' + bossEnemy.name + ' — ' + formatPatternWords(bossEnemy.pattern) + '</div>';
-  previewRow.appendChild(bossPreview);
-
-  const bossDieContainer = document.createElement('div');
-  bossDieContainer.className = 'die-col enemy-die';
-  bossDieContainer.id = 'bossDiePreviewList';
-  const bossDieTitle = document.createElement('div');
-  bossDieTitle.className = 'panel-title';
-  bossDieTitle.textContent = 'BOSS DIE';
-  bossDieContainer.appendChild(bossDieTitle);
-  previewRow.appendChild(bossDieContainer);
-
-  container.appendChild(previewRow);
-
-  // Must run after each container is attached to the live document
-  // (renderDieList looks it up by id). No forceRollFn — all three are
-  // previews, not clickable dice.
-  renderDieList('mapPlayerDieList', gameState.die.faces, null);
-  // Each slot's own act-scaled buffPoisonStacks, so the preview's hover
-  // text names the real number too.
-  renderDieList('eliteDiePreviewList', eliteEnemy.die.faces, null, null, eliteEnemy.buffPoisonStacks, eliteEnemy.name, eliteEnemy.wrathPerTrigger);
-  renderDieList('bossDiePreviewList', bossEnemy.die.faces, null, null, bossEnemy.buffPoisonStacks, bossEnemy.name, bossEnemy.wrathPerTrigger);
+  if (gameState.ui.cardsInfoOpen) {
+    const content = document.getElementById('cardsInfoContent');
+    const counts = {};
+    gameState.player.ownedCards.forEach(function(id) { counts[id] = (counts[id] || 0) + 1; });
+    const ids = Object.keys(counts).sort();
+    content.innerHTML = ids.length
+      ? ids.map(function(id) {
+          const card = getCard(id);
+          const name = card ? card.name : id;
+          const cost = card ? card.soulCost : '—';
+          return '<div class="info-list-row">' + counts[id] + '× ' + name + ' — cost ' + cost + ' — ' + getCardEffectText(id) + '</div>';
+        }).join('')
+      : '<div class="info-list-row">No cards owned.</div>';
+  }
 }
 
 // Fits the fight/map screen to the window: shrinks below the 1600x900

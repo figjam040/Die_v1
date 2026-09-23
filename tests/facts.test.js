@@ -738,30 +738,20 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     });
     assert.deepStrictEqual(fightHoverEmpty, [], 'every loaded boss face must show non-empty hover text in the fight panel');
 
-    // renderMapScreen() (rendering.js) runs on every refreshInspector() call
-    // regardless of which screen is visible, so the preview containers are
-    // already populated — no need to switch gameState.run.screen.
-    const mapHoverEmpty = await page.evaluate(() => {
-      const results = [];
-      ['eliteDiePreviewList', 'bossDiePreviewList'].forEach(function(containerId) {
-        const container = document.getElementById(containerId);
-        const rows = Array.from(container.querySelectorAll('.die-row'));
-        const faces = containerId === 'eliteDiePreviewList'
-          ? gameState.run.act.upper.find(function(s) { return s.label === 'Elite'; }).enemy.die.faces
-          : gameState.run.act.boss.enemy.die.faces;
-        const facesByNumber = {};
-        faces.forEach(function(f) { facesByNumber[f.number] = f; });
-        rows.forEach(function(row) {
-          const faceNumber = parseInt(row.querySelector('.face-num').textContent, 10);
-          const face = facesByNumber[faceNumber];
-          if (face.modId === null) return;
-          const tip = row.querySelector('.hover-tip');
-          if (!tip || !tip.textContent) { results.push(containerId + ' face ' + face.number); }
-        });
-      });
-      return results;
+    // D-98 (BUILD 156): the map no longer draws the elite/boss die out in
+    // full — hovering the Elite/Boss node itself shows the same summary
+    // (name, HP, pattern, loaded faces) as one hover-tip on that node.
+    const mapHoverText = await page.evaluate(() => {
+      const eliteNode = Array.from(document.querySelectorAll('#mapScreen .map-node-choice, #mapScreen .map-node-inert, #mapScreen .map-node-completed, #mapScreen .map-node-current'))
+        .find(function(n) { return n.childNodes[0] && n.childNodes[0].textContent === 'Elite'; });
+      const bossNode = document.querySelector('#mapScreen .map-node-boss');
+      return {
+        elite: eliteNode ? (eliteNode.querySelector('.hover-tip') || {}).textContent : null,
+        boss: bossNode ? (bossNode.querySelector('.hover-tip') || {}).textContent : null
+      };
     });
-    assert.deepStrictEqual(mapHoverEmpty, [], 'every loaded elite/boss face must show non-empty hover text on the map preview');
+    assert.ok(mapHoverText.elite, 'the Elite node must carry non-empty hover text');
+    assert.ok(mapHoverText.boss, 'the Boss node must carry non-empty hover text');
     await page.close();
   });
 
