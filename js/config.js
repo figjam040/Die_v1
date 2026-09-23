@@ -28,7 +28,7 @@
 // F19 enemy buff applies 3 stacks of poison (act 1), scaled per act to 4 (act 2) and 5 (act 3) · F20 (BUILD 142) act 1 elite (Lector) buff faces 3 and 9, both poison, 12-sided, no Nat faces · F21 (BUILD 142) act 1 boss (Hierophant) buff faces 5, 10, 15, all poison, plus Nat 20 and Nat 1
 // F22 enemy Nat 20 every loaded buff triggers, ascending, repeatable · F23 enemy Nat 1 attack cancelled, self-applies a flat 5 stacks of poison, once per fight
 // F24 mods 27 (BUILD 149: +Dread, Genuflect; 26 offerable plus Consecrate, tiers 13/9/4), each asserted by tests/mods.test.js
-// F25 cards 41 (BUILD 150: +Bulwark; tiers 21/13/7), each asserted by tests/facts.test.js
+// F25 cards 48 (BUILD 153: +Venom, Ballast, Refrain, Second Sight, Cadence, Watchword, Blight Weight; tiers 25/16/7), each asserted by tests/facts.test.js
 // F26 files under /js/: eleven — config, state, listener-registry, audio, pipeline, cards-mods, run-and-map, phase-machine, rendering, dev-tools, bootstrap
 // F27 pitch chains cap 8, reset at START_OF_TURN
 // F28 (corrected BUILD 102 — see paste-back) sound duration ceiling 200 ms holds for every frequent sound (roll, card plays, damage, block, end turn, mod trigger, die action, card reward, fight_start_normal/elite); nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it — all six are rare, at most once per fight-ending event, boss fight, or Nat roll, measured live via tests/facts.test.js, not just the two Nat sounds the fact previously named
@@ -43,14 +43,15 @@
 // F32 (BUILD 125) beating the act 1 or act 2 boss grants a card reward and one die reward, exactly like any other fight win; the act 3 boss is VICTORY with no reward (D-22)
 // F40 (BUILD 143) npm test runs every test file; guardrails.test.js fails on CLAUDE.md size, CONFIRMED WORKING line length, stale CURRENT SUBSTAGE, comment share, a build number in a comment, or a stray file
 // F41 (BUILD 149) stacks of awe lower an Attack's damage to no less than 0, after Wrath, then decay by 1 at START_OF_TURN
-// F42 (BUILD 150) break numbers lowered by 4; gold (GOLD_REWARDS) from a fight win spends in the shop (SHOP) after every rite; three relics offered after an Elite/non-final-Boss win
+// F42 (BUILD 150) break numbers lowered by 4; gold (GOLD_REWARDS) from a fight win spends in the shop (SHOP) after every rite; three artifacts offered after an Elite/non-final-Boss win
 // F43 (BUILD 151) Purify: third die action, clears mods off a face (never 1/10/20), weight kept
 // F44 (BUILD 151) lower lane index 3 is the event The Font: unresolved roll picks the outcome
+// F45 (BUILD 153) artifacts: 13, up to ARTIFACT_MAX (8) held, offered after an Elite/non-final-Boss win and sold at SHOP.ARTIFACT_PRICE; their amounts live in ARTIFACTS
 // ============================================================
 
 const GAME_CONFIG = {
 
-  BUILD: 152,
+  BUILD: 153,
 
   PLAYER_MAX_HP: 70,
   PLAYER_MAX_SOUL: 3,
@@ -210,10 +211,22 @@ const GAME_CONFIG = {
     CARD_PRICE: { common: 50, uncommon: 75, rare: 120 },
     STRENGTHEN_PRICE: 100,
     REMOVAL_BASE_PRICE: 75,
-    REMOVAL_PRICE_STEP: 25
+    REMOVAL_PRICE_STEP: 25,
+    ARTIFACT_PRICE: 150
   },
 
-  RELIC_MAX: 5,
+  ARTIFACT_MAX: 8,
+
+  ARTIFACTS: {
+    TITHE_BOX_GOLD: 15,
+    MERCHANTS_SEAL_DISCOUNT: 0.25,
+    LEADEN_FACE_STRENGTHEN: 2,
+    PLAGUE_BELL_FACES_PER_STACK: 2,
+    ALMS_SOUL: 1,
+    GILDED_DIE_PRICE: 10,
+    GILDED_DIE_WEIGHT: 2,
+    BONE_COUNTER_GOLD: 15
+  },
 
   EVENT: {
     NAT_TWENTY_GOLD: 30,

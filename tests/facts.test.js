@@ -301,10 +301,10 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.close();
   });
 
-  await runTest('F25 cards 41 (reward pool)', async () => {
+  await runTest('F25 cards 48 (reward pool)', async () => {
     const page = await freshPage(browser);
     const n = await page.evaluate(() => Object.keys(gameState.config.cardPool).length);
-    specOnlyEqual(n, 41, 'F25: forty-one reward-pool cards (documented fact — a single, self-declared source, no independent oracle to check its count against)');
+    specOnlyEqual(n, 48, 'F25: forty-eight reward-pool cards (documented fact — a single, self-declared source, no independent oracle to check its count against)');
     await page.close();
   });
 
@@ -1217,21 +1217,21 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
 
     async function skipThroughRewardFlow() {
       for (let i = 0; i < 5; i++) {
-        const s = await page.evaluate(() => ({ relicRewardStep: relicRewardStep, dieActionStep: dieActionStep, cardRewardStep: cardRewardStep }));
-        if (s.relicRewardStep !== null) { await page.evaluate(() => { relicRewardSkip(); }); continue; }
+        const s = await page.evaluate(() => ({ artifactRewardStep: artifactRewardStep, dieActionStep: dieActionStep, cardRewardStep: cardRewardStep }));
+        if (s.artifactRewardStep !== null) { await page.evaluate(() => { artifactRewardSkip(); }); continue; }
         if (s.dieActionStep !== null) { await page.evaluate(() => { dieActionChooseSkip(); }); continue; }
         if (s.cardRewardStep !== null) { await page.evaluate(() => { cardRewardSkip(); }); continue; }
         break;
       }
     }
 
-    // Act 1 boss — BUILD 150: a non-final Boss win opens the relic reward
+    // Act 1 boss — BUILD 150: a non-final Boss win opens the artifact reward
     // panel first (same as an Elite win), then the die action panel.
     await page.evaluate(() => { devJumpToSlot('boss', null); });
     await page.evaluate(() => { updateEnemy({ hp: 0 }); nextPhase(); });
-    const afterAct1Boss = await page.evaluate(() => ({ outcome: gameState.run.outcome, relicRewardStep: relicRewardStep, dieActionStep: dieActionStep }));
+    const afterAct1Boss = await page.evaluate(() => ({ outcome: gameState.run.outcome, artifactRewardStep: artifactRewardStep, dieActionStep: dieActionStep }));
     assert.notStrictEqual(afterAct1Boss.outcome, 'won', 'act 1 boss win must not end the run');
-    assert.ok(afterAct1Boss.relicRewardStep !== null || afterAct1Boss.dieActionStep !== null, 'act 1 boss win must open the relic or die action reward panel, same as any fight win');
+    assert.ok(afterAct1Boss.artifactRewardStep !== null || afterAct1Boss.dieActionStep !== null, 'act 1 boss win must open the artifact or die action reward panel, same as any fight win');
     await skipThroughRewardFlow();
     const afterAct1Flow = await page.evaluate(() => ({ actNumber: gameState.run.actNumber, currentSlot: gameState.run.currentSlot, lane: gameState.run.lane, bossCompleted: gameState.run.act.boss.completed, outcome: gameState.run.outcome }));
     assert.strictEqual(afterAct1Flow.actNumber, 2, "closing act 1's boss reward flow must start act 2");
@@ -1243,9 +1243,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     // Act 2 boss.
     await page.evaluate(() => { devJumpToSlot('boss', null); });
     await page.evaluate(() => { updateEnemy({ hp: 0 }); nextPhase(); });
-    const afterAct2Boss = await page.evaluate(() => ({ outcome: gameState.run.outcome, relicRewardStep: relicRewardStep, dieActionStep: dieActionStep }));
+    const afterAct2Boss = await page.evaluate(() => ({ outcome: gameState.run.outcome, artifactRewardStep: artifactRewardStep, dieActionStep: dieActionStep }));
     assert.notStrictEqual(afterAct2Boss.outcome, 'won', 'act 2 boss win must not end the run either');
-    assert.ok(afterAct2Boss.relicRewardStep !== null || afterAct2Boss.dieActionStep !== null, 'act 2 boss win must also open a reward panel');
+    assert.ok(afterAct2Boss.artifactRewardStep !== null || afterAct2Boss.dieActionStep !== null, 'act 2 boss win must also open a reward panel');
     await skipThroughRewardFlow();
     const afterAct2Flow = await page.evaluate(() => gameState.run.actNumber);
     assert.strictEqual(afterAct2Flow, 3, "closing act 2's boss reward flow must start act 3, the final act");
@@ -1395,7 +1395,10 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       // BUILD 149 — the awe cluster.
       kneel: 'common', compline: 'common', tremendum: 'uncommon', mysterium: 'rare',
       // BUILD 150 — Bulwark.
-      bulwark: 'common'
+      bulwark: 'common',
+      // BUILD 153 — seven cards beside the artifact pass.
+      venom: 'common', ballast: 'common', cadence: 'common', watchword: 'common',
+      refrain: 'uncommon', second_sight: 'uncommon', blight_weight: 'uncommon'
     });
     await liveBrowser.close();
   });
@@ -1424,7 +1427,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       return { modTotals: modTotals, cardTotals: cardTotals };
     });
     assert.deepStrictEqual(totals.modTotals, { common: 13, uncommon: 9, rare: 4 }, 'offerable mods must be 13 common, 9 uncommon, 4 rare (Consecrate excluded, it carries no tier)');
-    assert.deepStrictEqual(totals.cardTotals, { common: 21, uncommon: 13, rare: 7 }, 'reward cards must be 21 common, 13 uncommon, 7 rare');
+    assert.deepStrictEqual(totals.cardTotals, { common: 25, uncommon: 16, rare: 7 }, 'reward cards must be 25 common, 16 uncommon, 7 rare');
     await liveBrowser.close();
   });
 
@@ -1609,7 +1612,10 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       // BUILD 149 — the awe cluster.
       kneel: ['awe'], compline: ['awe'], tremendum: ['awe'], mysterium: ['awe'],
       // BUILD 150 — Bulwark.
-      bulwark: []
+      bulwark: [],
+      // BUILD 153 — seven cards beside the artifact pass.
+      venom: ['poison'], ballast: ['mass'], refrain: ['bound'], second_sight: ['die'],
+      cadence: ['growth'], watchword: ['bound'], blight_weight: ['poison', 'mass']
     });
     await liveBrowser.close();
   });
@@ -2402,7 +2408,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       const missing = poolIds.filter(function(id) { return !CARD_EFFECT_TEXT[id]; });
       return { total: poolIds.length, missing: missing };
     });
-    assert.strictEqual(v.total, 41, 'expected forty-one reward-pool cards');
+    assert.strictEqual(v.total, 48, 'expected forty-eight reward-pool cards');
     assert.deepStrictEqual(v.missing, [], 'every reward-pool card must have a CARD_EFFECT_TEXT entry: missing ' + JSON.stringify(v.missing));
     await liveBrowser.close();
   });

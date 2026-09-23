@@ -196,7 +196,10 @@ async function triggerMod(page, modId) {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
-    await page.evaluate(() => { updatePlayer({ hand: ['compline'], soul: 5 }); });
+    // clearListeners('turn') drops whatever the round's own natural roll
+    // registered (a Consecrate roll adds 3 block per card played), so only
+    // Compline's own block is measured.
+    await page.evaluate(() => { clearListeners('turn'); updatePlayer({ hand: ['compline'], soul: 5 }); });
     const before = await page.evaluate(() => ({ block: gameState.player.block, awe: gameState.enemy.aweStacks }));
     await page.evaluate(() => { playCard(0); });
     const after = await page.evaluate(() => ({ block: gameState.player.block, awe: gameState.enemy.aweStacks }));

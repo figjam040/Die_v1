@@ -1,7 +1,7 @@
 // ============================================================
 // TESTS/BUILD150.TEST.JS
 // Standing regression suite for BUILD 150: lowered break numbers, the
-// Bulwark card, gold, the shop (opens after every rite), and three relics
+// Bulwark card, gold, the shop (opens after every rite), and three artifacts
 // (Third Eye, Loaded Die, Tolling Bell). Same shape as tests/build149.test.js:
 // plain Node script, playwright launched directly, node:assert.
 // Run: node tests/build150.test.js
@@ -75,21 +75,24 @@ async function enterOpeningFight(page) {
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
 
     // Attack round (default fresh-fight pattern has no charge active).
-    await page.evaluate(() => { updateEnemy({ chargeStage: null }); updatePlayer({ hand: ['bulwark'], soul: 5 }); });
+    // clearListeners('turn') drops whatever the round's own natural roll
+    // registered (a Consecrate roll adds 3 block per card played), so
+    // only Bulwark's own block is measured.
+    await page.evaluate(() => { clearListeners('turn'); updateEnemy({ chargeStage: null }); updatePlayer({ hand: ['bulwark'], soul: 5 }); });
     const before1 = await page.evaluate(() => gameState.player.block);
     await page.evaluate(() => { playCard(0); });
     const after1 = await page.evaluate(() => gameState.player.block);
     assert.strictEqual(after1 - before1, 6, 'expected 6 block against an Attack round');
 
     // Wind-up round.
-    await page.evaluate(() => { updateEnemy({ chargeStage: 'windup' }); updatePlayer({ hand: ['bulwark'], soul: 5 }); });
+    await page.evaluate(() => { clearListeners('turn'); updateEnemy({ chargeStage: 'windup' }); updatePlayer({ hand: ['bulwark'], soul: 5 }); });
     const before2 = await page.evaluate(() => gameState.player.block);
     await page.evaluate(() => { playCard(0); });
     const after2 = await page.evaluate(() => gameState.player.block);
     assert.strictEqual(after2 - before2, 16, 'expected 16 block against a wind-up round');
 
     // Release round.
-    await page.evaluate(() => { updateEnemy({ chargeStage: 'release' }); updatePlayer({ hand: ['bulwark'], soul: 5 }); });
+    await page.evaluate(() => { clearListeners('turn'); updateEnemy({ chargeStage: 'release' }); updatePlayer({ hand: ['bulwark'], soul: 5 }); });
     const before3 = await page.evaluate(() => gameState.player.block);
     await page.evaluate(() => { playCard(0); });
     const after3 = await page.evaluate(() => gameState.player.block);
@@ -118,7 +121,7 @@ async function enterOpeningFight(page) {
     await page.evaluate(() => { updateEnemy({ hp: 0 }); checkWinNow(); });
     const eliteDelta = await page.evaluate((before) => gameState.run.gold - before, goldBeforeElite);
     assert.ok(eliteDelta >= 30 && eliteDelta <= 40, 'expected 30-40 gold from an Elite win, got ' + eliteDelta);
-    await page.evaluate(() => { relicRewardSkip(); });
+    await page.evaluate(() => { artifactRewardSkip(); });
     await page.evaluate(() => { dieActionChooseSkip(); });
     await page.evaluate(() => { cardRewardSkip(); });
 
@@ -198,13 +201,13 @@ async function enterOpeningFight(page) {
   });
 
   // ---------------------------------------------------------------
-  // ITEM E — relics
+  // ITEM E — artifacts
   // ---------------------------------------------------------------
 
   await runTest('Item E: Third Eye forces the chosen face once, then is unavailable until the next act resets it', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
-    await page.evaluate(() => { updateRun({ relics: ['third_eye'] }); });
+    await page.evaluate(() => { updateRun({ artifacts: ['third_eye'] }); });
     await page.evaluate(() => { thirdEyeChooseFace(5); });
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
     const afterChoose = await page.evaluate(() => ({ rolled: gameState.turn.rolledFaceNumber, used: gameState.run.thirdEyeUsedThisAct }));
@@ -225,12 +228,12 @@ async function enterOpeningFight(page) {
 
   await runTest('Item E: Loaded Die uses the higher of two forced rolls', async () => {
     const page = await freshPage(browser);
-    await page.evaluate(() => { updateRun({ relics: ['loaded_die'] }); });
+    await page.evaluate(() => { updateRun({ artifacts: ['loaded_die'] }); });
     const result = await page.evaluate(() => {
       const seq = [0.05, 0.95]; // pool index 1 (face 2), then pool index 19 (face 20)
       let i = 0;
       Math.random = function() { return seq[i++ % seq.length]; };
-      return rollWithRelics(gameState.die.faces).number;
+      return rollWithArtifacts(gameState.die.faces).number;
     });
     assert.strictEqual(result, 20, 'expected the higher-numbered face (20) to stand over the lower (2)');
     await page.close();
@@ -240,7 +243,7 @@ async function enterOpeningFight(page) {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => {
-      updateRun({ relics: ['tolling_bell'] });
+      updateRun({ artifacts: ['tolling_bell'] });
       updateEnemy({ chargeStage: 'windup' });
       const newFaces = gameState.die.faces.map(function(f, i) {
         const n = i + 1;
@@ -262,7 +265,7 @@ async function enterOpeningFight(page) {
     const page2 = await freshPage(browser);
     await enterOpeningFight(page2);
     await page2.evaluate(() => {
-      updateRun({ relics: ['tolling_bell'] });
+      updateRun({ artifacts: ['tolling_bell'] });
       updateEnemy({ chargeStage: null });
       const newFaces = gameState.die.faces.map(function(f, i) {
         const n = i + 1;
@@ -281,29 +284,29 @@ async function enterOpeningFight(page) {
     await page2.close();
   });
 
-  await runTest('Item E: the relic panel appears after an Elite win and after the act 1 Boss win, but not after a plain Fight win', async () => {
+  await runTest('Item E: the artifact panel appears after an Elite win and after the act 1 Boss win, but not after a plain Fight win', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => { updateEnemy({ hp: 0 }); checkWinNow(); });
-    const afterFight = await page.evaluate(() => relicRewardStep);
-    assert.strictEqual(afterFight, null, 'expected no relic panel after a plain Fight win');
+    const afterFight = await page.evaluate(() => artifactRewardStep);
+    assert.strictEqual(afterFight, null, 'expected no artifact panel after a plain Fight win');
     await page.evaluate(() => { dieActionChooseSkip(); });
     await page.evaluate(() => { cardRewardSkip(); });
 
     await page.evaluate(() => { devJumpToSlot('upper', 3); }); // Elite
     await page.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
     await page.evaluate(() => { updateEnemy({ hp: 0 }); checkWinNow(); });
-    const afterElite = await page.evaluate(() => relicRewardStep);
-    assert.strictEqual(afterElite, 'choose', 'expected the relic panel after an Elite win');
-    await page.evaluate(() => { relicRewardSkip(); });
+    const afterElite = await page.evaluate(() => artifactRewardStep);
+    assert.strictEqual(afterElite, 'choose', 'expected the artifact panel after an Elite win');
+    await page.evaluate(() => { artifactRewardSkip(); });
     await page.evaluate(() => { dieActionChooseSkip(); });
     await page.evaluate(() => { cardRewardSkip(); });
 
     await page.evaluate(() => { devJumpToSlot('boss', null); });
     await page.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
     await page.evaluate(() => { updateEnemy({ hp: 0 }); checkWinNow(); });
-    const afterBoss = await page.evaluate(() => relicRewardStep);
-    assert.strictEqual(afterBoss, 'choose', 'expected the relic panel after the act 1 Boss win');
+    const afterBoss = await page.evaluate(() => artifactRewardStep);
+    assert.strictEqual(afterBoss, 'choose', 'expected the artifact panel after the act 1 Boss win');
     await page.close();
   });
 
@@ -311,21 +314,21 @@ async function enterOpeningFight(page) {
   // ITEM F — no empty on-screen text, card pool count
   // ---------------------------------------------------------------
 
-  await runTest('Item F: no card, mod or relic has empty on-screen text, and the card pool has 41 entries', async () => {
+  await runTest('Item F: no card, mod or artifact has empty on-screen text, and the card pool has 48 entries', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
       const cardPoolIds = Object.keys(gameState.config.cardPool);
       const missingCards = cardPoolIds.filter(function(id) { return !getCardEffectText(id); });
       const modIds = Object.keys(gameState.config.mods).filter(function(id) { return id !== 'consecrate'; });
       const missingMods = modIds.filter(function(id) { return !MOD_DESCRIPTION[id]; });
-      const relicIds = Object.keys(gameState.config.relics);
-      const missingRelics = relicIds.filter(function(id) { return !gameState.config.relics[id].text; });
-      return { cardPoolCount: cardPoolIds.length, missingCards: missingCards, missingMods: missingMods, missingRelics: missingRelics };
+      const artifactIds = Object.keys(gameState.config.artifacts);
+      const missingArtifacts = artifactIds.filter(function(id) { return !gameState.config.artifacts[id].text; });
+      return { cardPoolCount: cardPoolIds.length, missingCards: missingCards, missingMods: missingMods, missingArtifacts: missingArtifacts };
     });
-    assert.strictEqual(v.cardPoolCount, 41, 'expected 41 reward-pool cards');
+    assert.strictEqual(v.cardPoolCount, 48, 'expected 48 reward-pool cards');
     assert.deepStrictEqual(v.missingCards, [], 'every reward-pool card must have on-screen text');
     assert.deepStrictEqual(v.missingMods, [], 'every offerable mod must have on-screen text');
-    assert.deepStrictEqual(v.missingRelics, [], 'every relic must have on-screen text');
+    assert.deepStrictEqual(v.missingArtifacts, [], 'every artifact must have on-screen text');
     await page.close();
   });
 

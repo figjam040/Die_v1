@@ -181,7 +181,7 @@ function clearFightScopedState() {
   updatePlayer({ drainNextRound: 0, sealNextRound: [] });
   updateEnemy({ poisonStacks: 0, activeBuffs: [], natOneFiredThisFight: false, patternIndex: 0, chargeStage: null, chargeBroken: false, windupStartHp: null, currentEntry: null, forcedNextIntent: null, wrath: 0, wrathPending: 0, pontifexDoubleAttackThisRound: false, aweStacks: 0 });
   updateTurn({ round: 0, cardsPlayedThisTurn: 0 });
-  updateTurn({ sealedFaces: [] });
+  updateTurn({ sealedFaces: [], secondChanceUsedThisFight: false, enemyRoundSkippedThisTurn: false, gildedFace: null });
   // A Bound grant lasts one fight only, unlike the rest of a face's
   // modData (trigger counts, Zeal's/Cope's accumulators), which is
   // run-scoped and deliberately untouched here.
@@ -237,7 +237,7 @@ function startNewRun() {
     threnodyFace: Math.floor(Math.random() * 18) + 2,
     transcript: [],
     gold: 0,
-    relics: [],
+    artifacts: [],
     shop: null,
     removalPrice: GAME_CONFIG.SHOP.REMOVAL_BASE_PRICE,
     thirdEyeUsedThisAct: false
@@ -572,6 +572,9 @@ function beginFightFromSlot(slot, nodeLabel) {
   log('[RUN] fight begins: ' + slot.label + ' (' + slot.enemy.hp + ' HP)');
   playAudioEvent(slot.label === 'Boss' ? 'fight_start_boss' : slot.label === 'Elite' ? 'fight_start_elite' : 'fight_start_normal');
   appendTranscript('FIGHT act ' + gameState.run.actNumber + ' ' + nodeLabel + ' ' + slot.enemy.name + ' ' + slot.enemy.hp + ' | you ' + gameState.player.hp + '/' + gameState.player.maxHp);
+  // Fires after the fight-scoped reset, so anything it applies to the
+  // enemy survives into round 1 (Plague Bell's poison).
+  callListeners('FIGHT_START', {});
   startFreshTurnPaused();
 }
 

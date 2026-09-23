@@ -171,7 +171,11 @@ gameState = {
     roundTriggerCapLogged: false,  // the cap log line prints at most once per round
     roundSweepPlays: 0,            // fast-sweep timing counter, see BOUND ENGINE
     hoppedFaces: [],               // faces that fired without being the face actually rolled — see THE HOP
-    sealedFaces: []                // this round's active Sealed faces; see LOADED-FACE RULE / SEAL
+    sealedFaces: [],               // this round's active Sealed faces; see LOADED-FACE RULE / SEAL
+    boundTriggeredThisRound: false,// set by mod_dispatch when any Bound face triggers; Watchword reads it
+    enemyRoundSkippedThisTurn: false, // Hourglass's own skip, distinct from the enemy Nat 1's cancel
+    gildedFace: null,              // Gilded Die's paid-for weight, one roll only: { faceNumber, weight }
+    secondChanceUsedThisFight: false  // Second Chance is once per fight; cleared by clearFightScopedState()
   },
 
   run: {
@@ -185,7 +189,7 @@ gameState = {
     act: null,                     // built by buildAct(actNumber) — opening/upper[]/lower[]/boss slots, that act's own numbers baked in
     actNumber: 1,                  // 1-based, GAME_CONFIG.ACTS total. Incremented only when a non-final act's boss is defeated — see ACTS
     threnodyFace: null,            // Threnody's own fixed face for this run, 2-19, rolled once at run creation
-    gold: 0, relics: [], shop: null, removalPrice: 75, thirdEyeUsedThisAct: false  // GOLD, SHOP AND RELICS
+    gold: 0, artifacts: [], shop: null, removalPrice: 75, thirdEyeUsedThisAct: false  // GOLD, SHOP AND ARTIFACTS
   },
 
   // The run record. Distinct from run above (which is fight/run-progress
@@ -212,7 +216,7 @@ gameState = {
     cards: {},
     mods: {},
     cardPool: {},                  // the reward pool — see CARDS
-    relics: {}                     // see GOLD, SHOP AND RELICS
+    artifacts: {}                     // see GOLD, SHOP AND ARTIFACTS
   }
 
 }
@@ -240,7 +244,7 @@ registry is managed only through registerListener() and clearListeners().
 
 START_OF_TURN → ROLL_PHASE → CARD_PHASE → END_PLAYER_TURN → ENEMY_ROLL_PHASE → ENEMY_ACT_PHASE → CHECK_WIN_LOSS → START_OF_TURN
 
-ENEMY_ACT_PHASE returns immediately — before intent, block, or damage are touched — when gameState.turn.enemyAttackCancelledThisTurn is true, set by the enemy's own Nat 1 earlier the same turn.
+ENEMY_ACT_PHASE returns immediately — before intent, block, or damage are touched — when gameState.turn.enemyAttackCancelledThisTurn is true, set by the enemy's own Nat 1 earlier the same turn, or when gameState.turn.enemyRoundSkippedThisTurn is true, set by Hourglass on round 1. Either way the pattern advances as if the intent had resolved; each reports its own wording.
 
 ---
 
@@ -249,7 +253,7 @@ ENEMY_ACT_PHASE returns immediately — before intent, block, or damage are touc
 These are the names registerListener() is designed around. The phase names in PHASE ORDER (START_OF_TURN, ROLL_PHASE, CARD_PHASE, END_PLAYER_TURN, ENEMY_ROLL_PHASE, ENEMY_ACT_PHASE, CHECK_WIN_LOSS) are also, in practice, real dispatchable hooks: runPhase(phase) calls callListeners(phase) unconditionally near its top, once per phase visit, before that phase's own if-branch runs — so any registerListener() call using one of the seven PHASE_ORDER strings as its hook fires at that phase's boundary, ahead of the phase's own logic. END_PLAYER_TURN specifically is exercised today only by Vigil, and fires before that phase's own hand-to-discard logic, which is what lets it read hand size pre-discard.
 
 Player-side hooks:
-BLANK_ROLL — {} — a genuinely blank player roll, and also the player's own Nat 1 once it has already fired this fight
+BLANK_ROLL — { outsideRoll } — a genuinely blank player roll, and also the player's own Nat 1 once it has already fired this fight. outsideRoll: true marks a blank a card reached for rather than rolled (triggerFaceOutsideRoll()) — the one thing Alms reads to leave those alone
 MOD_TRIGGER — { modId, faceNumber } — a real mod trigger, from either a normal single-face roll or Nat 20's loop
 NAT_TWENTY — {} — player rolls face 20
 NAT_ONE — {} — player rolls face 1
@@ -257,6 +261,7 @@ ON_CARD_PLAY — { card }
 ON_DAMAGE_DEALT — { amount, source }
 ON_BLOCK_GENERATED — { amount, source }
 ON_HEAL — { amount }
+FIGHT_START — {} — dispatched once by beginFightFromSlot(), after the fight-scoped reset and before the first START_OF_TURN; Plague Bell is its only listener today
 
 Enemy-side hooks:
 ENEMY_BUFF_TRIGGER — { buffId, faceNumber } — a loaded enemy buff face triggers, from a normal roll or the enemy's own Nat 20 loop
@@ -355,7 +360,7 @@ Cards live in config.cards. Not config.mods.
 
 # CARDS
 
-Forty-four cards defined in total: the three Ring 0 cards the run always starts with, plus the reward pool (config.cardPool, 41 entries) the reward screen and shop both draw offers from. Both live in config.cards; cardPool holds references, not copies.
+Fifty-one cards defined in total: the three Ring 0 cards the run always starts with, plus the reward pool (config.cardPool, 48 entries) the reward screen and shop both draw offers from. Both live in config.cards; cardPool holds references, not copies.
 
 Ring 0 — the starting deck (5 Strike, 4 Ward, 1 Rite, 10 cards):
 Strike — 1 soul, attack — 5 damage.
@@ -456,15 +461,17 @@ Bound mods/cards: Unison (6 damage), Accord (10 block), Kinship (4 poison) are p
 
 function rollDie(faces) {
   const pool = [];
+  const gilded = gameState.turn.gildedFace;
   faces.forEach(face => {
-    for (let i = 0; i < face.weight; i++) { pool.push(face); }
+    const extra = (gilded && gilded.faceNumber === face.number) ? gilded.weight : 0;
+    for (let i = 0; i < face.weight + extra; i++) { pool.push(face); }
   });
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
 Default: GAME_CONFIG.DIE_SIZE.PLAYER faces (20) weight 1 = 5% each.
 Strengthen to weight 2 = that face appears twice in pool.
-This function never changes. Only weight values change.
+Only weight values change. gameState.turn.gildedFace is the one exception and the only ticket source outside face.weight: Gilded Die's paid-for weight, live for exactly one roll and never written onto the face (see GOLD, SHOP AND ARTIFACTS).
 
 Strengthen may target face GAME_CONFIG.DIE_SIZE.PLAYER (20), in addition to any loaded face. Face 1 is never targetable — the Strengthen face picker (rendering.js) excludes number 1 explicitly. Face 20 never gains a mod; Strengthen only adds weight to it, raising how often Nat 20 itself comes up.
 
@@ -486,11 +493,11 @@ Classes live in config.classes. Only one class exists in V1.
 
 classId in player state is a lookup key for config.classes[classId].
 
-onBlankRoll: generateBlock(2) via dealBlock(2, 'blank_face'), fires ON_BLOCK_GENERATED.
+onBlankRoll(data): generateBlock(2) via dealBlock(2, 'blank_face'), fires ON_BLOCK_GENERATED — unless Alms replaces it outright (almsReplacesBlankRoll(data), see GOLD, SHOP AND ARTIFACTS).
 
 onNatTwenty (Nat 20): every loaded face on the player die triggers this turn, ascending face number order. Not capped, not once per fight — it fires in full every single time face 20 comes up. Face 1 and face 20 are excluded (their modIds are the NAT_ONE/NAT_TWENTY stubs, not real mods). Each qualifying face fires through callListeners('MOD_TRIGGER', ...) — the same dispatch a single rolled mod face already uses, so there is no second trigger path. Loop-safe because no mod in the pool re-rolls the die.
 
-onNatOne (Nat 1 — Penitence): fires once per fight, gated on gameState.player.natOneFiredThisFight. First time: sets penitenceActive: true and penitenceTurnsRemaining: PENITENCE_TURNS (3), and logs onset. The actual 1-soul loss happens at each of the next three START_OF_TURNs, immediately after the soul reset, floored at 0; Penitence expires automatically after the third tick. Every subsequent face 1 rolled this fight instead dispatches BLANK_ROLL directly — an ordinary blank roll, identical in every way, with no distinguishing tag.
+onNatOne (Nat 1 — Penitence): fires once per fight, gated on gameState.player.natOneFiredThisFight. Bone Counter takes its gold ahead of everything below, and Penitence never arms. First time otherwise: sets penitenceActive: true and penitenceTurnsRemaining: PENITENCE_TURNS (3), and logs onset. The actual 1-soul loss happens at each of the next three START_OF_TURNs, immediately after the soul reset, floored at 0; Penitence expires automatically after the third tick. Every subsequent face 1 rolled this fight instead dispatches BLANK_ROLL directly — an ordinary blank roll, identical in every way, with no distinguishing tag.
 
 anchorModId references consecrate, built in config.mods — see MODS. The Ordained's die starts with exactly one loaded face: Consecrate on face 10. That starting face is Strengthen-eligible like any other loaded face, and Consecrate is excluded from the reward pool for that reason.
 
@@ -564,7 +571,7 @@ EVENT SLOT (F44): the lower lane's slot index 3 (opposite the upper lane's Elite
 
 Scaling — GAME_CONFIG.ACT_HP_MULTIPLIER and ACT_INTENT_MULTIPLIER, indexed by actNumber-1, [1.0, 1.4, 1.9] and [1.0, 1.2, 1.45]: every enemy's hp/intentMin/intentMax is Math.ceil(base × that act's multiplier); the enemy buff's poison amount rides the intent multiplier the same way (3/4/5 stacks across acts 1/2/3); the enemy Nat 1 self-poison stays flat and unscaled at 5. Act 1's multipliers are both 1.0. Die face layouts do not change per act.
 
-Transition — a boss win's outcome depends on which act it ends (runPhase()'s win branch): acts 1/2 get the same reward flow any fight win gets (gold, a relic reward, a die reward, a card reward), then advanceRun() increments actNumber, resets thirdEyeUsedThisAct and rebuilds run.act for the next act; player hp/die/ownedCards untouched, no heal between acts (D-27). Act 3 (final): true VICTORY (D-22) — no reward, no gold.
+Transition — a boss win's outcome depends on which act it ends (runPhase()'s win branch): acts 1/2 get the same reward flow any fight win gets (gold, an artifact reward, a die reward, a card reward), then advanceRun() increments actNumber, resets thirdEyeUsedThisAct and rebuilds run.act for the next act; player hp/die/ownedCards untouched, no heal between acts (D-27). Act 3 (final): true VICTORY (D-22) — no reward, no gold.
 
 UI: the act number is shown on both the map screen and the fight screen (#actStamp), from gameState.run.actNumber.
 
@@ -572,17 +579,19 @@ UI: the act number is shown on both the map screen and the fight screen (#actSta
 
 # THE FONT (event slot, id 'font')
 
-openEventScreen() opens #eventScreenPanel: fixed flavour text, a ROLL button, the player's die as one row. ROLL (eventRoll()) picks a face via rollWithRelics() (D-21, weights included) but never passes it to resolvePlayerRoll() — no listener dispatch, no Bound, no Nat sweep, roll sound only; written straight to turn.rolledFaceNumber/rollOutcome so it lights on the face row (cleared next START_OF_TURN and on leaving the event). Outcome, then CONTINUE (closeEventScreen()) back to the map: Nat 20 opens the normal die reward panel (openDieActionScreen('event'), no card reward after) plus EVENT.NAT_TWENTY_GOLD gold; a loaded face gains 1 weight (strengthenFace()); a blank grants EVENT.BLANK_GOLD gold; Nat 1 costs EVENT.NAT_ONE_HP_LOSS HP, floored at 1. Third Eye applies to fight rolls only, never here. Log: `[EVENT] font: rolled N, outcome ...`.
+openEventScreen() opens #eventScreenPanel: fixed flavour text, a ROLL button, the player's die as one row. ROLL (eventRoll()) picks a face via rollWithArtifacts() (D-21, weights included) but never passes it to resolvePlayerRoll() — no listener dispatch, no Bound, no Nat sweep, roll sound only; written straight to turn.rolledFaceNumber/rollOutcome so it lights on the face row (cleared next START_OF_TURN and on leaving the event). Outcome, then CONTINUE (closeEventScreen()) back to the map: Nat 20 opens the normal die reward panel (openDieActionScreen('event'), no card reward after) plus EVENT.NAT_TWENTY_GOLD gold; a loaded face gains 1 weight (strengthenFace()); a blank grants EVENT.BLANK_GOLD gold; Nat 1 costs EVENT.NAT_ONE_HP_LOSS HP, floored at 1. Third Eye applies to fight rolls only, never here. Log: `[EVENT] font: rolled N, outcome ...`.
 
 ---
 
-# GOLD, SHOP AND RELICS
+# GOLD, SHOP AND ARTIFACTS
 
 GOLD: a fight win grants gold within GAME_CONFIG.GOLD_REWARDS (Fight 12-20, Elite 30-40, Boss 60 flat); the final act's boss grants none (D-22). #goldValue reads gameState.run.gold.
 
-SHOP (GAME_CONFIG.SHOP): opens after every rite, in #shopPanel. Stock (gameState.run.shop, built once per visit): 3 cards at the Elite tier split, one Strengthen (opens the real face picker, returns to the shop), one removal at gameState.run.removalPrice (starts REMOVAL_BASE_PRICE, +REMOVAL_PRICE_STEP/purchase, run-scoped). Unaffordable disabled; Leave is free.
+SHOP (GAME_CONFIG.SHOP): opens after every rite, in #shopPanel. Stock (gameState.run.shop, built once per visit): 3 cards at the Elite tier split, one artifact at ARTIFACT_PRICE (150) drawn from the artifacts this run does not hold, one Strengthen (opens the real face picker, returns to the shop), one removal at shopRemovalPrice() (gameState.run.removalPrice, starting REMOVAL_BASE_PRICE, +REMOVAL_PRICE_STEP/purchase, run-scoped). Every price but the removal runs through shopPriceWithArtifacts() (cards-mods.js). Unaffordable disabled; Leave is free.
 
-RELICS: gameState.run.relics, max RELIC_MAX (5), defs in gameState.config.relics. #relicRewardPanel (pick 1 of 3, Skip allowed) opens after an Elite win and a non-final Boss win, before the die reward. Third Eye (thirdEyeChooseFace()) forces one chosen face per act. Loaded Die (rollWithRelics(), the roll path's one rollDie() site) rolls twice, higher stands. Tolling Bell (nextPhase()) triggers a second face after the first if chargeStage is 'windup'/'release'.
+ARTIFACTS (F45): gameState.run.artifacts, max ARTIFACT_MAX (8), defs in gameState.config.artifacts, thirteen of them; every amount they use lives in GAME_CONFIG.ARTIFACTS. #artifactRewardPanel (pick 1 of 3, Skip allowed) opens after an Elite win and a non-final Boss win, before the die reward, and draws its 3 from the artifacts not held. Each one with a hook of its own registers a permanent listener in init() and gates itself on hasArtifact(); the rest gate at the roll path or shop price they act on, where there is no hook to sit on.
+
+Third Eye (thirdEyeChooseFace()) forces one chosen face per act. Loaded Die (rollWithArtifacts(), the roll path's one rollDie() site) rolls twice, higher stands. Tolling Bell (nextPhase()) triggers a second face after the first if chargeStage is 'windup'/'release'. Tithe Box (NAT_TWENTY) pays TITHE_BOX_GOLD per Nat 20. Merchant's Seal lowers every shop price a quarter, rounded down, and freezes removal at REMOVAL_BASE_PRICE while held. Leaden Face makes dieActionPickStrengthenFace() call strengthenFace() twice — Ordain and Elevation are untouched. Reliquary Chain (MOD_TRIGGER, only the face actually rolled) triggers the loaded face directly above a rolled Bound face through triggerFaceOutsideRoll(), never face 20, counting toward ROUND_TRIGGER_CAP. Plague Bell (FIGHT_START) poisons the enemy for half its loaded faces, rounded down, faces 1/10/20 excluded. Alms (BLANK_ROLL) replaces the blank passive with ALMS_SOUL soul — almsReplacesBlankRoll() is the one predicate it and onBlankRoll both read, and an outside-roll blank (Threnody, Reverberation, Refrain) still gives its block. Hourglass (ENEMY_ACT_PHASE) sets turn.enemyRoundSkippedThisTurn on round 1: the intent is skipped, the pattern advances, the enemy die still rolls. Second Chance (secondChanceReroll(), #secondChanceBtn) rerolls once a fight — the first face never resolves. Gilded Die (gildedDiePayForFace(), #gildedDieBtn) pays GILDED_DIE_PRICE for GILDED_DIE_WEIGHT extra tickets on one face for one roll, held in turn.gildedFace and cleared by resolvePlayerRoll(). Bone Counter takes BONE_COUNTER_GOLD instead of arming Penitence, when the gold is there.
 
 ---
 
@@ -605,7 +614,7 @@ Mute: devMuteAudioCheckbox (index.html, dev chrome) sets the module-level audioM
 Player: block→0, soul→maxSoul, deck/hand/discard reshuffled from ownedCards, poisonStacks→0, penitenceActive→false, penitenceTurnsRemaining→0, natOneFiredThisFight→false. hp carries over.
 Enemy: hp→maxHp, poisonStacks→0, activeBuffs→[], natOneFiredThisFight→false. die is overwritten from the entering slot's own static config on next fight entry (beginFightFromSlot()), not reset here.
 Die (player's): weights and mods unchanged. Persists between fights.
-Turn: phase→'START_OF_TURN', cardsPlayedThisTurn→0, round→0.
+Turn: phase→'START_OF_TURN', cardsPlayedThisTurn→0, round→0, sealedFaces→[], secondChanceUsedThisFight→false, enemyRoundSkippedThisTurn→false, gildedFace→null.
 Registry: no clearListeners('fight') call exists anywhere — no listener has ever registered with clearOn: 'fight'. Every fight-scoped field above is reset explicitly, field by field, in clearFightScopedState()/resetFight() (run-and-map.js), not by a registry sweep.
 Run: status→'active'.
 Run record: entirely untouched by a fight reset — clearFightScopedState() never mentions gameState.runRecord. See RUN RECORD.
@@ -700,7 +709,7 @@ Log: every event and calculation. Prefixed [PHASE] [MOD] [CARD] [DAMAGE] [BLOCK]
 
 The fight screen is designed for 1600 by 900 and fits a 16:9 window with no scrollbar. The play column (.left-col) is centred, max-width 1600px, min-width min(1280px, 100%), padding 16px 24px 14px. Colour is identity and motion is state: a face's hue never changes, a flash or hold says what just happened, and the screen shows state, not conclusions (D-30). Every number, name, weight, trigger count and state is either visible or readable from a native title on hover — information never decreases.
 
-ACTION BAR — div.top-bar, 58px, outside .app, three groups. Left: #buildStamp, and under it #goldValue (84 by 26px, reads GOLD then gameState.run.gold when that field exists, an em dash until it does — no gold mechanic exists in V1) beside #relicRow's five empty 26px slots. Centre, var(--game-font) 13px: #actStamp as ACT N, ROUND with #roundValue, #phaseBadge in --phase-color, #resultBanner. Right, 30px buttons: #devChromeToggleBtn, #copyRunRecordBtn, #logToggleBtn, #startGameBtn.
+ACTION BAR — div.top-bar, 58px, outside .app, three groups. Left: #buildStamp, and under it #goldValue (84 by 26px, reads GOLD then gameState.run.gold when that field exists, an em dash until it does — no gold mechanic exists in V1) beside #artifactRow's eight 26px slots, each showing a held artifact's name and carrying its text as a title. Centre, var(--game-font) 13px: #actStamp as ACT N, ROUND with #roundValue, #phaseBadge in --phase-color, #resultBanner. Right, 30px buttons: #devChromeToggleBtn, #copyRunRecordBtn, #logToggleBtn, #startGameBtn.
 
 ART BAND — the middle band of #fightScreen, taking the remaining height (minimum 220px). #playerArtBox and #enemyArtBox are 340 by 220px boxes, each holding an img (#playerArtImg/#enemyArtImg, src art/ordained.png and art/ + gameState.enemy.name.toLowerCase() + .png) and a text label (#playerArtLabel/#enemyArtLabel) that swap on the img's own load/error event — no art files ship in this build, so the label is what actually shows. Directly left of #enemyArtBox: #enemyIntentIcon, a 40px inline SVG stroked --nat — a sword for Attack, a bolt for Charge, a slashed bolt for Release, a drop for Afflict, the bolt again for Broken — whose aria-label carries the kind word; #enemyIntentValue beside it shows only the number (BROKEN, or the enemy Nat's own wording, when there is no number). Both carry the same full sentence in a .hover-tip child (game-font box, opens downward, the same pattern every die row's hover uses) instead of a native title — neither element carries a title attribute. #enemyIntentLabel under both carries a Charge wind-up's "break N / M".
 
@@ -714,7 +723,7 @@ DIE COLUMN (now the face row) — #playerDieList, the bottom band's middle colum
 
 DIE ICONS — #playerDieIcon in the bottom band's left column: a 104px inline SVG stroked --text, shaped by GAME_CONFIG.DIE_SIZE (20 a hexagon d20, 12 a pentagon, 6 a square, each with an inner shape and spokes), the rolled face number centred inside in --player-mod for a mod, --nat for a Nat, --blank for a blank, empty before the roll. The number itself sits on a small #000000 backing (`.die-icon-number-text`, 4px padding each side, 26px font) so the die shape's own inner lines stop short of the digits rather than crossing them. #enemyDieIcon mirrors it in the right column, stroked --enemy-mod, sized from that enemy's own die, its own number on the same black backing; beside it the buff that triggered in upper case, or NAT 20 / NAT 1 in --nat, and the die size as d20 / d12 / d6 in --muted. A normal with no die shows an empty 104px outline (D-29).
 
-ROLL STAGE — #rollHero, one line above the face row: #rollResultNumber carries the signed value the roll produced, #rollResultLabel the mod name in upper case in --player-mod with the run trigger count as ↻N in --muted (+13 CONSECRATE ↻6). A two-mod face prints both names and both values. A blank roll reads +2 BLANK, a Nat 20 reads NAT 20 and a Nat 1 reads NAT 1 PENITENCE, both in --nat; before the roll, AWAITING ROLL in --muted. The value is taken from the number that mod's own log line already reports — nothing is recomputed.
+ROLL STAGE — #rollHero, one line above the face row: #rollResultNumber carries the signed value the roll produced, #rollResultLabel the mod name in upper case in --player-mod with the run trigger count as ↻N in --muted (+13 CONSECRATE ↻6). A two-mod face prints both names and both values. A blank roll reads +2 BLANK, a Nat 20 reads NAT 20 and a Nat 1 reads NAT 1 PENITENCE, both in --nat; before the roll, AWAITING ROLL in --muted. The value is taken from the number that mod's own log line already reports — nothing is recomputed. The artifact controls that act before the roll sit on this same strip, each shown only while its own window is open: #thirdEyeBtn, #secondChanceBtn (REROLL) and #gildedDieBtn, the last two added with the artifact pass. Third Eye and Gilded Die both pick their face by a click on the real die row, the same toggle-then-click pattern.
 
 POST-FIGHT OVERLAY — #dieActionPanel, #cardRewardPanel, #riteScreenPanel and #resultBanner keep their ids and behaviour. The die action panel renders the same horizontal twenty-square row at every step, the opening Load / Strengthen / Skip menu included, with the same hover text, so the player sees one die. A panel opening below takes the art band's slack first; once that is gone the play column scrolls.
 
@@ -742,22 +751,32 @@ Stage 2.68 (BUILD 141) — three items: the poison answer (block-vs-poison, F33)
 Stage 2.69 (BUILD 142) — seven items, all kept: the Seal-never-wears-off fix, act 1 HP by position, all fifteen designed enemies (F36/F37), the enemy Nat sound/visual (KI-22 answered), Hosanna and Threnody reworked (F38). 111/111 facts, 40/40 mods, 22/22 build141, 22/22 new build142 tests.
 Stage 2.70 (BUILD 143) — anti-bloat: comment rule applied to js/ and index.html, CLAUDE.md trimmed, stray files removed, guardrail tests added. No behaviour change. 111/111 facts, 40/40 mods, 22/22 build141, 22/22 build142, 19/19 guardrails.
 Stage 2.71 (BUILD 144) — skin pass: black palette, Press Start 2P/VT323 fonts, log toggle default closed, phase badge no underscores, stepped motion; no number/mechanic/layout change. 111/111 facts, 40/40 mods, 22/22 build141, 22/22 build142, 19/19 guardrails, 13/13 build144.
-Stage 2.72 (BUILD 145) — layout pass: horizontal face row 1 to 20, die icons, intent icon, art/gold/relic placeholders, portrait cards, map restyle. No number or mechanic changed. 111 facts, 40 mods, 22 build141, 22 build142, 19 guardrails, 13 build144, 23 build145.
+Stage 2.72 (BUILD 145) — layout pass: horizontal face row 1 to 20, die icons, intent icon, art/gold/artifact placeholders, portrait cards, map restyle. No number or mechanic changed. 111 facts, 40 mods, 22 build141, 22 build142, 19 guardrails, 13 build144, 23 build145.
 Stage 2.73 (BUILD 146) — CLAUDE.md trim, window scaling, End Turn/hand-card resize, intent icon hover sentence, character art loading. No number or mechanic changed. 111 facts, 40 mods, 22/22 build141/142, 19 guardrails, 13 build144, 23 build145, 11 build146.
 Stage 2.74 (BUILD 147) — intent hover box, console filter narrowed to art/, blank rolled face holds like a loaded one, die icon number gets a black backing. No number or mechanic changed. 111 facts, 40 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9 build144-147.
 Stage 2.75 (BUILD 148) — KI-28 Charge break now counts the release round's poison tick, run transcript, log Play/All views, log full screen, zoom-block check (none found). 111 facts, 40 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11 build144-148.
 Stage 2.76 (BUILD 149) — the awe status, Dread, Genuflect, Kneel, Compline, Tremendum, Mysterium, card art loading. 111 facts, 42 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11/15 build144-149.
-Stage 2.77 (BUILD 150) — break numbers -4, Bulwark, gold, shop after every rite, three relics (Third Eye/Loaded Die/Tolling Bell), KI-29. 111 facts, 42 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11/15 build144-149, 9/9 build150.
+Stage 2.77 (BUILD 150) — break numbers -4, Bulwark, gold, shop after every rite, three artifacts (Third Eye/Loaded Die/Tolling Bell), KI-29. 111 facts, 42 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11/15 build144-149, 9/9 build150.
 Stage 2.78 (BUILD 151) — Purify die action, event slot (The Font). 111 facts, 42 mods, 18/19 guardrails, 9/9 build150, 11/11 new build151; build141/142 stale at act.lower[3], unfixed (out of scope).
 Stage 2.79 (BUILD 152) — KI-30: build142's act.lower[3] fixed to the event/font fact, one shared CLAUDE.md byte-limit constant, .claude gitignored and excluded from the stray-files check. No game change. 111 facts, 42 mods, 22/22 build141/142, 19/19 guardrails, 9/9 build150, 11/11 build151.
+Stage 2.80 (BUILD 153) — relics renamed artifacts (8 slots, ARTIFACT_MAX 8), ten new artifacts, artifacts sold in the shop at 150, seven new cards (pool 48). 111 facts, 42 mods, 19 guardrails, 9/9 build150, 11/11 build151, 23/23 new build153.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.79 (BUILD 152) — KI-30: make npm test green following the previous build's event-slot change, no game change. (1) tests/build142.test.js's four assertions that read act.lower[3] as a fight now assert what the previous build actually made true: act.lower[3].type is 'event' and .id is 'font' in every act, with the remaining lower-lane fight assertions (by position) unchanged. (2) tests/shared-constants.js exports CLAUDE_MD_MAX_BYTES (80000); tests/guardrails.test.js and tests/build146.test.js both read the size limit from it instead of two independent literals (72000 vs 80000) that could drift apart. (3) .claude/ added to .gitignore (was untracked, not yet ignored); tests/guardrails.test.js's repo-root stray-files check now skips any entry git itself would ignore (via `git check-ignore`) instead of naming folders one at a time.
+Stage 2.80 (BUILD 153) — four items, all kept.
 
-Verification: guardrails 19/19, facts 111/111, mods 42/42, build141 22/22, build142 22/22 (was 18/22), build144-151 unchanged from the previous build's own counts.
+(A) The rename. Every relic is an artifact: run.artifacts, config.artifacts, hasArtifact(), rollWithArtifacts(), ARTIFACT_MAX, the artifactReward* panel and its functions, #artifactRow/.artifact-slot/#artifactRewardPanel, the [ARTIFACT] log prefix and transcript line, hover text, test names and this file. The three existing artifacts keep their ids and effects; the row grew from five slots to eight, ARTIFACT_MAX 5 to 8. tests/build153.test.js fails if the old word reappears under js/, index.html or tests/.
+
+(B) Ten artifacts, thirteen in all, defs in config.artifacts, amounts in GAME_CONFIG.ARTIFACTS: Tithe Box, Merchant's Seal, Leaden Face, Reliquary Chain, Plague Bell, Alms, Hourglass, Second Chance, Gilded Die, Bone Counter. Each with a hook of its own registers a permanent listener in init() and gates on hasArtifact(); the other four gate at the shop price or roll-path call site they act on. New: the FIGHT_START hook (beginFightFromSlot(), Plague Bell's), turn.boundTriggeredThisRound/enemyRoundSkippedThisTurn/gildedFace/secondChanceUsedThisFight, #secondChanceBtn and #gildedDieBtn on the roll strip, and rollDie()'s one read of turn.gildedFace.
+
+(C) Artifacts in the shop: one slot at SHOP.ARTIFACT_PRICE (150), drawn from the artifacts not held, discounted by Merchant's Seal like every price but the removal. The reward panel already drew from the unheld; with thirteen it offers three until eleven are held.
+
+(D) Seven cards, pool 41 to 48 (tiers 25/16/7): Venom, Ballast, Refrain, Second Sight, Cadence, Watchword, Blight Weight.
+
+Verification: build153 23/23, facts 111/111, mods 42/42, build150 9/9, build151 11/11, guardrails 19/19, the rest unchanged. build150's Bulwark and build149's Compline block measurements now clear the turn's listeners first: a Consecrate roll (3 block per card played) made each fail about one run in twenty, and both did on this build's own npm test runs. Test-only; no game change.
 
 Full write-ups for earlier builds: HISTORY.md.
+

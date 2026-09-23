@@ -103,10 +103,14 @@ function markFaceHopped(faceNumber) {
 
 // ---------- ROLL SYSTEM ----------
 
+// turn.gildedFace is the one ticket source outside face.weight, live for
+// the single roll it was bought for (resolvePlayerRoll() clears it).
 function rollDie(faces) {
   const pool = [];
+  const gilded = gameState.turn.gildedFace;
   faces.forEach(face => {
-    for (let i = 0; i < face.weight; i++) { pool.push(face); }
+    const extra = (gilded && gilded.faceNumber === face.number) ? gilded.weight : 0;
+    for (let i = 0; i < face.weight + extra; i++) { pool.push(face); }
   });
   log('[ROLL] pool size: ' + pool.length);
   return pool[Math.floor(Math.random() * pool.length)];
@@ -114,30 +118,62 @@ function rollDie(faces) {
 
 // Loaded Die, threaded through the one place the real roll path calls
 // rollDie() — rollDie() itself is untouched (WEIGHTED ROLL ALGORITHM).
-function rollWithRelics(faces) {
-  if (!hasRelic('loaded_die')) { return rollDie(faces); }
+function rollWithArtifacts(faces) {
+  if (!hasArtifact('loaded_die')) { return rollDie(faces); }
   const a = rollDie(faces);
   const b = rollDie(faces);
   const chosen = b.number > a.number ? b : a;
-  log('[RELIC] Loaded Die: rolled ' + a.number + ' and ' + b.number + ', ' + chosen.number + ' stands');
+  log('[ARTIFACT] Loaded Die: rolled ' + a.number + ' and ' + b.number + ', ' + chosen.number + ' stands');
   return chosen;
 }
 
 // Third Eye — mirrors forcePlayerRoll() (dev-tools.js) but player-facing,
-// gated on the relic and its once-per-act use instead of dev chrome.
+// gated on the artifact and its once-per-act use instead of dev chrome.
 function thirdEyeChooseFace(faceNumber) {
-  if (!hasRelic('third_eye')) { return; }
+  if (!hasArtifact('third_eye')) { return; }
   if (gameState.run.thirdEyeUsedThisAct) { return; }
   if (gameState.turn.phase !== 'ROLL_PHASE' || playerRollResolved) { return; }
   playerRollResolved = true;
   updateRun({ thirdEyeUsedThisAct: true });
   const face = gameState.die.faces[faceNumber - 1];
-  log('[RELIC] Third Eye: face ' + faceNumber + ' chosen');
+  log('[ARTIFACT] Third Eye: face ' + faceNumber + ' chosen');
   resolvePlayerRoll(face);
+}
+
+// Second Chance — one reroll a fight. The first face is thrown away
+// unresolved, so it never triggers; the second resolves as a roll.
+function secondChanceReroll() {
+  if (!hasArtifact('second_chance')) { return; }
+  if (gameState.turn.secondChanceUsedThisFight) { return; }
+  if (gameState.turn.phase !== 'ROLL_PHASE' || playerRollResolved) { return; }
+  playerRollResolved = true;
+  updateTurn({ secondChanceUsedThisFight: true });
+  const discarded = rollWithArtifacts(gameState.die.faces);
+  const face = rollWithArtifacts(gameState.die.faces);
+  log('[ARTIFACT] Second Chance: face ' + discarded.number + ' rerolled into face ' + face.number);
+  resolvePlayerRoll(face);
+}
+
+// Gilded Die — buys one face extra tickets for the next roll only; the
+// weight lives in gameState.turn, never on the face.
+function gildedDiePayForFace(faceNumber) {
+  if (!hasArtifact('gilded_die')) { return false; }
+  const price = GAME_CONFIG.ARTIFACTS.GILDED_DIE_PRICE;
+  if (gameState.run.gold < price) { return false; }
+  if (gameState.turn.phase !== 'ROLL_PHASE' || playerRollResolved) { return false; }
+  if (gameState.turn.gildedFace) { return false; }
+  const weight = GAME_CONFIG.ARTIFACTS.GILDED_DIE_WEIGHT;
+  updateRun({ gold: gameState.run.gold - price });
+  updateTurn({ gildedFace: { faceNumber: faceNumber, weight: weight } });
+  log('[ARTIFACT] Gilded Die: face ' + faceNumber + ' gains ' + weight + ' weight for this roll, ' + price + ' gold paid');
+  return true;
 }
 
 function resolvePlayerRoll(face) {
   log('[ROLL] face: ' + face.number + ' modId: ' + face.modId);
+
+  // Gilded Die's extra tickets were bought for the roll that just landed.
+  if (gameState.turn.gildedFace) { updateTurn({ gildedFace: null }); }
 
   let rollOutcome;
   if (face.modId === 'NAT_TWENTY') {
@@ -358,7 +394,8 @@ function triggerFaceOutsideRoll(faceNumber) {
   } else {
     updateTurn({ roundTriggerCount: gameState.turn.roundTriggerCount + 1 });
     log('[TRIGGER] face ' + faceNumber + ' triggered outside a roll (blank)');
-    callListeners('BLANK_ROLL', {});
+    // outsideRoll keeps Alms off a blank a card reached for.
+    callListeners('BLANK_ROLL', { outsideRoll: true });
   }
   return true;
 }

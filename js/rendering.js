@@ -107,7 +107,7 @@ function refreshInspector() {
   renderResultBanner();
   renderDieActionPanel();
   renderCardRewardPanel();
-  renderRelicRewardPanel();
+  renderArtifactRewardPanel();
   renderRiteScreen();
   renderEventScreen();
   renderShopPanel();
@@ -123,7 +123,7 @@ function refreshInspector() {
   document.getElementById('devBeginRollBtn').disabled = !(gameState.run.screen === 'fight' && gameState.run.status === 'active' && gameState.turn.phase === 'START_OF_TURN');
   document.getElementById('devRestartFightBtn').disabled = !(gameState.run.screen === 'fight' && gameState.run.status === 'active' && gameState.run.outcome === 'active');
   document.getElementById('devSkipToDieActionBtn').disabled = !(gameState.run.status === 'active' && gameState.run.outcome === 'active');
-  document.getElementById('endTurnBtn').disabled = !(gameState.run.status === 'active' && gameState.turn.phase === 'CARD_PHASE' && dieActionStep === null && cardRewardStep === null && riteStep === null && relicRewardStep === null && shopStep === null);
+  document.getElementById('endTurnBtn').disabled = !(gameState.run.status === 'active' && gameState.turn.phase === 'CARD_PHASE' && dieActionStep === null && cardRewardStep === null && riteStep === null && artifactRewardStep === null && shopStep === null);
   // End Turn belongs to the fight screen only — hidden entirely on the
   // map, not just disabled-but-visible.
   document.getElementById('endTurnBtn').style.display = (gameState.run.screen === 'fight') ? '' : 'none';
@@ -561,6 +561,17 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       });
     }
 
+    // Gilded Die — the same click-a-face-row pattern, buying that face
+    // extra weight for the coming roll instead of choosing it outright.
+    if (containerId === 'playerDieList' && gildedDieChoosing) {
+      const faceNumber = face.number;
+      btn.addEventListener('click', function() {
+        gildedDieChoosing = false;
+        gildedDiePayForFace(faceNumber);
+        refreshInspector();
+      });
+    }
+
     const modWrap = document.createElement('div');
     modWrap.className = 'die-mod-wrap';
 
@@ -985,11 +996,25 @@ function renderArtBoxes() {
 function renderThirdEyeButton() {
   const btn = document.getElementById('thirdEyeBtn');
   if (!btn) return;
-  const eligible = hasRelic('third_eye') && !gameState.run.thirdEyeUsedThisAct &&
+  const eligible = hasArtifact('third_eye') && !gameState.run.thirdEyeUsedThisAct &&
     gameState.turn.phase === 'ROLL_PHASE' && !playerRollResolved;
   btn.style.display = eligible ? '' : 'none';
   btn.classList.toggle('choosing', thirdEyeChoosing);
   if (!eligible) { thirdEyeChoosing = false; }
+
+  const rerollBtn = document.getElementById('secondChanceBtn');
+  if (rerollBtn) {
+    rerollBtn.style.display = (hasArtifact('second_chance') && !gameState.turn.secondChanceUsedThisFight &&
+      gameState.turn.phase === 'ROLL_PHASE' && !playerRollResolved) ? '' : 'none';
+  }
+
+  const gildedBtn = document.getElementById('gildedDieBtn');
+  if (!gildedBtn) return;
+  const gildedEligible = hasArtifact('gilded_die') && gameState.run.gold >= GAME_CONFIG.ARTIFACTS.GILDED_DIE_PRICE &&
+    !gameState.turn.gildedFace && gameState.turn.phase === 'ROLL_PHASE' && !playerRollResolved;
+  gildedBtn.style.display = gildedEligible ? '' : 'none';
+  gildedBtn.classList.toggle('choosing', gildedDieChoosing);
+  if (!gildedEligible) { gildedDieChoosing = false; }
 }
 
 function renderTopBarTokens() {
@@ -997,15 +1022,15 @@ function renderTopBarTokens() {
   if (!goldEl) return;
   goldEl.textContent = 'GOLD ' + (gameState.run.gold === undefined ? '—' : gameState.run.gold);
 
-  const relicRow = document.getElementById('relicRow');
-  if (!relicRow) return;
-  const slots = relicRow.querySelectorAll('.relic-slot');
+  const artifactRow = document.getElementById('artifactRow');
+  if (!artifactRow) return;
+  const slots = artifactRow.querySelectorAll('.artifact-slot');
   slots.forEach(function(slot, index) {
-    const relicId = gameState.run.relics[index];
-    if (relicId && gameState.config.relics[relicId]) {
-      const relic = gameState.config.relics[relicId];
-      slot.textContent = relic.name;
-      slot.title = relic.name + ' — ' + relic.text;
+    const artifactId = gameState.run.artifacts[index];
+    if (artifactId && gameState.config.artifacts[artifactId]) {
+      const artifact = gameState.config.artifacts[artifactId];
+      slot.textContent = artifact.name;
+      slot.title = artifact.name + ' — ' + artifact.text;
     } else {
       slot.textContent = '';
       slot.title = '';
@@ -1129,7 +1154,14 @@ const CARD_EFFECT_TEXT = {
   kneel: 'applied 3 stacks of awe',
   compline: '4 block, applied 2 stacks of awe',
   tremendum: '4 damage + 2 per stack of awe on the enemy, max 12',
-  mysterium: '3 damage per stack of awe on the enemy, max 12, stacks of awe unchanged'
+  mysterium: '3 damage per stack of awe on the enemy, max 12, stacks of awe unchanged',
+  venom: '2 stacks of poison. 4 if the enemy already has poison.',
+  ballast: "Damage 3 times your heaviest face's weight, cap 12.",
+  refrain: 'Trigger the face you rolled this round again.',
+  second_sight: 'Roll the die again now. The new face triggers as a roll.',
+  cadence: 'Damage 2 times the round number, cap 12.',
+  watchword: '5 block. 12 if a Bound face triggered this round.',
+  blight_weight: "Stacks of poison equal to twice the rolled face's weight, cap 8."
 };
 
 // Every site that draws a card's effect text calls this instead of
@@ -1265,6 +1297,9 @@ let dieActionChosenModId = null;
 // Third Eye's own UI-flow flag, same convention — true while the button is
 // toggled on and the next real player-die face click chooses the roll.
 let thirdEyeChoosing = false;
+
+// Gilded Die's own flag, the same shape as thirdEyeChoosing.
+let gildedDieChoosing = false;
 
 // Consecrate is the class anchor, not a reward, per SCOPE — V1.
 const DIE_ACTION_EXCLUDED_MOD_IDS = ['consecrate'];
@@ -1436,8 +1471,17 @@ function dieActionPickLoadFace(faceNumber) {
   closeDieActionScreen();
 }
 
+// The one Strengthen action, shared by the post-fight die action panel and
+// the shop. Leaden Face buys a second call to strengthenFace() — still the
+// only place any face's weight is written.
 function dieActionPickStrengthenFace(faceNumber) {
-  const newWeight = strengthenFace(faceNumber);
+  let newWeight = strengthenFace(faceNumber);
+  if (hasArtifact('leaden_face')) {
+    for (let i = 1; i < GAME_CONFIG.ARTIFACTS.LEADEN_FACE_STRENGTHEN; i++) {
+      newWeight = strengthenFace(faceNumber);
+    }
+    log('[ARTIFACT] Leaden Face: Strengthen added ' + GAME_CONFIG.ARTIFACTS.LEADEN_FACE_STRENGTHEN + ' weight');
+  }
   log('[DIE ACTION] strengthened face ' + faceNumber + ' to weight ' + newWeight);
   playAudioEvent('die_action_strengthen');
   appendTranscript('STRENGTHEN ' + faceNumber + ' > ' + newWeight);
@@ -1693,15 +1737,15 @@ function renderCardRewardPanel() {
   panel.appendChild(row);
 }
 
-// ---------- RELIC REWARD SCREEN (after an Elite win, and after a
+// ---------- ARTIFACT REWARD SCREEN (after an Elite win, and after a
 // non-final act's Boss win, before the die reward) ----------
 
-let relicRewardStep = null; // null | 'choose'
-let relicRewardOptions = []; // up to 3 relic ids offered this pass
+let artifactRewardStep = null; // null | 'choose'
+let artifactRewardOptions = []; // up to 3 artifact ids offered this pass
 
-function openRelicRewardScreen() {
-  const available = Object.keys(gameState.config.relics).filter(function(id) {
-    return gameState.run.relics.indexOf(id) === -1;
+function openArtifactRewardScreen() {
+  const available = Object.keys(gameState.config.artifacts).filter(function(id) {
+    return gameState.run.artifacts.indexOf(id) === -1;
   });
   if (available.length < 1) {
     openDieActionScreen();
@@ -1712,36 +1756,36 @@ function openRelicRewardScreen() {
   while (options.length < 3 && pool.length > 0) {
     options.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
   }
-  relicRewardOptions = options;
-  relicRewardStep = 'choose';
+  artifactRewardOptions = options;
+  artifactRewardStep = 'choose';
   refreshInspector();
 }
 
-function closeRelicRewardScreen() {
-  relicRewardStep = null;
-  relicRewardOptions = [];
+function closeArtifactRewardScreen() {
+  artifactRewardStep = null;
+  artifactRewardOptions = [];
   refreshInspector();
   openDieActionScreen();
 }
 
-function relicRewardPick(relicId) {
-  const relic = gameState.config.relics[relicId];
-  updateRun({ relics: gameState.run.relics.concat([relicId]).slice(0, GAME_CONFIG.RELIC_MAX) });
-  log('[RELIC] gained ' + relic.name);
-  appendTranscript('RELIC ' + relicId);
-  closeRelicRewardScreen();
+function artifactRewardPick(artifactId) {
+  const artifact = gameState.config.artifacts[artifactId];
+  updateRun({ artifacts: gameState.run.artifacts.concat([artifactId]).slice(0, GAME_CONFIG.ARTIFACT_MAX) });
+  log('[ARTIFACT] gained ' + artifact.name);
+  appendTranscript('ARTIFACT ' + artifactId);
+  closeArtifactRewardScreen();
 }
 
-function relicRewardSkip() {
-  log('[RELIC] reward skipped');
-  closeRelicRewardScreen();
+function artifactRewardSkip() {
+  log('[ARTIFACT] reward skipped');
+  closeArtifactRewardScreen();
 }
 
-function renderRelicRewardPanel() {
-  const panel = document.getElementById('relicRewardPanel');
+function renderArtifactRewardPanel() {
+  const panel = document.getElementById('artifactRewardPanel');
   if (!panel) return;
 
-  if (relicRewardStep === null) {
+  if (artifactRewardStep === null) {
     panel.style.display = 'none';
     panel.innerHTML = '';
     return;
@@ -1752,26 +1796,26 @@ function renderRelicRewardPanel() {
 
   const title = document.createElement('div');
   title.className = 'die-action-title';
-  title.textContent = 'Choose a relic';
+  title.textContent = 'Choose an artifact';
 
   const row = document.createElement('div');
   row.className = 'die-action-row';
 
-  relicRewardOptions.forEach(function(relicId) {
-    const relic = gameState.config.relics[relicId];
+  artifactRewardOptions.forEach(function(artifactId) {
+    const artifact = gameState.config.artifacts[artifactId];
     const btn = document.createElement('button');
-    btn.textContent = relic.name;
+    btn.textContent = artifact.name;
     const tip = document.createElement('span');
     tip.className = 'hover-tip';
-    tip.textContent = relic.text;
+    tip.textContent = artifact.text;
     btn.appendChild(tip);
-    btn.addEventListener('click', function() { log('[CLICK] ' + relic.name); relicRewardPick(relicId); });
+    btn.addEventListener('click', function() { log('[CLICK] ' + artifact.name); artifactRewardPick(artifactId); });
     row.appendChild(btn);
   });
 
   const skipBtn = document.createElement('button');
   skipBtn.textContent = 'Skip';
-  skipBtn.addEventListener('click', function() { log('[CLICK] Skip'); relicRewardSkip(); });
+  skipBtn.addEventListener('click', function() { log('[CLICK] Skip'); artifactRewardSkip(); });
   row.appendChild(skipBtn);
 
   panel.appendChild(title);
@@ -1907,7 +1951,7 @@ function renderRiteScreen() {
 }
 
 // ---------- EVENT SCREEN — The Font (slot type 'event', id 'font') ----------
-// A roll that resolves nothing: rollWithRelics() picks a face the same
+// A roll that resolves nothing: rollWithArtifacts() picks a face the same
 // way a fight roll does (D-21), but the face is never passed to
 // resolvePlayerRoll() — no listener dispatch, no Bound, no Nat sweep.
 // Outcome is read straight off the picked face's own shape.
@@ -1932,7 +1976,7 @@ function closeEventScreen() {
 
 function eventRoll() {
   if (eventStep !== 'open') return;
-  const face = rollWithRelics(gameState.die.faces);
+  const face = rollWithArtifacts(gameState.die.faces);
   playAudioEvent('roll');
 
   if (face.modId === 'NAT_TWENTY') {
@@ -2035,7 +2079,12 @@ function buildShopStock() {
     .filter(function(id) { return gameState.config.cardPool[id].tier != null; })
     .map(function(id) { return { id: id, tier: gameState.config.cardPool[id].tier }; });
   const cards = pickTieredOffer(pool, GAME_CONFIG.TIER_SPLIT.elite, 3).map(function(o) { return o.id; });
-  return { cards: cards, boughtCards: [], strengthenBought: false, removalBought: false };
+  // One artifact slot, always an artifact this run does not already hold.
+  const unheld = Object.keys(gameState.config.artifacts).filter(function(id) {
+    return gameState.run.artifacts.indexOf(id) === -1;
+  });
+  const artifact = unheld.length > 0 ? pickRandom(unheld) : null;
+  return { cards: cards, artifact: artifact, boughtCards: [], artifactBought: false, strengthenBought: false, removalBought: false };
 }
 
 function openShopScreen() {
@@ -2057,7 +2106,7 @@ function shopBuyCard(cardId) {
   const shop = gameState.run.shop;
   if (shop.boughtCards.indexOf(cardId) !== -1) { return; }
   const card = gameState.config.cardPool[cardId];
-  const price = GAME_CONFIG.SHOP.CARD_PRICE[card.tier];
+  const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.CARD_PRICE[card.tier]);
   if (gameState.run.gold < price) { return; }
   updateRun({ gold: gameState.run.gold - price, shop: Object.assign({}, shop, { boughtCards: shop.boughtCards.concat([cardId]) }) });
   updatePlayer({ deck: gameState.player.deck.concat([cardId]), ownedCards: gameState.player.ownedCards.concat([cardId]) });
@@ -2069,9 +2118,26 @@ function shopBuyCard(cardId) {
 // Opens the same die-row Strengthen face picker the post-fight die action
 // panel uses — dieActionOrigin 'shop' tells closeDieActionScreen() to
 // return to the shop instead of chaining into a card reward.
+// Buys the artifact on the shelf, up to ARTIFACT_MAX held.
+function shopBuyArtifact() {
+  const shop = gameState.run.shop;
+  if (!shop.artifact || shop.artifactBought) { return; }
+  const artifact = gameState.config.artifacts[shop.artifact];
+  const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.ARTIFACT_PRICE);
+  if (gameState.run.gold < price) { return; }
+  updateRun({
+    gold: gameState.run.gold - price,
+    artifacts: gameState.run.artifacts.concat([shop.artifact]).slice(0, GAME_CONFIG.ARTIFACT_MAX),
+    shop: Object.assign({}, shop, { artifactBought: true })
+  });
+  log('[SHOP] bought ' + artifact.name + ' for ' + price + ' gold');
+  appendTranscript('SHOP ' + shop.artifact + ' ' + price);
+  refreshInspector();
+}
+
 function shopBuyStrengthen() {
   const shop = gameState.run.shop;
-  const price = GAME_CONFIG.SHOP.STRENGTHEN_PRICE;
+  const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.STRENGTHEN_PRICE);
   if (shop.strengthenBought || gameState.run.gold < price) { return; }
   updateRun({ gold: gameState.run.gold - price, shop: Object.assign({}, shop, { strengthenBought: true }) });
   log('[SHOP] bought Strengthen for ' + price + ' gold');
@@ -2086,7 +2152,7 @@ function shopBuyStrengthen() {
 
 function shopBuyRemoval() {
   const shop = gameState.run.shop;
-  const price = gameState.run.removalPrice;
+  const price = shopRemovalPrice();
   if (shop.removalBought || gameState.run.gold < price) { return; }
   shopRemovingCard = true;
   refreshInspector();
@@ -2096,7 +2162,7 @@ function shopBuyRemoval() {
 // separate so a shop removal returns to the shop rather than the map.
 function shopRemoveCard(index) {
   const shop = gameState.run.shop;
-  const price = gameState.run.removalPrice;
+  const price = shopRemovalPrice();
   const cardId = gameState.player.ownedCards[index];
   const card = getCard(cardId);
 
@@ -2113,7 +2179,7 @@ function shopRemoveCard(index) {
   if (handIdx !== -1) newHand.splice(handIdx, 1);
 
   updatePlayer({ ownedCards: newOwnedCards, deck: newDeck, discard: newDiscard, hand: newHand });
-  updateRun({ gold: gameState.run.gold - price, removalPrice: price + GAME_CONFIG.SHOP.REMOVAL_PRICE_STEP, shop: Object.assign({}, shop, { removalBought: true }) });
+  updateRun({ gold: gameState.run.gold - price, removalPrice: gameState.run.removalPrice + GAME_CONFIG.SHOP.REMOVAL_PRICE_STEP, shop: Object.assign({}, shop, { removalBought: true }) });
   log('[SHOP] bought Removal for ' + price + ' gold, removed ' + card.name);
   appendTranscript('SHOP removal ' + price + ' | removed ' + cardId);
   shopRemovingCard = false;
@@ -2160,7 +2226,7 @@ function renderShopPanel() {
     shop.cards.forEach(function(cardId) {
       if (shop.boughtCards.indexOf(cardId) !== -1) { return; }
       const card = gameState.config.cardPool[cardId];
-      const price = GAME_CONFIG.SHOP.CARD_PRICE[card.tier];
+      const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.CARD_PRICE[card.tier]);
       const btn = document.createElement('button');
       btn.textContent = card.name + ' — ' + price + 'g';
       btn.disabled = gameState.run.gold < price;
@@ -2172,8 +2238,22 @@ function renderShopPanel() {
       row.appendChild(btn);
     });
 
+    if (shop.artifact && !shop.artifactBought) {
+      const artifact = gameState.config.artifacts[shop.artifact];
+      const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.ARTIFACT_PRICE);
+      const btn = document.createElement('button');
+      btn.textContent = artifact.name + ' — ' + price + 'g';
+      btn.disabled = gameState.run.gold < price;
+      const tip = document.createElement('span');
+      tip.className = 'hover-tip';
+      tip.textContent = artifact.text;
+      btn.appendChild(tip);
+      btn.addEventListener('click', function() { log('[CLICK] ' + artifact.name); shopBuyArtifact(); });
+      row.appendChild(btn);
+    }
+
     if (!shop.strengthenBought) {
-      const price = GAME_CONFIG.SHOP.STRENGTHEN_PRICE;
+      const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.STRENGTHEN_PRICE);
       const btn = document.createElement('button');
       btn.textContent = 'Strengthen — ' + price + 'g';
       btn.disabled = gameState.run.gold < price;
@@ -2186,7 +2266,7 @@ function renderShopPanel() {
     }
 
     if (!shop.removalBought) {
-      const price = gameState.run.removalPrice;
+      const price = shopRemovalPrice();
       const btn = document.createElement('button');
       btn.textContent = 'Remove a card — ' + price + 'g';
       btn.disabled = gameState.run.gold < price;

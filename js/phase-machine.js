@@ -49,7 +49,7 @@ function runPhase(phase) {
         log('[RUN] act ' + gameState.run.actNumber + ' boss defeated');
         grantGoldForWin('Boss');
         dieActionsRemaining = GAME_CONFIG.DIE_REWARDS.SINGLE;
-        openRelicRewardScreen();
+        openArtifactRewardScreen();
       } else {
         playAudioEvent('fight_won');
         const cs = gameState.run.currentSlot;
@@ -57,7 +57,7 @@ function runPhase(phase) {
         grantGoldForWin(wonSlot.label);
         dieActionsRemaining = (wonSlot.label === 'Elite') ? GAME_CONFIG.DIE_REWARDS.ELITE : GAME_CONFIG.DIE_REWARDS.SINGLE;
         if (wonSlot.label === 'Elite') {
-          openRelicRewardScreen();
+          openArtifactRewardScreen();
         } else {
           openDieActionScreen();
         }
@@ -160,7 +160,7 @@ function runPhase(phase) {
     log('[START] turn listeners cleared');
 
     // Clears every per-turn/per-round roll flag so none leaks forward.
-    updateTurn({ rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, enemyRollOutcome: null, enemyRolledFaceNumber: null, modTriggeredThisTurn: false, enemyAttackCancelledThisTurn: false, outsideTriggeredFaces: [], roundTriggerCount: 0, roundSweepPlays: 0, roundTriggerCapLogged: false, hoppedFaces: [], cardsPlayed: [], modsTriggered: [] });
+    updateTurn({ rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, enemyRollOutcome: null, enemyRolledFaceNumber: null, modTriggeredThisTurn: false, enemyAttackCancelledThisTurn: false, outsideTriggeredFaces: [], roundTriggerCount: 0, roundSweepPlays: 0, roundTriggerCapLogged: false, hoppedFaces: [], cardsPlayed: [], modsTriggered: [], boundTriggeredThisRound: false, enemyRoundSkippedThisTurn: false, gildedFace: null });
 
     drawCards(GAME_CONFIG.DRAW_COUNT);
   }
@@ -180,6 +180,16 @@ function runPhase(phase) {
   }
 
   if (phase === 'ENEMY_ACT_PHASE') {
+    // Hourglass: round 1's intent is skipped, the pattern advancing as if
+    // it had resolved. Set by the artifact's own listener, which this
+    // phase's generic callListeners(phase) call has already run.
+    if (gameState.turn.enemyRoundSkippedThisTurn) {
+      log('[ARTIFACT] Hourglass: ' + gameState.enemy.name + ' does nothing this round');
+      advanceEnemyPattern();
+      appendRoundTranscript('hourglass: no action');
+      return;
+    }
+
     // The enemy's own Nat 1 cancels this round's intent entirely — every
     // case reduces to: advance the pattern, no effect.
     if (gameState.turn.enemyAttackCancelledThisTurn) {
@@ -272,16 +282,16 @@ function nextPhase() {
 
   if (currentPhase === 'ROLL_PHASE' && !playerRollResolved) {
     playerRollResolved = true;
-    const face = rollWithRelics(gameState.die.faces);
+    const face = rollWithArtifacts(gameState.die.faces);
     resolvePlayerRoll(face);
     // Tolling Bell — a second roll, fully after the first resolves, while
     // the enemy is mid-Charge (wind-up or release) this round. Goes
     // through the same resolvePlayerRoll() dispatch, so a Nat on either
     // roll behaves exactly as it always does and both count toward
     // GAME_CONFIG.ROUND_TRIGGER_CAP via mod_dispatch as usual.
-    if (hasRelic('tolling_bell') && (gameState.enemy.chargeStage === 'windup' || gameState.enemy.chargeStage === 'release')) {
-      const secondFace = rollWithRelics(gameState.die.faces);
-      log('[RELIC] Tolling Bell: second face ' + secondFace.number + ' triggers');
+    if (hasArtifact('tolling_bell') && (gameState.enemy.chargeStage === 'windup' || gameState.enemy.chargeStage === 'release')) {
+      const secondFace = rollWithArtifacts(gameState.die.faces);
+      log('[ARTIFACT] Tolling Bell: second face ' + secondFace.number + ' triggers');
       resolvePlayerRoll(secondFace);
     }
   }

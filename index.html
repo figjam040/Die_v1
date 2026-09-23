@@ -116,12 +116,14 @@
     color: var(--muted);
   }
 
-  #relicRow {
+  #artifactRow {
     display: flex;
     gap: 4px;
   }
 
-  #thirdEyeBtn {
+  #thirdEyeBtn,
+  #secondChanceBtn,
+  #gildedDieBtn {
     font-family: var(--game-font);
     font-size: 11px;
     padding: 4px 10px;
@@ -131,12 +133,13 @@
     margin-top: 4px;
   }
 
-  #thirdEyeBtn.choosing {
+  #thirdEyeBtn.choosing,
+  #gildedDieBtn.choosing {
     background: var(--nat);
     color: #1a1500;
   }
 
-  .relic-slot {
+  .artifact-slot {
     width: 26px;
     height: 26px;
     border: 2px solid #3a3a3a;
@@ -942,7 +945,7 @@
 
   #dieActionPanel,
   #cardRewardPanel,
-  #relicRewardPanel,
+  #artifactRewardPanel,
   #eventScreenPanel,
   #shopPanel {
     display: flex;
@@ -1569,7 +1572,7 @@
 </head>
 <body>
 
-<!-- BAND A — build stamp and the gold/relic placeholders, the act/round/
+<!-- BAND A — build stamp and the gold/artifact placeholders, the act/round/
      phase readout, and the four screen-level buttons. -->
 <div class="top-bar">
   <div class="top-bar-left">
@@ -1579,12 +1582,15 @@
         <!-- No gold mechanic exists in V1; this reads gameState.run.gold if
              that field is ever added, and an em dash until then. -->
         <div id="goldValue">GOLD —</div>
-        <div id="relicRow">
-          <div class="relic-slot"></div>
-          <div class="relic-slot"></div>
-          <div class="relic-slot"></div>
-          <div class="relic-slot"></div>
-          <div class="relic-slot"></div>
+        <div id="artifactRow">
+          <div class="artifact-slot"></div>
+          <div class="artifact-slot"></div>
+          <div class="artifact-slot"></div>
+          <div class="artifact-slot"></div>
+          <div class="artifact-slot"></div>
+          <div class="artifact-slot"></div>
+          <div class="artifact-slot"></div>
+          <div class="artifact-slot"></div>
         </div>
       </div>
     </div>
@@ -1685,6 +1691,8 @@
             <span class="roll-hero-number" id="rollResultNumber"></span>
             <span class="roll-hero-label" id="rollResultLabel">AWAITING ROLL</span>
             <button id="thirdEyeBtn" style="display:none;">THIRD EYE — choose the face</button>
+            <button id="secondChanceBtn" style="display:none;">REROLL</button>
+            <button id="gildedDieBtn" style="display:none;">GILDED DIE — pay 10 gold</button>
           </div>
           <div class="die-col player-die die-col-h" id="playerDieList"></div>
         </div>
@@ -1703,8 +1711,8 @@
     <!-- Post-fight card reward screen — hidden except mid-choice. -->
     <div class="panel" id="cardRewardPanel" style="display:none;"></div>
 
-    <!-- Post-Elite-win / non-final-act Boss-win relic reward — hidden except mid-choice. -->
-    <div class="panel" id="relicRewardPanel" style="display:none;"></div>
+    <!-- Post-Elite-win / non-final-act Boss-win artifact reward — hidden except mid-choice. -->
+    <div class="panel" id="artifactRewardPanel" style="display:none;"></div>
 
     <!-- Rite slot choice — hidden except mid-choice. -->
     <div class="panel" id="riteScreenPanel" style="display:none;"></div>

@@ -219,14 +219,14 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
     await page.close();
   });
 
-  await runTest('Item 4: #goldValue exists and #relicRow holds five slots', async () => {
+  await runTest('Item 4: #goldValue exists and #artifactRow holds eight slots', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => ({
       gold: document.getElementById('goldValue') ? document.getElementById('goldValue').textContent : null,
-      relics: document.getElementById('relicRow') ? document.getElementById('relicRow').children.length : -1
+      artifacts: document.getElementById('artifactRow') ? document.getElementById('artifactRow').children.length : -1
     }));
     assert.ok(v.gold && v.gold.indexOf('GOLD') === 0, '#goldValue must read GOLD then the value, got: ' + v.gold);
-    assert.strictEqual(v.relics, 5, '#relicRow must hold five slots');
+    assert.strictEqual(v.artifacts, 8, '#artifactRow must hold eight slots');
     await page.close();
   });
 

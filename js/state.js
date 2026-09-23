@@ -77,7 +77,17 @@ const gameState = {
     hoppedFaces: [],
     sealedFaces: [],
     cardsPlayed: [],
-    modsTriggered: []
+    modsTriggered: [],
+    // Watchword reads this; mod_dispatch sets it whenever a Bound face triggers.
+    boundTriggeredThisRound: false,
+    // Hourglass's own skip, kept apart from the enemy Nat 1's cancel so
+    // each reports its own wording.
+    enemyRoundSkippedThisTurn: false,
+    // Gilded Die's paid-for weight, live for exactly one roll:
+    // null | { faceNumber, weight }. Never written into face.weight.
+    gildedFace: null,
+    // Second Chance is once per fight, not once per turn.
+    secondChanceUsedThisFight: false
   },
 
   run: {
@@ -93,7 +103,7 @@ const gameState = {
     threnodyFace: null,
     transcript: [],
     gold: 0,
-    relics: [],
+    artifacts: [],
     shop: null,
     removalPrice: GAME_CONFIG.SHOP.REMOVAL_BASE_PRICE,
     thirdEyeUsedThisAct: false
@@ -119,7 +129,7 @@ const gameState = {
     cards: {},
     mods: {},
     cardPool: {},
-    relics: {}
+    artifacts: {}
   },
 
   // Display-only flags, never part of the run record.

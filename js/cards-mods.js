@@ -90,10 +90,40 @@ function applyAwe(stacks) {
   log('[AWE] applied ' + stacks + ' stacks of awe, now ' + newStacks + ' stacks of awe');
 }
 
-// ---------- RELICS ----------
+// ---------- ARTIFACTS ----------
 
-function hasRelic(id) {
-  return gameState.run.relics.indexOf(id) !== -1;
+function hasArtifact(id) {
+  return gameState.run.artifacts.indexOf(id) !== -1;
+}
+
+// Alms replaces the blank passive itself, so both the artifact's own
+// listener and the class passive read this one predicate rather than
+// each deciding for itself.
+function almsReplacesBlankRoll(data) {
+  return hasArtifact('alms') && !(data && data.outsideRoll);
+}
+
+// Faces 2-19 carrying a mod, face 10's anchor excluded — Plague Bell's
+// own count.
+function plagueBellLoadedFaceCount() {
+  return gameState.die.faces.filter(function(f) {
+    if (f.number === 1 || f.number === 10 || f.number === GAME_CONFIG.DIE_SIZE.PLAYER) { return false; }
+    return f.modId !== null;
+  }).length;
+}
+
+// Every shop price but the card removal, a quarter lower while
+// Merchant's Seal is held. Rounds down.
+function shopPriceWithArtifacts(basePrice) {
+  if (!hasArtifact('merchants_seal')) { return basePrice; }
+  return Math.floor(basePrice * (1 - GAME_CONFIG.ARTIFACTS.MERCHANTS_SEAL_DISCOUNT));
+}
+
+// Removal is the one price the Seal freezes rather than discounts: it
+// stays at its starting price instead of stepping up per purchase.
+function shopRemovalPrice() {
+  if (hasArtifact('merchants_seal')) { return GAME_CONFIG.SHOP.REMOVAL_BASE_PRICE; }
+  return gameState.run.removalPrice;
 }
 
 // ---------- INIT ----------
@@ -687,6 +717,79 @@ function init() {
     }
   };
 
+  gameState.config.cards['venom'] = {
+    id: 'venom', name: 'Venom', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['poison'],
+    effect: function(gameState) {
+      const stacks = gameState.enemy.poisonStacks > 0 ? 4 : 2;
+      updateEnemy({ poisonStacks: gameState.enemy.poisonStacks + stacks });
+      log('[CARD] venom: ' + stacks + ' stacks of poison applied');
+    }
+  };
+
+  gameState.config.cards['ballast'] = {
+    id: 'ballast', name: 'Ballast', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['mass'],
+    effect: function(gameState) {
+      const heaviest = gameState.die.faces.reduce(function(max, f) {
+        return f.weight > max ? f.weight : max;
+      }, 0);
+      const damage = dealDamage('enemy', Math.min(12, 3 * heaviest), 'attack', 'ballast');
+      log('[CARD] ballast: ' + damage + ' damage (heaviest face weight ' + heaviest + ')');
+    }
+  };
+
+  // Same outside-roll path Reverberation uses; faces 1 and 20 are refused
+  // there, so a Nat roll simply does nothing.
+  gameState.config.cards['refrain'] = {
+    id: 'refrain', name: 'Refrain', soulCost: 2, type: 'utility', classRestriction: null, tier: 'uncommon', tags: ['bound'],
+    effect: function(gameState) {
+      const faceNumber = gameState.turn.rolledFaceNumber;
+      const triggered = faceNumber !== null && triggerFaceOutsideRoll(faceNumber);
+      if (triggered) {
+        log('[CARD] refrain: face ' + faceNumber + ' triggered again');
+      } else {
+        log('[CARD] refrain: face ' + faceNumber + ' could not trigger again');
+      }
+    }
+  };
+
+  // The real roll path, Loaded Die included — the new face resolves as a
+  // roll, Nats and all. The first roll's own face is left as it landed.
+  gameState.config.cards['second_sight'] = {
+    id: 'second_sight', name: 'Second Sight', soulCost: 1, type: 'utility', classRestriction: null, tier: 'uncommon', tags: ['die'],
+    effect: function(gameState) {
+      const face = rollWithArtifacts(gameState.die.faces);
+      log('[CARD] second_sight: rolled face ' + face.number + ' again');
+      resolvePlayerRoll(face);
+    }
+  };
+
+  gameState.config.cards['cadence'] = {
+    id: 'cadence', name: 'Cadence', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['growth'],
+    effect: function(gameState) {
+      const damage = dealDamage('enemy', Math.min(12, 2 * gameState.turn.round), 'attack', 'cadence');
+      log('[CARD] cadence: ' + damage + ' damage (round ' + gameState.turn.round + ')');
+    }
+  };
+
+  gameState.config.cards['watchword'] = {
+    id: 'watchword', name: 'Watchword', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: ['bound'],
+    effect: function(gameState) {
+      const bound = gameState.turn.boundTriggeredThisRound;
+      const block = dealBlock(bound ? 12 : 5, 'watchword');
+      log('[CARD] watchword: ' + block + ' block' + (bound ? ' (a Bound face triggered this round)' : ''));
+    }
+  };
+
+  gameState.config.cards['blight_weight'] = {
+    id: 'blight_weight', name: 'Blight Weight', soulCost: 2, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['poison', 'mass'],
+    effect: function(gameState) {
+      const weight = gameState.turn.rolledFaceWeight || 0;
+      const stacks = Math.min(8, 2 * weight);
+      updateEnemy({ poisonStacks: gameState.enemy.poisonStacks + stacks });
+      log('[CARD] blight_weight: ' + stacks + ' stacks of poison applied (rolled face weight ' + weight + ')');
+    }
+  };
+
   gameState.config.cardPool = {
     rebuke: gameState.config.cards['rebuke'],
     censure: gameState.config.cards['censure'],
@@ -728,7 +831,14 @@ function init() {
     kneel: gameState.config.cards['kneel'],
     compline: gameState.config.cards['compline'],
     tremendum: gameState.config.cards['tremendum'],
-    mysterium: gameState.config.cards['mysterium']
+    mysterium: gameState.config.cards['mysterium'],
+    venom: gameState.config.cards['venom'],
+    ballast: gameState.config.cards['ballast'],
+    refrain: gameState.config.cards['refrain'],
+    second_sight: gameState.config.cards['second_sight'],
+    cadence: gameState.config.cards['cadence'],
+    watchword: gameState.config.cards['watchword'],
+    blight_weight: gameState.config.cards['blight_weight']
   };
 
   // Ordained class
@@ -771,6 +881,14 @@ function init() {
         callListeners('BLANK_ROLL', {});
         return;
       }
+      // Bone Counter buys the Nat 1 off outright while the gold is there;
+      // Penitence never arms, so a later Nat 1 is charged the same way.
+      const boneCounterGold = GAME_CONFIG.ARTIFACTS.BONE_COUNTER_GOLD;
+      if (hasArtifact('bone_counter') && gameState.run.gold >= boneCounterGold) {
+        updateRun({ gold: gameState.run.gold - boneCounterGold });
+        log('[ARTIFACT] Bone Counter: ' + boneCounterGold + ' gold paid instead of Penitence');
+        return;
+      }
       updatePlayer({
         natOneFiredThisFight: true,
         penitenceActive: true,
@@ -778,7 +896,10 @@ function init() {
       });
       log('[ROLL] Penitence begins: 1 soul lost at the start of every turn for the next ' + PENITENCE_TURNS + ' turns');
     },
-    onBlankRoll: function() {
+    // Alms replaces this passive outright on a rolled blank — its own
+    // BLANK_ROLL listener grants the soul instead.
+    onBlankRoll: function(data) {
+      if (almsReplacesBlankRoll(data)) { return; }
       const block = dealBlock(GAME_CONFIG.BLANK_ROLL_BLOCK, 'blank_face');
       log('[BLANK] ' + block + ' block generated');
     },
@@ -940,6 +1061,10 @@ function init() {
       newFaces[faceIndex] = Object.assign({}, face, { modData: newModData });
       updateDie({ faces: newFaces });
       updateTurn({ modsTriggered: gameState.turn.modsTriggered.concat([mod.name]) });
+      // Watchword reads this — any Bound face, on any trigger path.
+      if (isBoundFace(gameState.die.faces[faceIndex])) {
+        updateTurn({ boundTriggeredThisRound: true });
+      }
       mod.effect(data);
     }
   }, 'permanent');
@@ -1438,19 +1563,80 @@ function init() {
     }
   };
 
-  // ---------- RELICS ----------
+  // ---------- ARTIFACTS ----------
   // Third Eye, Loaded Die and Tolling Bell each act on the one roll path
   // (nextPhase(), phase-machine.js) rather than a MOD_TRIGGER-shaped
   // listener — none of them are a die trigger, so there is no hook in
   // EVENT HOOKS shaped for "before/instead of the roll itself". Every
-  // relic function still gates itself on hasRelic(), the same pattern the
+  // artifact function still gates itself on hasArtifact(), the same pattern the
   // enemy die mechanics use for "registered unconditionally, checks which
   // one applies".
-  gameState.config.relics = {
+  gameState.config.artifacts = {
     third_eye: { id: 'third_eye', name: 'Third Eye', text: 'Once per act, before a roll, choose the face.' },
     loaded_die: { id: 'loaded_die', name: 'Loaded Die', text: 'Roll twice, the higher face stands.' },
-    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', text: 'When the enemy winds up or releases, roll twice and both faces trigger.' }
+    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', text: 'When the enemy winds up or releases, roll twice and both faces trigger.' },
+    tithe_box: { id: 'tithe_box', name: 'Tithe Box', text: 'Every Nat 20 pays 15 gold.' },
+    merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", text: 'Shop prices a quarter lower. Card removal stays at 75.' },
+    leaden_face: { id: 'leaden_face', name: 'Leaden Face', text: 'Strengthen adds 2 weight, not 1.' },
+    reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', text: 'When a Bound face is rolled, the loaded face directly above it triggers too.' },
+    plague_bell: { id: 'plague_bell', name: 'Plague Bell', text: 'Fight start: the enemy takes stacks of poison equal to half your loaded faces, rounded down.' },
+    alms: { id: 'alms', name: 'Alms', text: 'A blank roll gives 1 soul instead of 2 block.' },
+    hourglass: { id: 'hourglass', name: 'Hourglass', text: 'Round 1 of every fight, the enemy does nothing.' },
+    second_chance: { id: 'second_chance', name: 'Second Chance', text: 'Once per fight, reroll.' },
+    gilded_die: { id: 'gilded_die', name: 'Gilded Die', text: 'Before a roll, pay 10 gold: one face gets +2 weight for that roll only.' },
+    bone_counter: { id: 'bone_counter', name: 'Bone Counter', text: 'Nat 1 costs 15 gold instead of Penitence. Under 15 gold, Penitence as normal.' }
   };
+
+  // Every artifact with a hook of its own to sit on registers here,
+  // unconditionally, and gates itself on hasArtifact() — the same pattern
+  // the enemy die mechanics use. The rest (Third Eye, Loaded Die, Tolling
+  // Bell, Merchant's Seal, Leaden Face, Second Chance, Gilded Die) act on
+  // the roll path or a shop price, where there is no hook to sit on, and
+  // gate themselves at that call site instead.
+  registerListener('NAT_TWENTY', 'artifact_tithe_box', function() {
+    if (!hasArtifact('tithe_box')) { return; }
+    const gold = GAME_CONFIG.ARTIFACTS.TITHE_BOX_GOLD;
+    updateRun({ gold: gameState.run.gold + gold });
+    log('[ARTIFACT] Tithe Box: ' + gold + ' gold');
+  }, 'permanent');
+
+  registerListener('BLANK_ROLL', 'artifact_alms', function(data) {
+    if (!almsReplacesBlankRoll(data)) { return; }
+    const soul = GAME_CONFIG.ARTIFACTS.ALMS_SOUL;
+    updatePlayer({ soul: gameState.player.soul + soul });
+    log('[ARTIFACT] Alms: +' + soul + ' soul instead of block');
+  }, 'permanent');
+
+  registerListener('FIGHT_START', 'artifact_plague_bell', function() {
+    if (!hasArtifact('plague_bell')) { return; }
+    const stacks = Math.floor(plagueBellLoadedFaceCount() / GAME_CONFIG.ARTIFACTS.PLAGUE_BELL_FACES_PER_STACK);
+    if (stacks <= 0) { return; }
+    const newStacks = gameState.enemy.poisonStacks + stacks;
+    updateEnemy({ poisonStacks: newStacks });
+    log('[ARTIFACT] Plague Bell: ' + stacks + ' stacks of poison applied at fight start');
+  }, 'permanent');
+
+  // Sets the turn flag ENEMY_ACT_PHASE's own branch reads — the hook
+  // fires ahead of that phase's logic, so round 1 is skipped in time.
+  registerListener('ENEMY_ACT_PHASE', 'artifact_hourglass', function() {
+    if (!hasArtifact('hourglass')) { return; }
+    if (gameState.turn.round !== 1) { return; }
+    updateTurn({ enemyRoundSkippedThisTurn: true });
+  }, 'permanent');
+
+  // Only the face actually rolled starts the chain, so a face the chain
+  // itself triggers never starts another one.
+  registerListener('MOD_TRIGGER', 'artifact_reliquary_chain', function(data) {
+    if (!hasArtifact('reliquary_chain')) { return; }
+    if (data.faceNumber !== gameState.turn.rolledFaceNumber) { return; }
+    const face = gameState.die.faces[data.faceNumber - 1];
+    if (!isBoundFace(face)) { return; }
+    const aboveNumber = data.faceNumber + 1;
+    if (aboveNumber >= GAME_CONFIG.DIE_SIZE.PLAYER) { return; }
+    if (gameState.die.faces[aboveNumber - 1].modId === null) { return; }
+    log('[ARTIFACT] Reliquary Chain: face ' + aboveNumber + ' triggers too');
+    triggerFaceOutsideRoll(aboveNumber);
+  }, 'permanent');
 
   renderDevModOptions(); // DEV ONLY — remove before any real release
 
