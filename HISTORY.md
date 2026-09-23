@@ -1038,3 +1038,21 @@ Stage 2.79 (BUILD 152) — KI-30: make npm test green following the previous bui
 Verification: guardrails 19/19, facts 111/111, mods 42/42, build141 22/22, build142 22/22 (was 18/22), build144-151 unchanged from the previous build's own counts.
 
 Full write-ups for earlier builds: HISTORY.md.
+
+
+## Stage 2.80 (BUILD 153) — former CURRENT SUBSTAGE
+
+Stage 2.80 (BUILD 153) — four items, all kept.
+
+(A) The rename. Every relic is an artifact: run.artifacts, config.artifacts, hasArtifact(), rollWithArtifacts(), ARTIFACT_MAX, the artifactReward* panel and its functions, #artifactRow/.artifact-slot/#artifactRewardPanel, the [ARTIFACT] log prefix and transcript line, hover text, test names and this file. The three existing artifacts keep their ids and effects; the row grew from five slots to eight, ARTIFACT_MAX 5 to 8. tests/build153.test.js fails if the old word reappears under js/, index.html or tests/.
+
+(B) Ten artifacts, thirteen in all, defs in config.artifacts, amounts in GAME_CONFIG.ARTIFACTS: Tithe Box, Merchant's Seal, Leaden Face, Reliquary Chain, Plague Bell, Alms, Hourglass, Second Chance, Gilded Die, Bone Counter. Each with a hook of its own registers a permanent listener in init() and gates on hasArtifact(); the other four gate at the shop price or roll-path call site they act on. New: the FIGHT_START hook (beginFightFromSlot(), Plague Bell's), turn.boundTriggeredThisRound/enemyRoundSkippedThisTurn/gildedFace/secondChanceUsedThisFight, #secondChanceBtn and #gildedDieBtn on the roll strip, and rollDie()'s one read of turn.gildedFace.
+
+(C) Artifacts in the shop: one slot at SHOP.ARTIFACT_PRICE (150), drawn from the artifacts not held, discounted by Merchant's Seal like every price but the removal. The reward panel already drew from the unheld; with thirteen it offers three until eleven are held.
+
+(D) Seven cards, pool 41 to 48 (tiers 25/16/7): Venom, Ballast, Refrain, Second Sight, Cadence, Watchword, Blight Weight.
+
+Verification: build153 23/23, facts 111/111, mods 42/42, build150 9/9, build151 11/11, guardrails 19/19, the rest unchanged. build150's Bulwark and build149's Compline block measurements now clear the turn's listeners first: a Consecrate roll (3 block per card played) made each fail about one run in twenty, and both did on this build's own npm test runs. Test-only; no game change.
+
+Full write-ups for earlier builds: HISTORY.md.
+

@@ -150,16 +150,73 @@ function logStateChange(helperName, changes) {
   log('[STATE] ' + helperName + ': ' + JSON.stringify(changes));
 }
 
+// ---------- POP NUMBERS (F46) ----------
+// Announced here, beside the [STATE] log line that records the same
+// change, never from a render function: rendering only owns the drawing
+// primitive (spawnFxNumber(), rendering.js). A bulk reset — a new run, a
+// fight reset — raises fxSuppressDepth so its field writes pop nothing.
+
+let fxSuppressDepth = 0;
+
+function suppressFxNumbers(fn) {
+  fxSuppressDepth++;
+  try { return fn(); } finally { fxSuppressDepth--; }
+}
+
+function announceFx(anchorId, kind, delta) {
+  if (fxSuppressDepth > 0 || delta === 0) { return; }
+  if (typeof spawnFxNumber !== 'function') { return; }
+  spawnFxNumber(anchorId, kind, delta);
+}
+
+// Block/poison pop on a gain only: their drops are the turn's own block
+// clear and the poison tick, neither of which is a hit landing. Soul
+// skips START_OF_TURN so the per-turn reset never pops.
+function announcePlayerFx(changes, before) {
+  if (gameState.run.screen !== 'fight') { return; }
+  if (changes.hp !== undefined) {
+    const d = gameState.player.hp - before.hp;
+    if (d < 0) announceFx('playerArtBox', 'damage', d);
+    else if (d > 0) announceFx('playerArtBox', 'healing', d);
+  }
+  if (changes.block !== undefined && gameState.player.block > before.block) {
+    announceFx('playerBlockValue', 'block', gameState.player.block - before.block);
+  }
+  if (changes.poisonStacks !== undefined && gameState.player.poisonStacks > before.poisonStacks) {
+    announceFx('playerStatusRow', 'poison', gameState.player.poisonStacks - before.poisonStacks);
+  }
+  if (changes.soul !== undefined && gameState.turn.phase !== 'START_OF_TURN') {
+    announceFx('playerSoulValue', 'soul', gameState.player.soul - before.soul);
+  }
+}
+
+function announceEnemyFx(changes, before) {
+  if (gameState.run.screen !== 'fight') { return; }
+  if (changes.hp !== undefined && gameState.enemy.hp < before.hp) {
+    announceFx('enemyArtBox', 'damage', gameState.enemy.hp - before.hp);
+  }
+  if (changes.poisonStacks !== undefined && gameState.enemy.poisonStacks > before.poisonStacks) {
+    announceFx('enemyStatusRow', 'poison', gameState.enemy.poisonStacks - before.poisonStacks);
+  }
+}
+
+// The announcement follows refreshInspector() so a pop is placed against
+// the readout it belongs to as it now reads — an enemy's status row has
+// no poison icon to sit on until this change has been drawn.
 function updatePlayer(changes, silent) {
+  const before = { hp: gameState.player.hp, block: gameState.player.block, poisonStacks: gameState.player.poisonStacks, soul: gameState.player.soul };
   Object.assign(gameState.player, changes);
   if (!silent) logStateChange('updatePlayer', changes);
   refreshInspector();
+  announcePlayerFx(changes, before);
 }
 
 function updateEnemy(changes, silent) {
+  const before = { hp: gameState.enemy.hp, poisonStacks: gameState.enemy.poisonStacks };
   Object.assign(gameState.enemy, changes);
   if (!silent) logStateChange('updateEnemy', changes);
   refreshInspector();
+  announceEnemyFx(changes, before);
 }
 
 function updateTurn(changes, silent) {
@@ -175,9 +232,13 @@ function updateDie(changes, silent) {
 }
 
 function updateRun(changes, silent) {
+  const goldBefore = gameState.run.gold;
   Object.assign(gameState.run, changes);
   if (!silent) logStateChange('updateRun', changes);
   refreshInspector();
+  // Gold is spent and earned off the fight screen too (shop, The Font),
+  // so it is the one pop with no screen gate.
+  if (changes.gold !== undefined) announceFx('goldValue', 'gold', gameState.run.gold - goldBefore);
 }
 
 function updateRunRecord(changes, silent) {

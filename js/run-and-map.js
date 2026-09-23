@@ -167,6 +167,8 @@ function buildAct(actNumber) {
 // ownedCards itself. Used both when a fight begins (beginFightFromSlot())
 // and right after a slot resolves (advanceRun()) — deliberately redundant.
 function clearFightScopedState() {
+  // A bulk reset is not a hit landing — no pop numbers (F46).
+  fxSuppressDepth++;
   updatePlayer({
     block: 0,
     soul: gameState.player.maxSoul,
@@ -193,12 +195,15 @@ function clearFightScopedState() {
   });
   updateDie({ faces: boundClearedFaces });
   updateRun({ status: 'active' });
+  fxSuppressDepth--;
 }
 
 // Starts a brand new run from scratch: full HP, a freshly built die and
 // deck, a freshly built act, lands on the map screen. Called by #startGameBtn
 // ("New Run") and by init() for a session's first run.
 function startNewRun() {
+  // A bulk reset is not a hit landing — no pop numbers (F46).
+  fxSuppressDepth++;
   updatePlayer({
     hp: gameState.player.maxHp,
     block: 0,
@@ -246,6 +251,7 @@ function startNewRun() {
 
   resetRunRecord();
 
+  fxSuppressDepth--;
   log('[RUN] new run started');
   refreshInspector();
 }
@@ -617,8 +623,10 @@ function advanceRun() {
 // to 'active' while hp was still <= 0, re-triggering the loss immediately
 // on the next START_OF_TURN. Die weights/mods are untouched.
 function resetFight() {
+  fxSuppressDepth++;
   updatePlayer({ hp: gameState.player.maxHp });
   updateEnemy({ hp: gameState.enemy.maxHp });
+  fxSuppressDepth--;
   clearFightScopedState();
   log('[INIT] fight reset');
 }

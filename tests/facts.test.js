@@ -2449,10 +2449,14 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       cardRewardStep = 'choose';
       dieActionOrigin = 'reward';
       refreshInspector();
-      const tip = document.querySelector('#cardRewardPanel .hover-tip');
-      return tip ? tip.textContent : null;
+      // BUILD 154: the reward panel shows each card's effect text on the
+      // card itself, and keeps it on hover as the card's own title.
+      const card = document.querySelector('#cardRewardPanel .offer-card');
+      const text = card ? card.querySelector('.offer-card-text') : null;
+      return { text: text ? text.textContent : null, title: card ? card.title : null };
     });
-    assert.strictEqual(v, '30 damage', 'the reward hover for a new card must not be empty');
+    assert.strictEqual(v.text, '30 damage', 'the reward text for a new card must not be empty');
+    assert.ok(v.title && v.title.indexOf('30 damage') !== -1, 'the reward hover for a new card must not be empty');
     await liveBrowser.close();
   });
 

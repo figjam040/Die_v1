@@ -47,11 +47,27 @@
 // F43 (BUILD 151) Purify: third die action, clears mods off a face (never 1/10/20), weight kept
 // F44 (BUILD 151) lower lane index 3 is the event The Font: unresolved roll picks the outcome
 // F45 (BUILD 153) artifacts: 13, up to ARTIFACT_MAX (8) held, offered after an Elite/non-final-Boss win and sold at SHOP.ARTIFACT_PRICE; their amounts live in ARTIFACTS
+// F46 (BUILD 154) every HP, block, poison, soul and gold change pops a number where it happened; DAMAGE_NUMBERS holds the rise, fade, step count and the six colours
 // ============================================================
 
 const GAME_CONFIG = {
 
-  BUILD: 153,
+  BUILD: 154,
+
+  // F46 — COLOURS keys are the announcement kinds state.js sends.
+  DAMAGE_NUMBERS: {
+    RISE_PX: 40,
+    FADE_MS: 600,
+    STEPS: 5,
+    COLOURS: {
+      damage: '#f87171',
+      block: '#60a5fa',
+      poison: '#4ade80',
+      soul: '#fbbf24',
+      gold: '#d4a017',
+      healing: '#e8e4d0'
+    }
+  },
 
   PLAYER_MAX_HP: 70,
   PLAYER_MAX_SOUL: 3,

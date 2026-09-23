@@ -983,6 +983,208 @@ function attachCardArtImg(container, cardId) {
   return img;
 }
 
+// ---------- POP NUMBERS — the drawing primitive only (F46) ----------
+// Never called from a render function: state.js announces, beside the
+// [STATE] log line for the same change. Keyed anchorId|kind so several
+// hits on one target climb one total instead of stacking numbers.
+
+const fxLivePops = {};
+
+function fxLayer() {
+  let layer = document.getElementById('fxLayer');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.id = 'fxLayer';
+    document.body.appendChild(layer);
+  }
+  return layer;
+}
+
+function spawnFxNumber(anchorId, kind, delta) {
+  const anchor = document.getElementById(anchorId);
+  if (!anchor) { return; }
+  const cfg = GAME_CONFIG.DAMAGE_NUMBERS;
+  const key = anchorId + '|' + kind;
+  const live = fxLivePops[key];
+  const total = (live ? live.total : 0) + delta;
+
+  const el = live ? live.el : document.createElement('div');
+  if (!live) {
+    el.className = 'fx-number';
+    el.dataset.fxKind = kind;
+    fxLayer().appendChild(el);
+  }
+  el.style.color = cfg.COLOURS[kind] || 'var(--text)';
+  el.textContent = (total > 0 ? '+' : '') + total;
+
+  // applyScale() zooms <html>, so a rect comes back already multiplied by
+  // that zoom while style.left is read in the zoomed context's own pixels
+  // — divide back out or every pop lands off its readout.
+  const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+  const rect = anchor.getBoundingClientRect();
+  el.style.left = ((rect.left + rect.width / 2) / zoom) + 'px';
+  el.style.top = ((rect.top + rect.height / 2) / zoom) + 'px';
+  el.style.setProperty('--fx-rise', cfg.RISE_PX + 'px');
+
+  // Restarts the rise from the top on every update, so a climbing total
+  // fades FADE_MS after its last hit, not its first.
+  el.style.animation = 'none';
+  void el.offsetWidth;
+  el.style.animation = 'fxRise ' + cfg.FADE_MS + 'ms steps(' + cfg.STEPS + ') forwards';
+
+  if (live) clearTimeout(live.timer);
+  fxLivePops[key] = {
+    el: el,
+    total: total,
+    timer: setTimeout(function() {
+      if (el.parentNode) el.parentNode.removeChild(el);
+      delete fxLivePops[key];
+    }, cfg.FADE_MS)
+  };
+}
+
+// ---------- THE ONE OFFER PANEL (D-86) ----------
+// Die action, card reward, artifact reward, shop and The Font all render
+// through renderOfferPanel(). Nothing here is static HTML — every panel
+// is built from gameState on every refreshInspector() (KI-3).
+
+// One 380x470 card. spec: { id, name, tierText, artPath, tagText, text,
+// footText, chosen, disabled, onClick }.
+function renderOfferCard(spec) {
+  const card = document.createElement('div');
+  card.className = 'offer-card' + (spec.chosen ? ' offer-card-chosen' : '') + (spec.disabled ? ' offer-card-disabled' : '');
+  card.dataset.offerId = spec.id;
+  card.title = spec.name + ' — ' + spec.text;
+
+  const name = document.createElement('div');
+  name.className = 'offer-card-name';
+  name.textContent = spec.name;
+  card.appendChild(name);
+
+  const tier = document.createElement('div');
+  tier.className = 'offer-card-tier';
+  tier.textContent = spec.tierText;
+  card.appendChild(tier);
+
+  const art = document.createElement('div');
+  art.className = 'offer-card-art';
+  const label = document.createElement('span');
+  label.className = 'offer-card-art-label';
+  label.textContent = spec.name.toUpperCase() + ' ART';
+  art.appendChild(label);
+  if (spec.artPath) {
+    const img = document.createElement('img');
+    img.className = 'card-art-img';
+    img.alt = '';
+    img.onload = function() { label.style.display = 'none'; };
+    img.onerror = function() { img.style.display = 'none'; };
+    img.src = spec.artPath;
+    art.appendChild(img);
+  }
+  card.appendChild(art);
+
+  const tag = document.createElement('div');
+  tag.className = 'offer-card-tag';
+  tag.textContent = spec.tagText;
+  card.appendChild(tag);
+
+  const text = document.createElement('div');
+  text.className = 'offer-card-text';
+  text.textContent = spec.text;
+  card.appendChild(text);
+
+  const foot = document.createElement('div');
+  foot.className = 'offer-card-foot';
+  foot.textContent = spec.footText;
+  card.appendChild(foot);
+
+  if (spec.onClick && !spec.disabled) {
+    card.addEventListener('click', spec.onClick);
+  }
+  return card;
+}
+
+// The tag line every card shows — a piece's synergy tags, or NONE.
+function offerTagText(tags) {
+  return (tags && tags.length) ? tags.join(' ').toUpperCase() : 'NONE';
+}
+
+function renderOfferPanel(panel, spec) {
+  panel.style.display = 'flex';
+  panel.innerHTML = '';
+
+  // Class kept from the pre-154 panels: every panel's title reads from it.
+  const title = document.createElement('div');
+  title.className = 'die-action-title';
+  title.textContent = spec.title;
+  panel.appendChild(title);
+
+  (spec.extra || []).forEach(function(el) { panel.appendChild(el); });
+
+  if ((spec.cards && spec.cards.length) || spec.skip) {
+    const body = document.createElement('div');
+    body.className = 'offer-body';
+
+    const cards = document.createElement('div');
+    cards.className = 'offer-cards';
+    (spec.cards || []).forEach(function(c) { cards.appendChild(renderOfferCard(c)); });
+    body.appendChild(cards);
+
+    if (spec.skip) {
+      const skipBtn = document.createElement('button');
+      skipBtn.className = 'offer-skip';
+      skipBtn.textContent = spec.skip.label;
+      skipBtn.addEventListener('click', spec.skip.onClick);
+      body.appendChild(skipBtn);
+    }
+    panel.appendChild(body);
+  }
+
+  if (spec.smallRow && spec.smallRow.length) {
+    const small = document.createElement('div');
+    small.className = 'offer-small-row';
+    spec.smallRow.forEach(function(entry) {
+      const btn = document.createElement('button');
+      btn.className = 'offer-small';
+      btn.textContent = entry.label;
+      btn.disabled = !!entry.disabled;
+      const tip = document.createElement('span');
+      tip.className = 'hover-tip';
+      tip.textContent = entry.text;
+      btn.appendChild(tip);
+      btn.title = entry.text;
+      btn.addEventListener('click', entry.onClick);
+      small.appendChild(btn);
+    });
+    panel.appendChild(small);
+  }
+
+  // The panel's own button row (the die action menu, the Font's controls)
+  // — kept on the class the pre-154 panels used.
+  if (spec.buttonRow) panel.appendChild(spec.buttonRow);
+
+  if (spec.dieListId) {
+    if (spec.instruction) {
+      const inst = document.createElement('div');
+      inst.className = 'offer-instruction';
+      inst.textContent = spec.instruction;
+      panel.appendChild(inst);
+    }
+    const dieContainer = document.createElement('div');
+    dieContainer.className = 'die-col player-die die-col-h';
+    dieContainer.id = spec.dieListId;
+
+    const dieWrap = document.createElement('div');
+    dieWrap.className = 'die-action-die-preview';
+    dieWrap.appendChild(dieContainer);
+    panel.appendChild(dieWrap);
+
+    // Must run after the container is attached — renderDieList() looks it
+    // up by id.
+    renderDieList(spec.dieListId, gameState.die.faces, null, spec.pickConfig || null);
+  }
+}
+
 function renderArtBoxes() {
   setArtImage('playerArtImg', 'playerArtLabel', 'art/ordained.png', 'ORDAINED ART');
   const enemyName = gameState.enemy.name;
@@ -1520,21 +1722,21 @@ function renderDieActionPanel() {
     return;
   }
 
-  panel.style.display = 'flex';
-  panel.innerHTML = '';
-
-  const title = document.createElement('div');
-  title.className = 'die-action-title';
+  let titleText = '';
+  let instruction = null;
+  let buttonRow = null;
+  let cards = [];
 
   const row = document.createElement('div');
   row.className = 'die-action-row';
 
-  // Set only for load_pick_face/strengthen_pick_face — passed to
-  // renderDieList() below so the die rows themselves become the picker.
+  // Set only for load_pick_face/strengthen_pick_face/purify_pick_face —
+  // passed to renderDieList() so the die rows themselves become the picker.
   let pickConfig = null;
 
   if (dieActionStep === 'choose') {
-    title.textContent = 'Fight won — choose a die action';
+    titleText = 'Fight won — choose a die action';
+    buttonRow = row;
 
     // Load shows whenever a blank face exists among faces 2-19 AND the
     // pool hasn't run dry (D-54) — a real 3-mod offer must be buildable.
@@ -1567,35 +1769,34 @@ function renderDieActionPanel() {
 
     row.appendChild(skipBtn);
 
-  } else if (dieActionStep === 'load_pick_mod') {
-    title.textContent = 'Choose a mod to load';
+  } else if (dieActionStep === 'load_pick_mod' || dieActionStep === 'load_pick_face') {
+    // Both Load steps show the same three mod cards; the second step adds
+    // the face picker and marks the chosen card.
+    titleText = 'Choose a mod to load';
 
     if (dieActionMods.length === 0) {
       const none = document.createElement('div');
       none.className = 'die-action-empty';
       none.textContent = 'No eligible mods to offer.';
+      buttonRow = row;
       row.appendChild(none);
     }
 
-    dieActionMods.forEach(function(modId) {
-      const mod = gameState.config.mods[modId];
-      const btn = document.createElement('button');
-      btn.textContent = mod.name;
-      if (MOD_DESCRIPTION[modId]) {
-        const tip = document.createElement('span');
-        tip.className = 'hover-tip';
-        tip.textContent = MOD_DESCRIPTION[modId];
-        btn.appendChild(tip);
-      }
-      btn.addEventListener('click', function() { log('[CLICK] ' + mod.name); dieActionPickMod(modId); });
-      row.appendChild(btn);
+    cards = dieActionMods.map(function(modId) {
+      return offerCardSpecForMod(modId, modId === dieActionChosenModId, function() {
+        log('[CLICK] ' + gameState.config.mods[modId].name);
+        dieActionPickMod(modId);
+      });
     });
+  }
 
-  } else if (dieActionStep === 'load_pick_face') {
+  if (dieActionStep === 'load_pick_face') {
     // Any loaded, non-Nat face that isn't already holding two mods is a
     // valid target — blank faces and already-loaded faces are both
     // eligible together, always.
-    title.textContent = 'Choose a face for ' + gameState.config.mods[dieActionChosenModId].name;
+    const chosenName = gameState.config.mods[dieActionChosenModId].name.toUpperCase();
+    titleText = 'Choose a face for ' + gameState.config.mods[dieActionChosenModId].name;
+    instruction = chosenName + ', CHOOSE A FACE BELOW';
     pickConfig = {
       isEligible: function(f) {
         return f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && !f.modId2;
@@ -1605,7 +1806,8 @@ function renderDieActionPanel() {
     };
 
   } else if (dieActionStep === 'strengthen_pick_face') {
-    title.textContent = 'Choose a face to strengthen';
+    titleText = 'Choose a face to strengthen';
+    instruction = 'CHOOSE A FACE TO STRENGTHEN';
     pickConfig = {
       isEligible: function(f) {
         if (f.number === 1) return false;
@@ -1617,7 +1819,8 @@ function renderDieActionPanel() {
     };
 
   } else if (dieActionStep === 'purify_pick_face') {
-    title.textContent = 'Choose a face to purify';
+    titleText = 'Choose a face to purify';
+    instruction = 'CHOOSE A FACE TO PURIFY';
     pickConfig = {
       isEligible: function(f) {
         if (f.number === 1 || f.number === 10 || f.number === GAME_CONFIG.DIE_SIZE.PLAYER) return false;
@@ -1628,24 +1831,51 @@ function renderDieActionPanel() {
     };
   }
 
-  panel.appendChild(title);
-
   // The player sees one die at every step of this panel, the opening
-  // Load/Strengthen/Skip menu included.
-  const dieContainer = document.createElement('div');
-  dieContainer.className = 'die-col player-die die-col-h';
-  dieContainer.id = 'dieActionDieList';
+  // Load/Strengthen/Purify/Skip menu included.
+  renderOfferPanel(panel, {
+    title: titleText,
+    cards: cards,
+    skip: null,
+    buttonRow: buttonRow,
+    instruction: instruction,
+    dieListId: 'dieActionDieList',
+    pickConfig: pickConfig
+  });
+}
 
-  const dieWrap = document.createElement('div');
-  dieWrap.className = 'die-action-die-preview';
-  dieWrap.appendChild(dieContainer);
-  panel.appendChild(dieWrap);
+// The card spec for one mod — used by the Load offer.
+function offerCardSpecForMod(modId, chosen, onClick) {
+  const mod = gameState.config.mods[modId];
+  return {
+    id: modId,
+    name: mod.name,
+    tierText: (mod.tier || '').toUpperCase() || 'MOD',
+    artPath: 'art/mods/' + modId + '.png',
+    tagText: offerTagText(mod.tags),
+    text: MOD_DESCRIPTION[modId] || '',
+    footText: chosen ? 'CHOSEN, PICK A FACE BELOW' : 'CLICK TO CHOOSE',
+    chosen: !!chosen,
+    onClick: onClick
+  };
+}
 
-  // Must run after dieContainer is attached to the live document
-  // (renderDieList looks it up by id).
-  renderDieList('dieActionDieList', gameState.die.faces, null, pickConfig);
-
-  panel.appendChild(row);
+// The card spec for one reward-pool card. priceText replaces the tier
+// line in the shop, per D-86.
+function offerCardSpecForCard(cardId, priceText, footText, disabled, onClick) {
+  const card = gameState.config.cardPool[cardId] || getCard(cardId);
+  return {
+    id: cardId,
+    name: card.name + ' (' + getCardCost(card) + ')',
+    tierText: priceText !== null && priceText !== undefined ? priceText : (card.tier || '').toUpperCase(),
+    artPath: 'art/cards/' + cardId + '.png',
+    tagText: offerTagText(card.tags),
+    text: getCardEffectText(cardId),
+    footText: footText,
+    chosen: false,
+    disabled: !!disabled,
+    onClick: onClick
+  };
 }
 
 // ---------- CARD REWARD SCREEN (post-fight, after the die action panel) ----------
@@ -1699,42 +1929,18 @@ function renderCardRewardPanel() {
     return;
   }
 
-  panel.style.display = 'flex';
-  panel.innerHTML = '';
-
-  // Reuses the die action panel's own CSS classes verbatim (same place and
-  // style, per the prompt), on this panel's own separate DOM element —
-  // #dieActionPanel and its rendering/state are never touched.
-  const title = document.createElement('div');
-  title.className = 'die-action-title';
-  title.textContent = 'Fight won — choose a card';
-
-  const row = document.createElement('div');
-  row.className = 'die-action-row';
-
-  cardRewardOptions.forEach(function(cardId) {
-    const card = gameState.config.cardPool[cardId];
-    const btn = document.createElement('button');
-    btn.textContent = card.name + ' (' + card.soulCost + ')';
-    const artEl = document.createElement('span');
-    artEl.className = 'card-reward-art';
-    attachCardArtImg(artEl, cardId);
-    btn.appendChild(artEl);
-    const tip = document.createElement('span');
-    tip.className = 'hover-tip';
-    tip.textContent = getCardEffectText(cardId);
-    btn.appendChild(tip);
-    btn.addEventListener('click', function() { log('[CLICK] ' + card.name); cardRewardPickCard(cardId); });
-    row.appendChild(btn);
+  // Three cards, pick one, no face row (D-86).
+  renderOfferPanel(panel, {
+    title: 'Fight won — choose a card',
+    cards: cardRewardOptions.map(function(cardId) {
+      return offerCardSpecForCard(cardId, null, 'CLICK TO CHOOSE', false, function() {
+        log('[CLICK] ' + gameState.config.cardPool[cardId].name);
+        cardRewardPickCard(cardId);
+      });
+    }),
+    skip: { label: 'SKIP', onClick: function() { log('[CLICK] Skip'); cardRewardSkip(); } },
+    dieListId: null
   });
-
-  const skipBtn = document.createElement('button');
-  skipBtn.textContent = 'Skip';
-  skipBtn.addEventListener('click', function() { log('[CLICK] Skip'); cardRewardSkip(); });
-  row.appendChild(skipBtn);
-
-  panel.appendChild(title);
-  panel.appendChild(row);
 }
 
 // ---------- ARTIFACT REWARD SCREEN (after an Elite win, and after a
@@ -1791,35 +1997,35 @@ function renderArtifactRewardPanel() {
     return;
   }
 
-  panel.style.display = 'flex';
-  panel.innerHTML = '';
-
-  const title = document.createElement('div');
-  title.className = 'die-action-title';
-  title.textContent = 'Choose an artifact';
-
-  const row = document.createElement('div');
-  row.className = 'die-action-row';
-
-  artifactRewardOptions.forEach(function(artifactId) {
-    const artifact = gameState.config.artifacts[artifactId];
-    const btn = document.createElement('button');
-    btn.textContent = artifact.name;
-    const tip = document.createElement('span');
-    tip.className = 'hover-tip';
-    tip.textContent = artifact.text;
-    btn.appendChild(tip);
-    btn.addEventListener('click', function() { log('[CLICK] ' + artifact.name); artifactRewardPick(artifactId); });
-    row.appendChild(btn);
+  renderOfferPanel(panel, {
+    title: 'Choose an artifact',
+    cards: artifactRewardOptions.map(function(artifactId) {
+      return offerCardSpecForArtifact(artifactId, null, 'CLICK TO CHOOSE', false, function() {
+        log('[CLICK] ' + gameState.config.artifacts[artifactId].name);
+        artifactRewardPick(artifactId);
+      });
+    }),
+    skip: { label: 'SKIP', onClick: function() { log('[CLICK] Skip'); artifactRewardSkip(); } },
+    dieListId: null
   });
+}
 
-  const skipBtn = document.createElement('button');
-  skipBtn.textContent = 'Skip';
-  skipBtn.addEventListener('click', function() { log('[CLICK] Skip'); artifactRewardSkip(); });
-  row.appendChild(skipBtn);
-
-  panel.appendChild(title);
-  panel.appendChild(row);
+// Artifacts carry no tier and no tags — the two lines read ARTIFACT and
+// NONE so the card shape stays identical across every offer.
+function offerCardSpecForArtifact(artifactId, priceText, footText, disabled, onClick) {
+  const artifact = gameState.config.artifacts[artifactId];
+  return {
+    id: artifactId,
+    name: artifact.name,
+    tierText: priceText !== null && priceText !== undefined ? priceText : 'ARTIFACT',
+    artPath: 'art/artifacts/' + artifactId + '.png',
+    tagText: offerTagText(artifact.tags),
+    text: artifact.text,
+    footText: footText,
+    chosen: false,
+    disabled: !!disabled,
+    onClick: onClick
+  };
 }
 
 // ---------- RITE SCREEN ----------
@@ -2025,16 +2231,10 @@ function renderEventScreen() {
     return;
   }
 
-  panel.style.display = 'flex';
-  panel.innerHTML = '';
-
-  const title = document.createElement('div');
-  title.className = 'die-action-title';
-  title.textContent = 'A font of black water stands where the road bends. Nothing moves in it. The die goes in.';
-  panel.appendChild(title);
-
+  // The Font's flavour goes where a title goes; ROLL, then the outcome
+  // and CONTINUE, sit in the card area; the row beneath lights the face.
   const row = document.createElement('div');
-  row.className = 'die-action-row';
+  row.className = 'die-action-row offer-card-area';
 
   if (eventStep === 'open') {
     const rollBtn = document.createElement('button');
@@ -2053,20 +2253,14 @@ function renderEventScreen() {
     row.appendChild(continueBtn);
   }
 
-  panel.appendChild(row);
-
-  const dieContainer = document.createElement('div');
-  dieContainer.className = 'die-col player-die die-col-h';
-  dieContainer.id = 'eventDieList';
-
-  const dieWrap = document.createElement('div');
-  dieWrap.className = 'die-action-die-preview';
-  dieWrap.appendChild(dieContainer);
-  panel.appendChild(dieWrap);
-
-  // Must run after dieContainer is attached to the live document
-  // (renderDieList looks it up by id).
-  renderDieList('eventDieList', gameState.die.faces, null, null);
+  renderOfferPanel(panel, {
+    title: 'A font of black water stands where the road bends. Nothing moves in it. The die goes in.',
+    cards: [],
+    skip: null,
+    buttonRow: row,
+    dieListId: 'eventDieList',
+    pickConfig: null
+  });
 }
 
 // ---------- SHOP SCREEN (opens after every rite resolves, before the map returns) ----------
@@ -2196,19 +2390,13 @@ function renderShopPanel() {
     return;
   }
 
-  panel.style.display = 'flex';
-  panel.innerHTML = '';
-
-  const title = document.createElement('div');
-  title.className = 'die-action-title';
-
-  const row = document.createElement('div');
-  row.className = 'die-action-row';
-
   const shop = gameState.run.shop;
 
+  // The removal picker is a full deck list, not a three-card offer — it
+  // keeps the plain button row.
   if (shopRemovingCard) {
-    title.textContent = 'Choose a card to remove';
+    const row = document.createElement('div');
+    row.className = 'die-action-row';
     gameState.player.ownedCards.forEach(function(cardId, index) {
       const card = getCard(cardId);
       const btn = document.createElement('button');
@@ -2220,72 +2408,61 @@ function renderShopPanel() {
       btn.addEventListener('click', function() { log('[CLICK] ' + card.name); shopRemoveCard(index); });
       row.appendChild(btn);
     });
-  } else {
-    title.textContent = 'SHOP';
-
-    shop.cards.forEach(function(cardId) {
-      if (shop.boughtCards.indexOf(cardId) !== -1) { return; }
-      const card = gameState.config.cardPool[cardId];
-      const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.CARD_PRICE[card.tier]);
-      const btn = document.createElement('button');
-      btn.textContent = card.name + ' — ' + price + 'g';
-      btn.disabled = gameState.run.gold < price;
-      const tip = document.createElement('span');
-      tip.className = 'hover-tip';
-      tip.textContent = getCardEffectText(cardId);
-      btn.appendChild(tip);
-      btn.addEventListener('click', function() { log('[CLICK] ' + card.name); shopBuyCard(cardId); });
-      row.appendChild(btn);
-    });
-
-    if (shop.artifact && !shop.artifactBought) {
-      const artifact = gameState.config.artifacts[shop.artifact];
-      const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.ARTIFACT_PRICE);
-      const btn = document.createElement('button');
-      btn.textContent = artifact.name + ' — ' + price + 'g';
-      btn.disabled = gameState.run.gold < price;
-      const tip = document.createElement('span');
-      tip.className = 'hover-tip';
-      tip.textContent = artifact.text;
-      btn.appendChild(tip);
-      btn.addEventListener('click', function() { log('[CLICK] ' + artifact.name); shopBuyArtifact(); });
-      row.appendChild(btn);
-    }
-
-    if (!shop.strengthenBought) {
-      const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.STRENGTHEN_PRICE);
-      const btn = document.createElement('button');
-      btn.textContent = 'Strengthen — ' + price + 'g';
-      btn.disabled = gameState.run.gold < price;
-      const tip = document.createElement('span');
-      tip.className = 'hover-tip';
-      tip.textContent = 'Add 1 weight to a face of your choice.';
-      btn.appendChild(tip);
-      btn.addEventListener('click', function() { log('[CLICK] Strengthen'); shopBuyStrengthen(); });
-      row.appendChild(btn);
-    }
-
-    if (!shop.removalBought) {
-      const price = shopRemovalPrice();
-      const btn = document.createElement('button');
-      btn.textContent = 'Remove a card — ' + price + 'g';
-      btn.disabled = gameState.run.gold < price;
-      const tip = document.createElement('span');
-      tip.className = 'hover-tip';
-      tip.textContent = 'Remove a card of your choice from your deck.';
-      btn.appendChild(tip);
-      btn.addEventListener('click', function() { log('[CLICK] Remove a card'); shopBuyRemoval(); });
-      row.appendChild(btn);
-    }
-
-    const leaveBtn = document.createElement('button');
-    leaveBtn.textContent = 'LEAVE';
-    leaveBtn.addEventListener('click', function() { log('[CLICK] Leave'); closeShopScreen(); });
-    row.appendChild(leaveBtn);
+    renderOfferPanel(panel, { title: 'Choose a card to remove', cards: [], skip: null, buttonRow: row, dieListId: null });
+    return;
   }
 
-  panel.appendChild(title);
-  panel.appendChild(row);
+  // Three cards with the price in place of the tier, then a second row of
+  // the artifact, Strengthen and removal; LEAVE in place of SKIP (D-86).
+  const cards = shop.cards.filter(function(cardId) {
+    return shop.boughtCards.indexOf(cardId) === -1;
+  }).map(function(cardId) {
+    const card = gameState.config.cardPool[cardId];
+    const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.CARD_PRICE[card.tier]);
+    const tooPoor = gameState.run.gold < price;
+    return offerCardSpecForCard(cardId, price + 'g', tooPoor ? 'NOT ENOUGH GOLD' : 'CLICK TO BUY', tooPoor, function() {
+      log('[CLICK] ' + card.name);
+      shopBuyCard(cardId);
+    });
+  });
+
+  const smallRow = [];
+  if (shop.artifact && !shop.artifactBought) {
+    const artifact = gameState.config.artifacts[shop.artifact];
+    const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.ARTIFACT_PRICE);
+    smallRow.push({
+      label: artifact.name + ' — ' + price + 'g',
+      text: artifact.text,
+      disabled: gameState.run.gold < price,
+      onClick: function() { log('[CLICK] ' + artifact.name); shopBuyArtifact(); }
+    });
+  }
+  if (!shop.strengthenBought) {
+    const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.STRENGTHEN_PRICE);
+    smallRow.push({
+      label: 'Strengthen — ' + price + 'g',
+      text: 'Add 1 weight to a face of your choice.',
+      disabled: gameState.run.gold < price,
+      onClick: function() { log('[CLICK] Strengthen'); shopBuyStrengthen(); }
+    });
+  }
+  if (!shop.removalBought) {
+    const price = shopRemovalPrice();
+    smallRow.push({
+      label: 'Remove a card — ' + price + 'g',
+      text: 'Remove a card of your choice from your deck.',
+      disabled: gameState.run.gold < price,
+      onClick: function() { log('[CLICK] Remove a card'); shopBuyRemoval(); }
+    });
+  }
+
+  renderOfferPanel(panel, {
+    title: 'SHOP',
+    cards: cards,
+    skip: { label: 'LEAVE', onClick: function() { log('[CLICK] Leave'); closeShopScreen(); } },
+    smallRow: smallRow,
+    dieListId: null
+  });
 }
 
 // ---------- MAP SCREEN ----------
