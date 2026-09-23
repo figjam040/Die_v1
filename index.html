@@ -183,15 +183,19 @@
     width: 26px;
     height: 26px;
     border: 2px solid #3a3a3a;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    -webkit-box-pack: center;
+    -webkit-box-align: center;
     overflow: hidden;
     font-family: var(--game-font-2);
-    font-size: 9px;
-    line-height: 1;
+    font-size: 8px;
+    line-height: 1.05;
     color: var(--nat);
     text-align: center;
+    white-space: normal;
+    overflow-wrap: break-word;
   }
 
   .top-bar-centre {
@@ -907,17 +911,34 @@
   .die-face-caption {
     font-family: var(--game-font-2);
     font-size: 17px;
-    line-height: 1;
+    line-height: 1.15;
     color: var(--blank);
     text-align: center;
-    white-space: nowrap;
+    white-space: pre-line;
+    overflow-wrap: break-word;
     overflow: hidden;
+    width: 100%;
+    /* KI-34: fixed at two lines' worth of height so a wrapped NAT 1/NAT 20
+       caption never grows its own row taller than the eighteen single-line
+       rows beside it (every row must share one height). */
+    height: 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   /* ODDS_EMPHASIS (GAME_CONFIG) — one font step up; the drop
      and colour are set inline from GAME_CONFIG so it stays one source. */
   .die-face-caption-emphasis {
     font-size: 20px;
+  }
+
+  /* KI-34: face 1/20's own two-line caption (label, then percent) drops a
+     font step so both lines fit the fixed 30px caption box every face
+     uses — the label alone already reads clearly at this size. */
+  .die-face-caption-nat {
+    font-size: 11px;
+    line-height: 1.2;
   }
 
   .die-col-h .die-row-rolled,

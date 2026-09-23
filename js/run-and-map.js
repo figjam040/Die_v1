@@ -349,11 +349,12 @@ function buildRunRecordLine() {
     fightRoundsCol,
     totalRounds,
     eventsCol,
-    triggerCountsCol
+    triggerCountsCol,
+    GAME_CONFIG.BUILD
   ].join(',');
 }
 
-const RUN_RECORD_CSV_HEADER = 'source,node,arrivalHpAtBoss,outcome,fightRounds,totalRounds,dieActionEvents,triggerCounts';
+const RUN_RECORD_CSV_HEADER = 'source,node,arrivalHpAtBoss,outcome,fightRounds,totalRounds,dieActionEvents,triggerCounts,build';
 
 const RUN_RECORD_STORAGE_KEY = 'dieRunRecordLines';
 

@@ -690,9 +690,14 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       } else if (isPlayerDie && gameState.player.sealNextRound.indexOf(face.number) !== -1) {
         caption.textContent = 'SEALED NEXT ROUND';
       } else if (face.modId === 'NAT_ONE' || face.modId === 'ENEMY_NAT_ONE') {
-        caption.textContent = 'NAT 1 ' + pctText;
+        // KI-34: a non-breaking space keeps "NAT 1" from splitting mid-label;
+        // the forced line break (white-space: pre-line) puts the percent on
+        // its own line so neither clips inside the 56px column.
+        caption.classList.add('die-face-caption-nat');
+        caption.textContent = 'NAT 1' + (pctText ? '\n' + pctText : '');
       } else if (face.modId === 'NAT_TWENTY' || face.modId === 'ENEMY_NAT_TWENTY') {
-        caption.textContent = 'NAT 20 ' + pctText;
+        caption.classList.add('die-face-caption-nat');
+        caption.textContent = 'NAT 20' + (pctText ? '\n' + pctText : '');
       } else {
         caption.textContent = pctText;
         // ODDS_EMPHASIS (GAME_CONFIG) — a weight-above-1 face's percent
@@ -2325,9 +2330,31 @@ function buildShopStock() {
   return { cards: cards, artifact: artifact, boughtCards: [], artifactBought: false, strengthenBought: false, removalBought: false };
 }
 
+// KI-36: one line, log and transcript, naming exactly what's on the
+// shelf and what it costs the player right now — the same prices
+// shopBuyCard()/shopBuyArtifact()/shopBuyStrengthen()/shopBuyRemoval() charge.
+function logShopOpened(shop) {
+  const cardParts = shop.cards.map(function(id) {
+    const card = gameState.config.cardPool[id];
+    const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.CARD_PRICE[card.tier]);
+    return card.name + ' ' + price;
+  });
+  const artifactPart = shop.artifact
+    ? gameState.config.artifacts[shop.artifact].name + ' ' + shopPriceWithArtifacts(GAME_CONFIG.SHOP.ARTIFACT_PRICE)
+    : 'none';
+  const strengthenPrice = shopPriceWithArtifacts(GAME_CONFIG.SHOP.STRENGTHEN_PRICE);
+  const removalPrice = shopRemovalPrice();
+  const summary = 'cards ' + cardParts.join(', ') + ' | artifact ' + artifactPart +
+    ' | Strengthen ' + strengthenPrice + ' | Removal ' + removalPrice;
+  log('[SHOP] opened: ' + summary);
+  appendTranscript('SHOP stock ' + summary);
+}
+
 function openShopScreen() {
   shopRemovingCard = false;
-  updateRun({ shop: buildShopStock() });
+  const shop = buildShopStock();
+  updateRun({ shop: shop });
+  logShopOpened(shop);
   shopStep = 'open';
   refreshInspector();
 }

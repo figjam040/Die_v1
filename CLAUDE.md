@@ -740,46 +740,47 @@ DEV DRAWER — #devChrome, below the panels, opened by #devChromeToggleBtn. Clos
 
 # CONFIRMED WORKING
 
-Full reports for every build below live in HISTORY.md, verbatim, in order. This section is an index only — read only when a specific build's full detail (exact numbers, exact code paths, exact Playwright verification) is needed.
+Full reports for every build below live in HISTORY.md, verbatim, in order. This section is an index only — read when a build's full detail is needed.
 
 001–067 engine, phase machine, three laws, eleven mods, fifteen cards, Nat 20/Nat 1, Load/Strengthen, card reward, weight display. Lines per build in HISTORY.md.
 068–082 run scaffold, two-lane map, rites, die rewards from elites, five-slot lanes, die-row picker, run-outcome guards.
-083–098 dev drawer, Nat 1/Penitence tuning, intent retunes, New Run guard, rite card removal, rolled-face highlight, file split, listener dedup, audio module + seventeen sounds, pitch chains, tone pass, boss/elite dice, enemy Nat 1 self-poison.
-099–104 docs rewrite (099, docs only, unverified), Vigil proven alive, enemy roll proven resolving, js/config.js GAME_CONFIG + tests/facts.test.js, trigger-count badge, one font.
-105–120 seeded autoplayer, DIE_SIZE per entity, trigger counts in modData, run record, facts split, Anthem, Elevation, two mods per face, badge/weight fill, hover text, Load All, trigger measurement, screenshot baseline. 106 unverified — Fervour doubling never seen live.
-121–127 stacks name poison, on-screen build stamp from GAME_CONFIG.BUILD, LOAD_PRIORITY from ranked pool, autoplay build column live, three acts per-act scaling, pool exhaustion converts Load to Strengthen, bot plays three acts.
+083–098 dev drawer, Nat 1/Penitence tuning, intent retunes, New Run guard, rite card removal, rolled-face highlight, file split, listener dedup, audio module, pitch chains, boss/elite dice, enemy Nat 1 self-poison.
+099–104 docs rewrite (099, unverified), Vigil/enemy roll proven live, js/config.js GAME_CONFIG + facts.test.js, trigger-count badge, one font.
+105–120 seeded autoplayer, DIE_SIZE per entity, trigger counts in modData, run record, facts split, Anthem, Elevation, two mods per face, hover text, Load All, screenshot baseline. 106 unverified.
+121–127 stacks name poison, build stamp from GAME_CONFIG.BUILD, LOAD_PRIORITY from ranked pool, three acts per-act scaling, pool exhaustion converts Load to Strengthen, bot plays three acts.
 128–135 checkpoint 3: eight-slot lanes, tiers/offer split, synergy tags, outside-roll trigger, Bound, instant win on enemy death.
-136–140 on-screen text for every checkpoint 3 piece, enemy poison 3/4/5, Bound badge, six-letter names on two-mod faces, hop on trigger, ENEMY/ELITE/BOSS title, enemy face hover text, Tenet/Gradual uncapped.
-(BUILD 141) — poison answer (block-vs-poison, F33), enemy intent patterns (Attack/Charge/Afflict, F34), enemy dice of any size with Wrath/Drain/Seal (F35).
+136–140 checkpoint 3 on-screen text, enemy poison 3/4/5, Bound badge, two-mod face names, hop on trigger, ENEMY/ELITE/BOSS title, enemy hover text, Tenet/Gradual uncapped.
+(BUILD 141) — poison answer (F33), enemy intent patterns (F34), enemy dice of any size with Wrath/Drain/Seal (F35).
 (BUILD 142) — Seal-never-wears-off fix, act 1 HP by position, all fifteen designed enemies (F36/F37), enemy Nat sound/visual (KI-22), Hosanna/Threnody reworked (F38).
 (BUILD 143) — anti-bloat: comment rule on js/ and index.html, CLAUDE.md trimmed, stray files removed, guardrail tests added.
 (BUILD 144) — skin pass: black palette, Press Start 2P/VT323 fonts, log toggle default closed, phase badge no underscores, stepped motion.
 (BUILD 145) — layout pass: horizontal face row 1-20, die icons, intent icon, art/gold/artifact placeholders, portrait cards, map restyle.
 (BUILD 146) — CLAUDE.md trim, window scaling, End Turn/hand-card resize, intent icon hover sentence, character art loading.
 (BUILD 147) — intent hover box, console filter narrowed to art/, blank rolled face holds like a loaded one, die icon number gets a black backing.
-(BUILD 148) — KI-28 Charge break now counts the release round's poison tick, run transcript, log Play/All views, log full screen, zoom-block check (none found).
+(BUILD 148) — KI-28 Charge break counts the release round's poison tick, run transcript, log Play/All views, log full screen.
 (BUILD 149) — the awe status, Dread, Genuflect, Kneel, Compline, Tremendum, Mysterium, card art loading.
 (BUILD 150) — break numbers -4, Bulwark, gold, shop after every rite, three artifacts (Third Eye/Loaded Die/Tolling Bell), KI-29.
 (BUILD 151) — Purify die action, event slot (The Font).
-(BUILD 152) — KI-30: build142's act.lower[3] fixed to the event/font fact, one shared CLAUDE.md byte-limit constant, .claude gitignored and excluded from the stray-files check.
+(BUILD 152) — KI-30: build142's act.lower[3] fixed to the event/font fact, shared CLAUDE.md byte-limit constant, .claude gitignored, excluded from the stray-files check.
 (BUILD 153) — relics renamed artifacts (8 slots, ARTIFACT_MAX 8), ten new artifacts, sold in shop at 150, seven new cards (pool 48).
 (BUILD 154) — second UI pass: one reward panel shape (three 380x470 cards, D-86) across die action/card/artifact/shop/Font, pop numbers (D-87, F46), stamp reads BUILD only.
 (BUILD 155) — KI-31 node re-entry fix, roll odds under each face (rollOdds()), the reward layer over the fight's own face row, CLAUDE.md trimmed to a 72,000-byte ceiling.
 (BUILD 156) — KI-32 face row fix, map screen reduced to the map (D-98), DIE/ARTIFACTS/CARDS info layers, act backgrounds (D-97).
+(BUILD 157) — KI-34 NAT caption wrap, KI-35 artifact slot text wrap, KI-36 run record build column + shop-opened log line.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.83 (BUILD 156) — three items, kept.
+Stage 2.84 (BUILD 157) — three items, kept.
 
-(A) KI-32 — the reward layer's face row squeezed to a sliver because a hidden flanking grid item dropped out of grid placement; fixed at the CSS cause. See THE REWARD LAYER.
+(A) KI-34 — face 1/20's caption clipped in its 56px column. Wraps to two lines (label, then percent) at a smaller font (die-face-caption-nat), in a fixed-height box every face shares so all twenty rows stay equal. See DIE COLUMN.
 
-(B) The map screen (D-98) — reduced to the map only; see MAP SCREEN. Three top-bar buttons (DIE/ARTIFACTS/CARDS) open info layers with what the removed previews showed; see INFO LAYERS.
+(B) KI-35 — the artifact slot's text fallback clipped a held artifact's name. Wraps up to two lines, one font step smaller (-webkit-line-clamp: 2), never overflowing the 26px slot; hover keeps the full name/text. See ACTION BAR.
 
-(C) Act backgrounds (D-97) — art/background_act<N>.png, when present, draws behind the art band/HP panels at 40% opacity; absent, nothing draws. See ACT BACKGROUNDS.
+(C) KI-36 — RUN_RECORD_CSV_HEADER gains a last column, build; every flushed line ends with GAME_CONFIG.BUILD. Opening the shop logs one [SHOP] opened: line and a matching SHOP stock transcript line, naming each card/artifact/Strengthen/Removal at its live price. See RUN RECORD, THE FONT/SHOP.
 
-Verification: build156 7/7, facts 111/111, mods 42/42, build155 8/8, build145 23/23, guardrails 19/19.
+Verification: build157 6/6, facts 111/111, mods 42/42, build156 7/7, guardrails 19/19.
 
 Full write-ups: HISTORY.md.

@@ -1084,3 +1084,20 @@ Stage 2.82 (BUILD 155) — four items, all kept.
 Verification: build155 8/8, facts 111/111, mods 42/42, build153 23/23, build154 14/14, guardrails 19/19. CLAUDE.md 79,987 to 71,965 bytes.
 
 Full write-ups for earlier builds: HISTORY.md.
+
+
+---
+
+# BUILD 156 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 157)
+
+Stage 2.83 (BUILD 156) — three items, kept.
+
+(A) KI-32 — the reward layer's face row squeezed to a sliver because a hidden flanking grid item dropped out of grid placement; fixed at the CSS cause. See THE REWARD LAYER.
+
+(B) The map screen (D-98) — reduced to the map only; see MAP SCREEN. Three top-bar buttons (DIE/ARTIFACTS/CARDS) open info layers with what the removed previews showed; see INFO LAYERS.
+
+(C) Act backgrounds (D-97) — art/background_act<N>.png, when present, draws behind the art band/HP panels at 40% opacity; absent, nothing draws. See ACT BACKGROUNDS.
+
+Verification: build156 7/7, facts 111/111, mods 42/42, build155 8/8, build145 23/23, guardrails 19/19.
+
+Full write-ups for earlier builds: HISTORY.md.
