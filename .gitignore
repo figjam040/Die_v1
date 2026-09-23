@@ -9,3 +9,4 @@ run_record_master.csv
 tests/autoplay_results.csv
 *.log
 .DS_Store
+.claude/

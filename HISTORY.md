@@ -1021,3 +1021,11 @@ Verification: guardrails 19/19, facts 111/111, mods 42/42, build141 22/22, build
 Stage 2.77 (BUILD 150) — six items; new mechanics under GOLD, SHOP AND RELICS. (1) OQ-16: every Charge enemy's breakAt lowered 4 (config.js ENEMIES). (2) Bulwark: common card, 1 soul, 6 block, 16 if chargeStage 'windup'/'release' — pool 40 to 41. (3) Gold. (4) The shop, after every rite. (5) Three relics plus their reward panel. (6) KI-29: build142.test.js F-b forces threnodyFace 7 after each enterOpeningFight() — no game code changed.
 
 Verification: guardrails 19/19, facts 111/111, mods 42/42, build141 22/22, build142 22/22, build144 13/13, build145 23/23, build146 11/11, build147 9/9, build148 11/11, build149 15/15, new tests/build150.test.js 9/9.
+
+---
+
+## Stage 2.78 (BUILD 151)
+
+Stage 2.78 (BUILD 151) — one event node and the die action Purify, at their smallest. (1) Purify: a third die action, offered whenever a non-1/10/20 face carries a mod; removes every mod from the chosen face (Strengthen's own picker), weight untouched, removed mod(s) re-offerable next Load (D-07). runRecord.dieActionEvents gets `purify:X|Y>N`. (2) Event slot: SLOT_HANDLERS gained 'event'; buildAct() places it at the lower lane's index 3 in every act, opposite the Elite — lower path drops from 7 fights an act to 6 (18 a run), upper untouched. (3) The Font: an unresolved rollWithRelics() roll (D-21) — Nat 20 opens the Load panel + gold, a loaded face +1 weight, a blank grants gold, Nat 1 costs HP floored at 1.
+
+Verification: guardrails 18/19 (repo-root .claude is a pre-existing session artifact, not this build's), facts 111/111, mods 42/42, build150 9/9, new build151 11/11 (build141/142's old lower[3] enemy assertions now stale, left unedited).

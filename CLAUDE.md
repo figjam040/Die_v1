@@ -749,14 +749,15 @@ Stage 2.75 (BUILD 148) — KI-28 Charge break now counts the release round's poi
 Stage 2.76 (BUILD 149) — the awe status, Dread, Genuflect, Kneel, Compline, Tremendum, Mysterium, card art loading. 111 facts, 42 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11/15 build144-149.
 Stage 2.77 (BUILD 150) — break numbers -4, Bulwark, gold, shop after every rite, three relics (Third Eye/Loaded Die/Tolling Bell), KI-29. 111 facts, 42 mods, 22/22 build141/142, 19 guardrails, 13/23/11/9/11/15 build144-149, 9/9 build150.
 Stage 2.78 (BUILD 151) — Purify die action, event slot (The Font). 111 facts, 42 mods, 18/19 guardrails, 9/9 build150, 11/11 new build151; build141/142 stale at act.lower[3], unfixed (out of scope).
+Stage 2.79 (BUILD 152) — KI-30: build142's act.lower[3] fixed to the event/font fact, one shared CLAUDE.md byte-limit constant, .claude gitignored and excluded from the stray-files check. No game change. 111 facts, 42 mods, 22/22 build141/142, 19/19 guardrails, 9/9 build150, 11/11 build151.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.78 (BUILD 151) — one event node and the die action Purify, at their smallest. (1) Purify: a third die action, offered whenever a non-1/10/20 face carries a mod; removes every mod from the chosen face (Strengthen's own picker), weight untouched, removed mod(s) re-offerable next Load (D-07). runRecord.dieActionEvents gets `purify:X|Y>N`. (2) Event slot: SLOT_HANDLERS gained 'event'; buildAct() places it at the lower lane's index 3 in every act, opposite the Elite — lower path drops from 7 fights an act to 6 (18 a run), upper untouched. (3) The Font: an unresolved rollWithRelics() roll (D-21) — Nat 20 opens the Load panel + gold, a loaded face +1 weight, a blank grants gold, Nat 1 costs HP floored at 1.
+Stage 2.79 (BUILD 152) — KI-30: make npm test green following the previous build's event-slot change, no game change. (1) tests/build142.test.js's four assertions that read act.lower[3] as a fight now assert what the previous build actually made true: act.lower[3].type is 'event' and .id is 'font' in every act, with the remaining lower-lane fight assertions (by position) unchanged. (2) tests/shared-constants.js exports CLAUDE_MD_MAX_BYTES (80000); tests/guardrails.test.js and tests/build146.test.js both read the size limit from it instead of two independent literals (72000 vs 80000) that could drift apart. (3) .claude/ added to .gitignore (was untracked, not yet ignored); tests/guardrails.test.js's repo-root stray-files check now skips any entry git itself would ignore (via `git check-ignore`) instead of naming folders one at a time.
 
-Verification: guardrails 18/19 (repo-root .claude is a pre-existing session artifact, not this build's), facts 111/111, mods 42/42, build150 9/9, new build151 11/11 (build141/142's old lower[3] enemy assertions now stale, left unedited).
+Verification: guardrails 19/19, facts 111/111, mods 42/42, build141 22/22, build142 22/22 (was 18/22), build144-151 unchanged from the previous build's own counts.
 
 Full write-ups for earlier builds: HISTORY.md.

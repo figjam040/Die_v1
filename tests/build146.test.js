@@ -12,6 +12,7 @@ const path = require('path');
 const fs = require('fs');
 const assert = require('assert');
 const { execFileSync } = require('child_process');
+const { CLAUDE_MD_MAX_BYTES } = require('./shared-constants');
 
 const ROOT = path.resolve(__dirname, '..');
 const FILE_URL = 'file://' + path.resolve(ROOT, 'index.html').replace(/\\/g, '/');
@@ -56,9 +57,9 @@ async function enterOpeningFight(page) {
   // ITEM (a) — CLAUDE.md size and the guardrail's root list
   // ---------------------------------------------------------------
 
-  await runTest('Item a: CLAUDE.md is under 72000 bytes', async () => {
+  await runTest('Item a: CLAUDE.md is under the shared byte limit', async () => {
     const bytes = fs.statSync(path.join(ROOT, 'CLAUDE.md')).size;
-    assert.ok(bytes < 72000, 'CLAUDE.md is ' + bytes + ' bytes, must be under 72000');
+    assert.ok(bytes < CLAUDE_MD_MAX_BYTES, 'CLAUDE.md is ' + bytes + ' bytes, must be under ' + CLAUDE_MD_MAX_BYTES);
   });
 
   await runTest("Item a: node tests/guardrails.test.js passes with 'art' in the root list", async () => {

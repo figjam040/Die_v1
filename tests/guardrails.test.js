@@ -5,8 +5,23 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
+const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
+const { CLAUDE_MD_MAX_BYTES } = require('./shared-constants');
+
+// True if git itself would ignore this root-level entry (.gitignore, a
+// global ignore, etc). Session/tool scratch folders like .claude/ are never
+// part of the repo's own file list, so the stray-files check below skips
+// whatever git already excludes instead of hardcoding folder names.
+function isGitIgnored(name) {
+  try {
+    execFileSync('git', ['check-ignore', '-q', name], { cwd: ROOT });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
 
 // Files whose comment-share/run-length checks were reverted this build
 // after failing AST-sameness twice — see the build's own paste-back.
@@ -112,10 +127,10 @@ function factsBlockLineRange(src) {
 }
 
 (async function main() {
-  await runTest('CLAUDE.md is at most 80,000 bytes', async () => {
+  await runTest('CLAUDE.md is at most ' + CLAUDE_MD_MAX_BYTES.toLocaleString() + ' bytes', async () => {
     const src = fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8');
     const bytes = Buffer.byteLength(src, 'utf8');
-    assert.ok(bytes <= 80000, 'CLAUDE.md is ' + bytes + ' bytes, over the 80,000 byte guardrail');
+    assert.ok(bytes <= CLAUDE_MD_MAX_BYTES, 'CLAUDE.md is ' + bytes + ' bytes, over the ' + CLAUDE_MD_MAX_BYTES.toLocaleString() + ' byte guardrail');
   });
 
   await runTest('Every line in CONFIRMED WORKING is at most 300 characters', async () => {
@@ -219,7 +234,7 @@ function factsBlockLineRange(src) {
 
   await runTest('tests/ holds no .png and nothing but the allowed script names', async () => {
     const testsDir = path.join(ROOT, 'tests');
-    const allowedExact = ['screenshots.js', 'pngdiff.js', 'autoplay.js', 'run-all.js', 'guardrails.test.js'];
+    const allowedExact = ['screenshots.js', 'pngdiff.js', 'autoplay.js', 'run-all.js', 'guardrails.test.js', 'shared-constants.js'];
     const entries = fs.readdirSync(testsDir).filter(function(f) {
       return fs.statSync(path.join(testsDir, f)).isFile();
     });
@@ -243,7 +258,7 @@ function factsBlockLineRange(src) {
       'node_modules', 'backups', 'Archive', 'test-results', 'verify', 'verify_prev',
       'register_backup.json', 'run_record_master.csv', '.nojekyll', 'audio'];
     const entries = fs.readdirSync(ROOT);
-    const offenders = entries.filter(function(f) { return allowed.indexOf(f) === -1; });
+    const offenders = entries.filter(function(f) { return allowed.indexOf(f) === -1 && !isGitIgnored(f); });
     assert.strictEqual(offenders.length, 0, 'unexpected entries in repo root: ' + offenders.join(', '));
   });
 

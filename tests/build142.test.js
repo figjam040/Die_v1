@@ -104,7 +104,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     const act = await page.evaluate(() => buildAct(1));
     assert.strictEqual(act.lower[0].enemy.hp, 58);
     assert.strictEqual(act.lower[2].enemy.hp, 65);
-    assert.strictEqual(act.lower[3].enemy.hp, 72);
+    // Since BUILD 151, lower[3] is the event slot (The Font), not a fight.
+    assert.strictEqual(act.lower[3].type, 'event');
+    assert.strictEqual(act.lower[3].id, 'font');
     assert.strictEqual(act.lower[5].enemy.hp, 78);
     assert.strictEqual(act.lower[6].enemy.hp, 85);
     assert.strictEqual(act.upper[0].enemy.hp, 58);
@@ -126,9 +128,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.strictEqual(act.opening.enemy.name, 'Verger');
     assert.strictEqual(act.opening.enemy.hp, 50);
     assert.deepStrictEqual(act.opening.enemy.pattern, [{ kind: 'attack', min: 6, max: 9 }, { kind: 'attack', min: 6, max: 9 }]);
-    assert.strictEqual(act.lower[3].enemy.name, 'Verger');
-    assert.strictEqual(act.lower[3].enemy.hp, 72);
-    assert.deepStrictEqual(act.lower[3].enemy.pattern, [{ kind: 'attack', min: 9, max: 12 }, { kind: 'attack', min: 9, max: 12 }]);
+    // Since BUILD 151, lower[3] is the event slot (The Font), not a second Verger fight.
+    assert.strictEqual(act.lower[3].type, 'event');
+    assert.strictEqual(act.lower[3].id, 'font');
     [act.upper[0], act.upper[5], act.lower[0], act.lower[5]].forEach(function(s) {
       assert.strictEqual(s.enemy.name, 'Thurifer');
       assert.deepStrictEqual(s.enemy.pattern, [{ kind: 'attack', min: 10, max: 14 }, { kind: 'charge', release: 24, breakAt: 11 }]);
@@ -147,7 +149,8 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   await runTest('Item B-b: every act 1 Attack range is at most 4 wide', async () => {
     const page = await freshPage(browser);
     const act = await page.evaluate(() => buildAct(1));
-    const allEnemies = [act.opening.enemy, act.upper[0].enemy, act.upper[2].enemy, act.upper[3].enemy, act.lower[3].enemy, act.boss.enemy];
+    // lower[3] is the event slot (The Font) since BUILD 151, no enemy there.
+    const allEnemies = [act.opening.enemy, act.upper[0].enemy, act.upper[2].enemy, act.upper[3].enemy, act.lower[0].enemy, act.boss.enemy];
     allEnemies.forEach(function(e) {
       e.pattern.forEach(function(entry) {
         if (entry.kind === 'attack') {
@@ -235,8 +238,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.strictEqual(a2.upper[0].enemy.hp, 110);
     assert.strictEqual(a2.upper[2].enemy.name, 'Flagellant');
     assert.strictEqual(a2.upper[2].enemy.hp, 119);
-    assert.strictEqual(a2.lower[3].enemy.name, 'Chorister');
-    assert.strictEqual(a2.lower[3].enemy.hp, 98);
+    // Since BUILD 151, lower[3] is the event slot (The Font), not a fight.
+    assert.strictEqual(a2.lower[3].type, 'event');
+    assert.strictEqual(a2.lower[3].id, 'font');
     assert.strictEqual(a2.upper[3].enemy.name, 'Archdeacon');
     assert.strictEqual(a2.upper[3].enemy.hp, 140);
     assert.strictEqual(a2.upper[3].enemy.die.faces.length, 12);
@@ -252,8 +256,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.strictEqual(a3.upper[0].enemy.hp, 149);
     assert.strictEqual(a3.upper[2].enemy.name, 'Inquisitor');
     assert.strictEqual(a3.upper[2].enemy.hp, 162);
-    assert.strictEqual(a3.lower[3].enemy.name, 'Anchorite');
-    assert.strictEqual(a3.lower[3].enemy.hp, 133);
+    // Since BUILD 151, lower[3] is the event slot (The Font), not a fight.
+    assert.strictEqual(a3.lower[3].type, 'event');
+    assert.strictEqual(a3.lower[3].id, 'font');
     assert.strictEqual(a3.upper[3].enemy.name, 'Exarch');
     assert.strictEqual(a3.upper[3].enemy.hp, 190);
     assert.strictEqual(a3.upper[3].enemy.die.faces.length, 12);
