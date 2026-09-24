@@ -85,15 +85,23 @@ const VIEWPORTS = [
       await page.evaluate(() => { updateRun({ artifacts: ['merchants_seal'] }); refreshInspector(); });
       const v = await page.evaluate(() => {
         const slot = document.querySelectorAll('.artifact-slot')[0];
+        // BUILD 161 (D-104/KI-41): the visible name lives in its own
+        // .artifact-slot-name child now, the hover tip a sibling span —
+        // slot.textContent would concatenate both.
+        const nameEl = slot.querySelector('.artifact-slot-name');
+        const tip = slot.querySelector('.hover-tip');
         return {
-          text: slot.textContent,
-          title: slot.title,
-          overflowX: slot.scrollWidth - slot.clientWidth
+          text: nameEl ? nameEl.textContent : slot.textContent,
+          title: tip ? tip.textContent : '',
+          // The hover tip is deliberately wider than the 26px slot (it
+          // only shows on hover) — check the clamped name span's own
+          // overflow, not the slot's, which now also contains that tip.
+          overflowX: nameEl ? nameEl.scrollWidth - nameEl.clientWidth : slot.scrollWidth - slot.clientWidth
         };
       });
       assert.strictEqual(v.text, "Merchant's Seal", 'the slot must still hold the full name in the DOM, got: ' + JSON.stringify(v.text));
       assert.ok(v.overflowX <= 0, 'the artifact slot overflows horizontally by ' + v.overflowX + 'px');
-      assert.ok(v.title.indexOf("Merchant's Seal") !== -1, 'hover title must still carry the full name, got: ' + v.title);
+      assert.ok(v.title.indexOf("Merchant's Seal") !== -1, 'hover tip must still carry the full name, got: ' + v.title);
       await page.close();
     });
   }

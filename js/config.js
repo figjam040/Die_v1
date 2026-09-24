@@ -47,7 +47,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 160,
+  BUILD: 161,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -200,6 +200,10 @@ const GAME_CONFIG = {
   ROUND_TRIGGER_CAP: 10,
 
   SWEEP_TRIGGER_DELAY_MS: 200,
+
+  // D-106 — a clicked offer card/die frame/artifact holds its gold
+  // outline this long before the layer moves on.
+  OFFER_PICK_HIGHLIGHT_MS: 300,
 
   SOUND_DURATION_CEILING_MS: 200,
   SOUND_DURATION_CEILING_EXEMPT: ['nat_20', 'nat_1', 'fight_won', 'fight_lost', 'fight_start_boss', 'boss_defeated'],

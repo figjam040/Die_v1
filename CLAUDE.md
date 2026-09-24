@@ -763,15 +763,26 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 158) — D-99 odds to one decimal, D-100 dead act 1 lane/die constants deleted, D-101 boss Nat 20 forces a Charge, D-102/KI-37 Load offer as wireframe d20s + fixed card art box height.
 (BUILD 159) — KI-38/D-70: facts.test.js's BUILD 124 test no longer plays a bot run, source-text check only. CLAUDE.md trimmed; CONFIRMED WORKING now one line per build 141-159, one line for 001-140.
 (BUILD 160) — CLAUDE.md size cap raised from 72,000 to 90,000 bytes (D-84 amended 25 Sep); CLAUDE_MD_MAX_BYTES is the single source, no test hardcodes the old figure. No game change.
+(BUILD 161) — KI-39 Purify title case, KI-40 Font centred, D-104/KI-41 native title tooltips replaced with .hover-tip, D-105 roll strip name-only, D-106 clicked offer card gets a gold outline.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.87 (BUILD 160) — one item, kept.
+Stage 2.88 (BUILD 161) — five items from Fergus's 25 Sep review, kept.
 
-(A) D-84 amended 25 Sep — the CLAUDE.md size cap rises from 72,000 to 90,000 bytes. CLAUDE_MD_MAX_BYTES (tests/shared-constants.js) stays the single source; tests/build159.test.js's CLAUDE_MD_UNDER_BYTES now reads that constant instead of its own hardcoded 72000. The SIZE RULE line below names 90,000. No game/mechanic change.
+(A) KI-39 — the Purify die action's button reads "Purify", not "PURIFY". Nothing else about it changed.
+
+(B) KI-40 — The Font's own panel (#eventScreenPanel) is vertically and horizontally centred in the play column above the face row, matching the space the other reward layers already fill: it now grows to fill what's left of .band-top once band-b/band-c are hidden (reward-layer-active) and centres its own content inside that space, rather than sitting at the top.
+
+(C) D-104/KI-41 — every native `title` attribute anywhere in js/rendering.js (twenty assignments) and in index.html's own markup is gone; each became a `.hover-tip` child of the same element carrying the same text, shown on hover exactly like a die row's existing hover box. A new `setHoverTip(el, text)` helper (rendering.js) is the one place this is done — it adds a generic `hover-parent` class (index.html: `.hover-parent:hover .hover-tip`) so any element gets the hover behaviour without its own bespoke `:hover` rule. A die row's own tip now also carries what the title used to (name, weight, trigger count, Bound badge) ahead of the mod's own description, so a blank face keeps a tip too — previously only loaded/Nat faces had one. The enemy panel's own "Loaded buffs"/"Active this turn" lines are hidden (`display:none`, ids/text still written every render for anything reading them directly); hovering `#enemyArtBox` shows the same information instead, one loaded face per line, a blank line, then what's active this turn. The player panel's Active debuffs and DECK/DISCARD lines moved to sit right after the HP row, ahead of BL/SOUL/status, so they read without needing to be at the panel's own bottom edge. The artifact slot's visible name now lives in its own `.artifact-slot-name` child span (the old `-webkit-line-clamp` clamp moved onto that span) so the slot's own hover tip can sit beside it without polluting the name text.
+
+(D) D-105 — the roll strip (`paintRollHero()`) shows the triggering face's name only: PENITENCE, BLANK, or the mod name(s) in trigger order, each with its own `↻N` trigger badge. No `+N` value line and no "NAT 1" prefix ahead of Penitence; a Nat 20 still reads NAT 20 (its segment carries no other name). The pop numbers (D-87) and the log line are untouched — the number still lands and is still readable, just not repeated on the strip.
+
+(E) D-106 — every offer card/die-frame/artifact click (`renderOfferCard()`/`renderOfferDieCard()`, via the new `offerCardHandleClick()`) gives the clicked card a 2px gold outline (`.offer-card-picked`, `#fbbf24`) immediately and drops its siblings in the same offer group to 60% opacity (`.offer-card-dimmed`), then defers the click's real effect by `GAME_CONFIG.OFFER_PICK_HIGHLIGHT_MS` (300ms) so the highlight is actually seen before the layer moves on or closes. The Load offer's own persisted "chosen" mod (step two, no fresh click) gets the same treatment from `renderOfferPanel()` directly off `spec.cards[].chosen`.
+
+Every pre-existing test file that asserted against a native `.title` (build141/144/145/149/151/154/155/157, facts.test.js) or the literal `'PURIFY'` string (build151/154) was updated to read the new `.hover-tip`/`.hover-parent` markup or the title-case text instead — no mechanic or number assertion in any of them changed, only how the same information is located in the DOM.
 
 Verification: see paste-back.
 

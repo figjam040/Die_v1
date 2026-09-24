@@ -1165,3 +1165,15 @@ Stage 2.86 (BUILD 159) — two process fixes, kept.
 Verification: see paste-back.
 
 BUILD 160 index note: one item, no game change — the CLAUDE.md size cap rises from 72,000 to 90,000 bytes (D-84 amended 25 Sep). Full write-up: CLAUDE.md CURRENT SUBSTAGE, until BUILD 161 moves it here.
+
+---
+
+# BUILD 160 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 161)
+
+Stage 2.87 (BUILD 160) — one item, kept.
+
+(A) D-84 amended 25 Sep — the CLAUDE.md size cap rises from 72,000 to 90,000 bytes. CLAUDE_MD_MAX_BYTES (tests/shared-constants.js) stays the single source; tests/build159.test.js's CLAUDE_MD_UNDER_BYTES now reads that constant instead of its own hardcoded 72000. The SIZE RULE line below names 90,000. No game/mechanic change.
+
+Verification: see paste-back.
+
+BUILD 161 index note: five UI fixes from Fergus's 25 Sep check of BUILD 160 — KI-39 (Purify button text), KI-40 (The Font centred), D-104/KI-41 (every native title tooltip replaced with a .hover-tip; enemy panel's Loaded buffs/Active this turn move to a hover on the enemy art), D-105 (roll strip name-only), D-106 (a clicked offer card/die frame/artifact gets a gold outline, siblings dim). No mechanic change. Full write-up: CLAUDE.md CURRENT SUBSTAGE, until BUILD 162 moves it here.

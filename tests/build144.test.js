@@ -225,25 +225,29 @@ const TIMING_FN_PATTERN = /\b(ease-in-out|ease-in|ease-out|ease|linear)\b/;
   // Face-btn / hand-card titles, and the BUILD 143 id inventory
   // ---------------------------------------------------------------
 
-  await runTest('Item 9: every .face-btn in #playerDieList has a non-empty title', async () => {
+  await runTest('Item 9: every .face-btn in #playerDieList has a non-empty hover tip', async () => {
+    // BUILD 161 (D-104/KI-41) replaced the native title tooltip with a
+    // .hover-tip on the row itself (die-row), not on the square.
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     const titles = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('#playerDieList .face-btn')).map(b => b.title)
+      Array.from(document.querySelectorAll('#playerDieList .die-row')).map(r => (r.querySelector('.hover-tip') || {}).textContent || '')
     );
     assert.ok(titles.length > 0, 'expected at least one face-btn in #playerDieList');
-    titles.forEach(function(t, i) { assert.ok(t && t.length > 0, 'face ' + (i + 1) + ' must have a non-empty title'); });
+    titles.forEach(function(t, i) { assert.ok(t && t.length > 0, 'face ' + (i + 1) + ' must have a non-empty hover tip'); });
     await page.close();
   });
 
-  await runTest('Item 9: every hand card has a non-empty title', async () => {
+  await runTest('Item 9: every hand card has a non-empty hover tip', async () => {
+    // BUILD 161 (D-104/KI-41) replaced the native title tooltip with a
+    // .hover-tip child of the card itself.
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     const titles = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('#handRow .hand-card-el')).map(b => b.title)
+      Array.from(document.querySelectorAll('#handRow .hand-card-el')).map(b => (b.querySelector('.hover-tip') || {}).textContent || '')
     );
     assert.ok(titles.length > 0, 'expected at least one card in hand');
-    titles.forEach(function(t, i) { assert.ok(t && t.length > 0, 'hand card ' + (i + 1) + ' must have a non-empty title'); });
+    titles.forEach(function(t, i) { assert.ok(t && t.length > 0, 'hand card ' + (i + 1) + ' must have a non-empty hover tip'); });
     await page.close();
   });
 

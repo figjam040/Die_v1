@@ -91,7 +91,11 @@ async function enterOpeningFight(page) {
 
   await runTest('Item A-e: the player poison hover text is not empty', async () => {
     const page = await freshPage(browser);
-    const title = await page.evaluate(() => { renderStats(); return document.getElementById('playerDebuffsValue').title; });
+    const title = await page.evaluate(() => {
+      renderStats();
+      const tip = document.getElementById('playerDebuffsValue').querySelector('.hover-tip');
+      return tip ? tip.textContent : '';
+    });
     assert.ok(title && title.length > 0, 'expected non-empty poison hover text');
     assert.ok(title.indexOf('block') !== -1 && title.indexOf('poison') !== -1, 'hover text should mention block and poison');
     await page.close();
@@ -442,9 +446,9 @@ async function enterOpeningFight(page) {
     await page.evaluate(() => { updateEnemy({ wrath: 4 }); updatePlayer({ drainNextRound: 1 }); renderStats(); });
     const v = await page.evaluate(() => ({
       wrathText: document.getElementById('enemyWrathValue').textContent,
-      wrathTitle: document.getElementById('enemyWrathValue').title,
+      wrathTitle: (document.getElementById('enemyWrathValue').querySelector('.hover-tip') || {}).textContent || '',
       drainText: document.getElementById('playerDrainValue').textContent,
-      drainTitle: document.getElementById('playerDrainValue').title
+      drainTitle: (document.getElementById('playerDrainValue').querySelector('.hover-tip') || {}).textContent || ''
     }));
     assert.ok(v.wrathText && v.wrathText.length > 0);
     assert.ok(v.wrathTitle && v.wrathTitle.length > 0);

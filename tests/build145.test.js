@@ -254,11 +254,15 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
     await page.waitForFunction(() => gameState.turn.rolledFaceNumber === 10);
     const v = await page.evaluate(() => ({
       hero: document.getElementById('rollHero').textContent.replace(/\s+/g, ' ').trim(),
-      icon: document.getElementById('playerDieIcon').textContent.trim()
+      // BUILD 161: the icon's own hover tip is now a sibling span inside
+      // it too, so read the rolled number's own element, not the whole
+      // icon's textContent.
+      icon: (document.querySelector('#playerDieIcon .die-icon-number-text') || {}).textContent || ''
     }));
     assert.ok(v.hero.indexOf('CONSECRATE') !== -1, 'the roll stage must name the mod, got: ' + v.hero);
     assert.ok(v.hero.indexOf('↻') !== -1, 'the roll stage must show the run trigger count, got: ' + v.hero);
-    assert.ok(/^\+\d/.test(v.hero), 'the roll stage must lead with the signed value, got: ' + v.hero);
+    // D-105 (BUILD 161): the strip is name-only now, no '+N' value line.
+    assert.ok(v.hero.indexOf('+') === -1, 'the roll stage must carry no +N value, got: ' + v.hero);
     assert.strictEqual(v.icon, '10', 'the player die icon must show the rolled face number');
     await page.close();
   });
@@ -275,18 +279,21 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
     await page.waitForFunction(() => dieActionStep !== null);
     const v = await page.evaluate(() => {
       const btns = Array.from(document.querySelectorAll('#playerDieList .face-btn'));
+      const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
       const byLeft = btns.slice().sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
       return {
         visible: document.getElementById('dieActionPanel').offsetParent !== null,
         count: btns.length,
-        untitled: btns.filter(b => !b.title).length,
+        // BUILD 161 (D-104/KI-41): the hover tip lives on the row now, not
+        // the square's own native title.
+        untitled: rows.filter(r => !(r.querySelector('.hover-tip') || {}).textContent).length,
         leftMost: byLeft.length ? byLeft[0].textContent : null,
         rightMost: byLeft.length ? byLeft[byLeft.length - 1].textContent : null
       };
     });
     assert.strictEqual(v.visible, true, '#dieActionPanel must be visible');
     assert.strictEqual(v.count, 20, 'the picker must show all twenty squares, got ' + v.count);
-    assert.strictEqual(v.untitled, 0, v.untitled + ' square(s) in the picker carry no title');
+    assert.strictEqual(v.untitled, 0, v.untitled + ' square(s) in the picker carry no hover tip');
     assert.strictEqual(v.leftMost, '1', 'the picker must read face 1 at the left');
     assert.strictEqual(v.rightMost, '20', 'the picker must read face 20 at the right');
     await page.close();
@@ -413,39 +420,41 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
   // TITLES — every square, status icon and hand card reads on hover
   // ---------------------------------------------------------------
 
-  await runTest('Titles: every .face-btn on the fight screen has a non-empty title naming its weight', async () => {
+  await runTest('Titles: every .face-btn on the fight screen has a non-empty hover tip naming its weight', async () => {
+    // BUILD 161 (D-104/KI-41): the hover tip lives on the row, not the square.
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     const v = await page.evaluate(() => {
-      const btns = Array.from(document.querySelectorAll('#playerDieList .face-btn'));
+      const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
+      const titles = rows.map(r => (r.querySelector('.hover-tip') || {}).textContent || '');
       return {
-        count: btns.length,
-        untitled: btns.filter(b => !b.title).length,
-        withoutWeight: btns.filter(b => b.title.indexOf('weight ') === -1).length
+        count: titles.length,
+        untitled: titles.filter(t => !t).length,
+        withoutWeight: titles.filter(t => t.indexOf('weight ') === -1).length
       };
     });
-    assert.strictEqual(v.untitled, 0, v.untitled + ' face square(s) carry no title');
-    assert.strictEqual(v.withoutWeight, 0, v.withoutWeight + ' face square title(s) do not name a weight');
+    assert.strictEqual(v.untitled, 0, v.untitled + ' face square(s) carry no hover tip');
+    assert.strictEqual(v.withoutWeight, 0, v.withoutWeight + ' face square hover tip(s) do not name a weight');
     await page.close();
   });
 
-  await runTest('Titles: a loaded face title names its mod, weight and run trigger count', async () => {
+  await runTest('Titles: a loaded face hover tip names its mod, weight and run trigger count', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     const title = await page.evaluate(() => {
       const newFaces = gameState.die.faces.slice();
       newFaces[4] = Object.assign({}, newFaces[4], { modId: 'blight', modData: { triggerCount: 2 } });
       updateDie({ faces: newFaces });
-      return Array.from(document.querySelectorAll('#playerDieList .face-btn'))
-        .find(b => b.textContent === '5').title;
+      const btn = Array.from(document.querySelectorAll('#playerDieList .face-btn')).find(b => b.textContent === '5');
+      return btn.closest('.die-row').querySelector('.hover-tip').textContent;
     });
-    assert.ok(title.indexOf('Blight') === 0, 'the title must lead with the mod name, got: ' + title);
-    assert.ok(title.indexOf('weight 1') !== -1, 'the title must name the weight, got: ' + title);
-    assert.ok(title.indexOf('triggered 2 times this run') !== -1, 'the title must name the run trigger count, got: ' + title);
+    assert.ok(title.indexOf('Blight') === 0, 'the hover tip must lead with the mod name, got: ' + title);
+    assert.ok(title.indexOf('weight 1') !== -1, 'the hover tip must name the weight, got: ' + title);
+    assert.ok(title.indexOf('triggered 2 times this run') !== -1, 'the hover tip must name the run trigger count, got: ' + title);
     await page.close();
   });
 
-  await runTest('Titles: every status icon shown carries a non-empty title', async () => {
+  await runTest('Titles: every status icon shown carries a non-empty hover tip', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     const v = await page.evaluate(() => {
@@ -453,22 +462,26 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
       updateEnemy({ poisonStacks: 3, wrath: 2 });
       refreshInspector();
       const icons = Array.from(document.querySelectorAll('#playerStatusRow .status-icon, #enemyStatusRow .status-icon'));
-      return { count: icons.length, untitled: icons.filter(i => !i.title).length, texts: icons.map(i => i.textContent) };
+      return {
+        count: icons.length,
+        untitled: icons.filter(i => !(i.querySelector('.hover-tip') || {}).textContent).length,
+        texts: icons.map(i => i.firstChild ? i.firstChild.textContent : '')
+      };
     });
     assert.ok(v.count >= 5, 'expected at least five status icons, got ' + v.count + ': ' + v.texts.join(' '));
-    assert.strictEqual(v.untitled, 0, v.untitled + ' status icon(s) carry no title');
+    assert.strictEqual(v.untitled, 0, v.untitled + ' status icon(s) carry no hover tip');
     await page.close();
   });
 
-  await runTest('Titles: every hand card has a non-empty title', async () => {
+  await runTest('Titles: every hand card has a non-empty hover tip', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     const v = await page.evaluate(() => {
       const cards = Array.from(document.querySelectorAll('#handRow .hand-card-el'));
-      return { count: cards.length, untitled: cards.filter(c => !c.title).length };
+      return { count: cards.length, untitled: cards.filter(c => !(c.querySelector('.hover-tip') || {}).textContent).length };
     });
     assert.ok(v.count > 0, 'expected at least one card in hand');
-    assert.strictEqual(v.untitled, 0, v.untitled + ' hand card(s) carry no title');
+    assert.strictEqual(v.untitled, 0, v.untitled + ' hand card(s) carry no hover tip');
     await page.close();
   });
 

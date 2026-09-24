@@ -240,7 +240,8 @@ async function enterPausedFight(page) {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
       // Card reward: soul cost in the name, effect text on the card and in
-      // its title (the BUILD 153 hover).
+      // its own .hover-tip (BUILD 161 replaced the native title tooltip,
+      // D-104/KI-41).
       openCardRewardScreen();
       const rewardCard = document.querySelector('#cardRewardPanel .offer-card');
       const rewardId = rewardCard.dataset.offerId;
@@ -249,7 +250,7 @@ async function enterPausedFight(page) {
         rewardCost: getCardCost(gameState.config.cardPool[rewardId]),
         rewardText: rewardCard.querySelector('.offer-card-text').textContent,
         rewardEffect: getCardEffectText(rewardId),
-        rewardTitle: rewardCard.title
+        rewardTitle: (rewardCard.querySelector('.hover-tip') || {}).textContent || ''
       };
       cardRewardSkip();
 
@@ -259,23 +260,26 @@ async function enterPausedFight(page) {
       const modCard = document.querySelector('#dieActionPanel .offer-die-card');
       out.modId = modCard.dataset.offerId;
       out.modText = modCard.querySelector('.offer-card-text').textContent;
-      out.modTitle = modCard.title;
+      out.modTitle = (modCard.querySelector('.hover-tip') || {}).textContent || '';
 
-      // The die action menu keeps PURIFY's own hover sentence.
+      // The die action menu keeps Purify's own hover sentence.
       const newFaces = gameState.die.faces.slice();
       newFaces[6] = Object.assign({}, newFaces[6], { modId: 'smite' });
       updateDie({ faces: newFaces });
       openDieActionScreen();
-      const purify = Array.from(document.querySelectorAll('#dieActionPanel button')).find(b => b.textContent === 'PURIFY');
-      out.purifyTitle = purify ? purify.title : '';
-      // Every face square keeps its own title, weight line and hover tip.
+      const purify = Array.from(document.querySelectorAll('#dieActionPanel button')).find(b => b.textContent.indexOf('Purify') === 0);
+      out.purifyTitle = purify ? (purify.querySelector('.hover-tip') || {}).textContent || '' : '';
+      // Every face square keeps its own hover tip (die-row, BUILD 161).
       const squares = Array.from(document.querySelectorAll('#playerDieList .face-btn'));
+      const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
       out.squares = squares.length;
-      out.untitledSquares = squares.filter(b => !b.title).length;
-      // A blank face has never carried a hover tip — the rule is one tip
-      // per loaded or Nat face, exactly as before BUILD 154.
+      out.untitledSquares = rows.filter(r => !(r.querySelector('.hover-tip') || {}).textContent).length;
+      // BUILD 161 (D-104/KI-41): every face, blank included, now carries a
+      // hover tip (it's the only place a blank face's own info lives once
+      // the native title is gone) — so tips now equal every face, not just
+      // loaded/Nat ones.
       out.tips = document.querySelectorAll('#playerDieList .die-row .hover-tip').length;
-      out.tippableFaces = gameState.die.faces.filter(f => f.modId !== null).length;
+      out.tippableFaces = gameState.die.faces.length;
       dieActionChooseSkip();
       cardRewardSkip();
 
@@ -291,10 +295,10 @@ async function enterPausedFight(page) {
     assert.ok(v.rewardTitle.indexOf(v.rewardEffect) !== -1, 'a reward card must keep its effect text on hover');
     assert.ok(v.modText.length > 0, 'a mod card must show its description');
     assert.ok(v.modTitle.indexOf(v.modText) !== -1, 'a mod card must keep its description on hover');
-    assert.ok(v.purifyTitle.length > 0, 'PURIFY must keep its hover sentence');
+    assert.ok(v.purifyTitle.length > 0, 'Purify must keep its hover sentence');
     assert.strictEqual(v.squares, 20, 'the face row must still show twenty squares');
-    assert.strictEqual(v.untitledSquares, 0, v.untitledSquares + ' face square(s) lost their title');
-    assert.strictEqual(v.tips, v.tippableFaces, 'every loaded/Nat face must keep its hover tip, got ' + v.tips + ' for ' + v.tippableFaces + ' faces');
+    assert.strictEqual(v.untitledSquares, 0, v.untitledSquares + ' face square(s) lost their hover tip');
+    assert.strictEqual(v.tips, v.tippableFaces, 'every face must keep its hover tip, got ' + v.tips + ' for ' + v.tippableFaces + ' faces');
     assert.strictEqual(v.smallTips.length, 3, 'the shop second row must have three entries');
     v.smallTips.forEach(t => assert.ok(t.length > 0, 'a shop second-row entry lost its hover sentence'));
     await page.close();

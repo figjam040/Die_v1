@@ -179,16 +179,29 @@
     color: #1a1500;
   }
 
+  /* D-104/KI-41 — the -webkit-line-clamp that used to sit directly on
+     .artifact-slot now lives on .artifact-slot-name instead: the slot
+     itself holds the name span plus a sibling .hover-tip (setHoverTip()),
+     and clamping the slot as a -webkit-box measured that absolutely
+     positioned tip into its own scrollWidth. */
   .artifact-slot {
+    position: relative;
     width: 26px;
     height: 26px;
     border: 2px solid #3a3a3a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .artifact-slot-name {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     -webkit-box-pack: center;
     -webkit-box-align: center;
     overflow: hidden;
+    width: 100%;
     font-family: var(--game-font-2);
     font-size: 8px;
     line-height: 1.05;
@@ -1080,6 +1093,18 @@
     border-color: var(--nat);
   }
 
+  /* KI-40 — The Font's own panel carries little content (flavour text,
+     ROLL/CONTINUE), so it needs to claim the same vertical centring the
+     taller reward panels get from their own content filling most of
+     .band-top; this grows to fill what's left of band-top (band-b/band-c
+     hidden while the reward layer is open) and centres inside itself. */
+  #eventScreenPanel {
+    flex: 1 1 auto;
+    justify-content: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   .die-action-title {
     font-family: var(--game-font);
     font-size: 17px;
@@ -1383,6 +1408,30 @@
   .die-row:hover .hover-tip {
     opacity: 1;
     visibility: visible;
+  }
+
+  /* D-104/KI-41 — the one generic hover trigger: any element carrying a
+     .hover-tip child gets `hover-parent` too (setHoverTip(), rendering.js)
+     so it shows without needing its own :hover rule. Redundant, and
+     harmless, alongside a more specific rule above. */
+  .hover-parent {
+    position: relative;
+  }
+
+  .hover-parent:hover .hover-tip {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* D-106 — a clicked offer card/die-frame/artifact holds a gold outline
+     while the layer stays open; its siblings in the same offer group dim. */
+  .offer-card-picked {
+    outline: 2px solid #fbbf24;
+    outline-offset: -2px;
+  }
+
+  .offer-card-dimmed {
+    opacity: 0.6;
   }
 
   .die-row-pickable {
@@ -1991,13 +2040,15 @@
         <div class="side-col" id="playerPanel">
           <div class="side-title">ORDAINED</div>
           <div class="stat-row"><span class="stat-label">HP:</span><span class="stat-value" id="playerHpValue">— / —</span></div>
+          <!-- D-104: sit right after HP, above the hand row's own footprint,
+               so they read without a hover even when the hand runs wide. -->
+          <div class="side-note-label">Active debuffs <span class="side-note" id="playerDebuffsValue">—</span></div>
+          <div class="side-note">DECK <span id="playerDeckValue">—</span> DISCARD <span id="playerDiscardValue">—</span></div>
           <div class="stat-row"><span class="stat-label">BL:</span><span class="stat-value" id="playerBlockValue">—</span></div>
           <div class="stat-row"><span class="stat-label">SOUL:</span><span class="stat-value" id="playerSoulValue">— / —</span></div>
           <div class="status-row" id="playerStatusRow"></div>
-          <div class="side-note-label">Active debuffs <span class="side-note" id="playerDebuffsValue">—</span></div>
           <!-- Shown only while gameState.player.drainNextRound > 0. -->
           <div class="side-note" id="playerDrainLine" style="display:none;"><span id="playerDrainValue">—</span></div>
-          <div class="side-note">DECK <span id="playerDeckValue">—</span> DISCARD <span id="playerDiscardValue">—</span></div>
         </div>
 
         <div class="band-c-mid">
@@ -2018,8 +2069,11 @@
           <div class="status-row" id="enemyStatusRow"></div>
           <!-- Stacks of poison also read off the enemy status row's own P icon. -->
           <span id="enemyPoisonValue" style="display:none;">—</span>
-          <div class="side-note-label">Loaded buffs <span class="side-note" id="enemyBuffsValue">—</span></div>
-          <div class="side-note-label">Active this turn <span class="side-note" id="enemyActiveValue">—</span></div>
+          <!-- D-104/KI-41: no longer printed on the panel — hovering
+               #enemyArtBox shows the same information; still written every
+               render for anything that reads these ids directly. -->
+          <div class="side-note-label" style="display:none;">Loaded buffs <span class="side-note" id="enemyBuffsValue">—</span></div>
+          <div class="side-note-label" style="display:none;">Active this turn <span class="side-note" id="enemyActiveValue">—</span></div>
         </div>
       </div>
 

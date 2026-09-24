@@ -2433,10 +2433,12 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       dieActionOrigin = 'reward';
       refreshInspector();
       // BUILD 154: the reward panel shows each card's effect text on the
-      // card itself, and keeps it on hover as the card's own title.
+      // card itself, and keeps it on hover as its own .hover-tip (BUILD
+      // 161 replaced the native title tooltip, D-104/KI-41).
       const card = document.querySelector('#cardRewardPanel .offer-card');
       const text = card ? card.querySelector('.offer-card-text') : null;
-      return { text: text ? text.textContent : null, title: card ? card.title : null };
+      const tip = card ? card.querySelector('.hover-tip') : null;
+      return { text: text ? text.textContent : null, title: tip ? tip.textContent : null };
     });
     assert.strictEqual(v.text, '30 damage', 'the reward text for a new card must not be empty');
     assert.ok(v.title && v.title.indexOf('30 damage') !== -1, 'the reward hover for a new card must not be empty');
@@ -2546,14 +2548,17 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       updateDie({ faces: newFaces });
       const pair = document.querySelector('#playerDieList .die-mod-pair');
       const names = Array.from(pair.querySelectorAll('.die-mod'));
-      return { names: names.map(n => ({ text: n.textContent, title: n.title })), charCount: TWO_MOD_NAME_CHARS };
+      // BUILD 161 (D-104/KI-41): the full names no longer sit on each
+      // span's own native title — they're part of the row's one hover-tip.
+      const rowTip = pair.closest('.die-row').querySelector('.hover-tip');
+      return { names: names.map(n => n.textContent), rowTipText: rowTip ? rowTip.textContent : '', charCount: TWO_MOD_NAME_CHARS };
     });
     assert.strictEqual(v.names.length, 2, 'a two-mod face must render exactly two name spans');
-    assert.strictEqual(v.names[0].text, 'Congregation'.slice(0, v.charCount), 'the first mod name must show its own truncated prefix, no ellipsis');
-    assert.strictEqual(v.names[1].text, 'Magnificat'.slice(0, v.charCount), 'the second mod name must show its own truncated prefix, no ellipsis');
-    assert.ok(v.names[0].text.indexOf('…') === -1 && v.names[1].text.indexOf('…') === -1, 'neither truncated name may contain an ellipsis character');
-    assert.strictEqual(v.names[0].title, 'Congregation', 'the full first name must be available via hover (title)');
-    assert.strictEqual(v.names[1].title, 'Magnificat', 'the full second name must be available via hover (title)');
+    assert.strictEqual(v.names[0], 'Congregation'.slice(0, v.charCount), 'the first mod name must show its own truncated prefix, no ellipsis');
+    assert.strictEqual(v.names[1], 'Magnificat'.slice(0, v.charCount), 'the second mod name must show its own truncated prefix, no ellipsis');
+    assert.ok(v.names[0].indexOf('…') === -1 && v.names[1].indexOf('…') === -1, 'neither truncated name may contain an ellipsis character');
+    assert.ok(v.rowTipText.indexOf('Congregation') !== -1, 'the full first name must be available via hover: ' + v.rowTipText);
+    assert.ok(v.rowTipText.indexOf('Magnificat') !== -1, 'the full second name must be available via hover: ' + v.rowTipText);
     await liveBrowser.close();
   });
 

@@ -85,7 +85,9 @@ async function triggerMod(page, modId) {
     const badge = await page.evaluate(() => {
       const el = document.getElementById('enemyStatusRow');
       const match = Array.from(el.children).find((c) => c.textContent.indexOf('A4') === 0);
-      return match ? match.textContent : null;
+      // BUILD 161 (D-104/KI-41): the icon's own label is its first child
+      // text node — its .hover-tip is a sibling appended after it.
+      return match ? match.firstChild.textContent : null;
     });
     assert.strictEqual(badge, 'A4', 'expected the enemy status row to show an A4 badge');
     await page.evaluate(() => { runPhase('START_OF_TURN'); });

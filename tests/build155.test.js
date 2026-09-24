@@ -55,7 +55,8 @@ function faceRow(page, faceNumber) {
     return {
       captionText: caption.textContent,
       emphasis: caption.classList.contains('die-face-caption-emphasis'),
-      title: row.querySelector('.face-btn').title
+      // BUILD 161 (D-104/KI-41): the hover tip lives on the row now.
+      title: (row.querySelector('.hover-tip') || {}).textContent || ''
     };
   }, faceNumber);
 }

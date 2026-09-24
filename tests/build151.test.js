@@ -64,7 +64,7 @@ async function enterEventSlot(page) {
     await page.waitForFunction(() => dieActionStep === 'choose');
 
     const beforeHasPurify = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('#dieActionPanel button')).some(function(b) { return b.textContent === 'PURIFY'; });
+      return Array.from(document.querySelectorAll('#dieActionPanel button')).some(function(b) { return b.textContent.indexOf('Purify') === 0; });
     });
     assert.strictEqual(beforeHasPurify, false, 'a fresh die (only the anchor on face 10) must not offer Purify');
 
@@ -74,7 +74,7 @@ async function enterEventSlot(page) {
       updateDie({ faces: newFaces });
     });
     const afterHasPurify = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('#dieActionPanel button')).some(function(b) { return b.textContent === 'PURIFY'; });
+      return Array.from(document.querySelectorAll('#dieActionPanel button')).some(function(b) { return b.textContent.indexOf('Purify') === 0; });
     });
     assert.strictEqual(afterHasPurify, true, 'a loaded non-anchor face must make Purify appear');
     await page.close();
@@ -258,11 +258,12 @@ async function enterEventSlot(page) {
     await page.evaluate(() => { updateEnemy({ hp: 0 }); checkWinNow(); });
     await page.waitForFunction(() => dieActionStep === 'choose');
     const purifyBtnText = await page.evaluate(() => {
-      const btn = Array.from(document.querySelectorAll('#dieActionPanel button')).find(function(b) { return b.textContent === 'PURIFY'; });
-      return btn ? { text: btn.textContent, title: btn.title } : null;
+      const btn = Array.from(document.querySelectorAll('#dieActionPanel button')).find(function(b) { return b.textContent.indexOf('Purify') === 0; });
+      const tip = btn ? btn.querySelector('.hover-tip') : null;
+      return btn ? { text: btn.textContent, title: tip ? tip.textContent : '' } : null;
     });
-    assert.ok(purifyBtnText && purifyBtnText.text.length > 0, 'PURIFY button text must not be empty');
-    assert.ok(purifyBtnText && purifyBtnText.title.length > 0, 'PURIFY button hover text must not be empty');
+    assert.ok(purifyBtnText && purifyBtnText.text.length > 0, 'Purify button text must not be empty');
+    assert.ok(purifyBtnText && purifyBtnText.title.length > 0, 'Purify button hover text must not be empty');
     await page.evaluate(() => { dieActionChooseSkip(); });
     await page.evaluate(() => { cardRewardSkip(); });
 

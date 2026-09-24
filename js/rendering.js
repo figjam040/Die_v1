@@ -59,6 +59,30 @@ function log(message) {
   }
 }
 
+// ---------- HOVER TIPS ----------
+// D-104/KI-41 — no element in the game carries a native `title` tooltip;
+// every hover sentence lives in a `.hover-tip` child instead, shown by the
+// generic `.hover-parent:hover .hover-tip` rule (index.html) unless the
+// element already has its own more specific `:hover .hover-tip` rule (a
+// die row, a die-action button) — adding `hover-parent` alongside one of
+// those is harmless, both rules just agree.
+function setHoverTip(el, text) {
+  if (!el) return;
+  el.classList.add('hover-parent');
+  let tip = el.querySelector('.hover-tip');
+  if (!tip) {
+    tip = document.createElement('span');
+    tip.className = 'hover-tip';
+    el.appendChild(tip);
+  }
+  tip.innerHTML = '';
+  (Array.isArray(text) ? text : [text]).forEach(function(line) {
+    const div = document.createElement('div');
+    div.textContent = line;
+    tip.appendChild(div);
+  });
+}
+
 // ---------- STATE INSPECTOR ----------
 
 function refreshInspector() {
@@ -213,6 +237,11 @@ function noteRollHeroValue(message) {
   paintRollHero();
 }
 
+// D-105 — the strip shows the name only: PENITENCE, BLANK, or the mod
+// name(s) in trigger order, each with its own trigger badge. No '+N'
+// value (the number still pops on the art/stat it lands on, D-87, and
+// stays in the log) and no 'NAT 1' prefix — Penitence reads as itself.
+// A Nat 20 still reads NAT 20, its segment carrying no other name.
 function paintRollHero() {
   const hero = document.getElementById('rollHero');
   const numEl = document.getElementById('rollResultNumber');
@@ -220,11 +249,11 @@ function paintRollHero() {
   if (!hero || !numEl || !labelEl) return;
 
   labelEl.innerHTML = '';
+  numEl.textContent = '';
   if (rollHeroSegments.length === 0) {
     hero.classList.add('roll-hero-empty');
     numEl.classList.remove('roll-hero-nat');
     labelEl.classList.remove('roll-hero-nat');
-    numEl.textContent = '';
     labelEl.textContent = 'AWAITING ROLL';
     return;
   }
@@ -234,21 +263,14 @@ function paintRollHero() {
   numEl.classList.toggle('roll-hero-nat', isNat);
   labelEl.classList.toggle('roll-hero-nat', isNat);
 
-  const first = rollHeroSegments[0];
-  numEl.textContent = first.natText || (first.value === null ? '' : '+' + first.value);
-
   rollHeroSegments.forEach(function(seg, idx) {
-    // Every segment past the first prints its own value beside its name,
-    // so a two-mod face shows both names and both numbers.
-    if (idx > 0 && seg.value !== null) {
-      const v = document.createElement('span');
-      v.className = 'roll-hero-number';
-      v.textContent = ' +' + seg.value;
-      labelEl.appendChild(v);
-    }
-    if (seg.name) {
+    // seg.name wins when it says something (Penitence, Blank, a mod's own
+    // name) — seg.natText (NAT 20) is only the fallback for the segment
+    // that carries no name of its own.
+    const nameText = seg.name || seg.natText;
+    if (nameText) {
       const nameEl = document.createElement('span');
-      nameEl.textContent = (idx > 0 ? ' ' : '') + seg.name.toUpperCase();
+      nameEl.textContent = (idx > 0 ? ' ' : '') + nameText.toUpperCase();
       labelEl.appendChild(nameEl);
     }
     const count = rollHeroTriggerCount(seg);
@@ -604,10 +626,10 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
         // trigger count is also a <span> and can sit between the two names.
         nameSpan.className = idx === 1 ? 'die-mod die-mod-second' : 'die-mod';
         // Truncated to an exact character count, no ellipsis — the full
-        // name is still available via the native title tooltip.
+        // name is still available on the row's own hover tip below
+        // (faceTitleText() names both mods in full).
         const fullName = modDisplayName(m.id);
         nameSpan.textContent = fullName.slice(0, TWO_MOD_NAME_CHARS);
-        nameSpan.title = fullName;
         modPair.appendChild(nameSpan);
         if (showTriggerBadges && m.count > 0) {
           const trig = document.createElement('span');
@@ -726,28 +748,23 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     if (pickConfig && pickConfig.showBecomes && pickEligible) {
       becomesText = faceHoverText(Object.assign({}, face, { weight: face.weight + 1 }), buffPoisonStacks, enemyName, wrathAmount);
     }
-    if (hoverText || becomesText) {
-      const tip = document.createElement('span');
-      tip.className = 'hover-tip';
-      if (becomesText) {
-        const currentLine = document.createElement('div');
-        currentLine.textContent = hoverText;
-        tip.appendChild(currentLine);
-        const becomesLine = document.createElement('div');
-        becomesLine.textContent = becomesText;
-        tip.appendChild(becomesLine);
-      } else {
-        tip.textContent = hoverText;
-      }
-      row.appendChild(tip);
+    // D-104/KI-41 — no native title anywhere: this row's own .hover-tip
+    // carries everything the old title used to (name, weight, trigger
+    // count, Bound badge, then the mod's own description), on every row,
+    // blank faces included, so nothing that used to read on hover is lost.
+    const titleText = faceTitleText(face, showTriggerBadges, isPlayerDie);
+    const baseHoverText = hoverText || ('Blank: rolls for ' + GAME_CONFIG.BLANK_ROLL_BLOCK + ' block.');
+    const tip = document.createElement('span');
+    tip.className = 'hover-tip';
+    const currentLine = document.createElement('div');
+    currentLine.textContent = titleText + ' — ' + baseHoverText;
+    tip.appendChild(currentLine);
+    if (becomesText) {
+      const becomesLine = document.createElement('div');
+      becomesLine.textContent = 'Becomes: ' + becomesText;
+      tip.appendChild(becomesLine);
     }
-
-    // Native title, in addition to the .hover-tip above — every face-btn
-    // carries one, so a blank still reads on hover even with no mod. This
-    // is where the name, weight, trigger count and Bound badge stay
-    // readable once the horizontal row stops printing them beside the square.
-    btn.title = faceTitleText(face, showTriggerBadges, isPlayerDie) +
-      ' — ' + (hoverText || ('Blank: rolls for ' + GAME_CONFIG.BLANK_ROLL_BLOCK + ' block.'));
+    row.appendChild(tip);
 
     container.appendChild(row);
   });
@@ -879,7 +896,7 @@ function renderStats() {
       readLine.style.display = '';
       const readValueEl = document.getElementById('enemyReadValue');
       readValueEl.textContent = 'Reads the heaviest face: Wrath +' + gameState.enemy.wrathPerTrigger + ' when the player rolls it.';
-      readValueEl.title = 'When the player rolls their heaviest loaded face, Wrath triggers.';
+      setHoverTip(readValueEl, 'When the player rolls their heaviest loaded face, Wrath triggers.');
     } else {
       readLine.style.display = 'none';
     }
@@ -892,12 +909,21 @@ function renderStats() {
     .map(function(f) { return modDisplayName(f.modId) + ' ' + f.number; });
   document.getElementById('enemyBuffsValue').textContent = loadedBuffs.length ? loadedBuffs.join(', ') : '—';
   document.getElementById('enemyActiveValue').textContent = gameState.enemy.activeBuffs.length ? gameState.enemy.activeBuffs.join(', ') : '—';
+  // D-104/KI-41 — the enemy panel no longer prints "Loaded buffs"/"Active
+  // this turn" as its own lines; hovering the enemy art shows the same
+  // information instead, one loaded face per line, then a blank line,
+  // then what's active this turn.
+  const enemyArtBox = document.getElementById('enemyArtBox');
+  if (enemyArtBox) {
+    const activeText = 'Active this turn: ' + (gameState.enemy.activeBuffs.length ? gameState.enemy.activeBuffs.join(', ') : '—');
+    setHoverTip(enemyArtBox, (loadedBuffs.length ? loadedBuffs : ['—']).concat([' ', activeText]));
+  }
   const wrathLine = document.getElementById('enemyWrathLine');
   if (wrathLine) {
     if (gameState.enemy.wrath > 0) {
       wrathLine.style.display = '';
       document.getElementById('enemyWrathValue').textContent = '+' + gameState.enemy.wrath;
-      document.getElementById('enemyWrathValue').title = 'Wrath: each Attack deals this much more.';
+      setHoverTip(document.getElementById('enemyWrathValue'), 'Wrath: each Attack deals this much more.');
     } else {
       wrathLine.style.display = 'none';
     }
@@ -907,7 +933,7 @@ function renderStats() {
     if (gameState.player.drainNextRound > 0) {
       drainLine.style.display = '';
       document.getElementById('playerDrainValue').textContent = 'DRAIN −' + gameState.player.drainNextRound + ' SOUL';
-      document.getElementById('playerDrainValue').title = 'Drain: ' + gameState.player.drainNextRound + ' less soul at the start of next round.';
+      setHoverTip(document.getElementById('playerDrainValue'), 'Drain: ' + gameState.player.drainNextRound + ' less soul at the start of next round.');
     } else {
       drainLine.style.display = 'none';
     }
@@ -921,8 +947,9 @@ function renderStats() {
   if (gameState.player.penitenceActive) playerDebuffs.push('penitence');
   const playerDebuffsEl = document.getElementById('playerDebuffsValue');
   playerDebuffsEl.textContent = playerDebuffs.length ? playerDebuffs.join(', ') : '—';
-  playerDebuffsEl.title = 'Poison: at the start of each round, every ' + GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK + ' block still held removes 1 stack of poison. Then poison deals 1 damage per stack, ignoring block, and loses 1 stack.';
-  renderStatusRows(playerDebuffsEl.title);
+  const poisonTip = 'Poison: at the start of each round, every ' + GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK + ' block still held removes 1 stack of poison. Then poison deals 1 damage per stack, ignoring block, and loses 1 stack.';
+  setHoverTip(playerDebuffsEl, poisonTip);
+  renderStatusRows(poisonTip);
   document.getElementById('playerDeckValue').textContent = gameState.player.deck.length;
   document.getElementById('playerDiscardValue').textContent = gameState.player.discard.length;
 
@@ -940,13 +967,13 @@ function renderStats() {
 }
 
 // One 28px square per state present on that side, each carrying the same
-// sentence its own stat line already uses as a title.
+// sentence its own stat line already uses on its own hover tip.
 function renderStatusRows(poisonTitle) {
   function icon(row, text, className, title) {
     const el = document.createElement('div');
     el.className = 'status-icon ' + className;
     el.textContent = text;
-    el.title = title;
+    setHoverTip(el, title);
     row.appendChild(el);
   }
 
@@ -1082,7 +1109,7 @@ function renderOfferCard(spec) {
   const card = document.createElement('div');
   card.className = 'offer-card' + (spec.chosen ? ' offer-card-chosen' : '') + (spec.disabled ? ' offer-card-disabled' : '');
   card.dataset.offerId = spec.id;
-  card.title = spec.name + ' — ' + spec.text;
+  setHoverTip(card, spec.name + ' — ' + spec.text);
 
   const name = document.createElement('div');
   name.className = 'offer-card-name';
@@ -1127,7 +1154,7 @@ function renderOfferCard(spec) {
   card.appendChild(foot);
 
   if (spec.onClick && !spec.disabled) {
-    card.addEventListener('click', spec.onClick);
+    card.addEventListener('click', function() { offerCardHandleClick(card, spec.onClick); });
   }
   return card;
 }
@@ -1141,7 +1168,7 @@ function renderOfferDieCard(spec) {
   const card = document.createElement('div');
   card.className = 'offer-die-card' + (spec.chosen ? ' offer-card-chosen' : '') + (spec.disabled ? ' offer-card-disabled' : '');
   card.dataset.offerId = spec.id;
-  card.title = spec.name + ' — ' + spec.text;
+  setHoverTip(card, spec.name + ' — ' + spec.text);
 
   const name = document.createElement('div');
   name.className = 'offer-card-name';
@@ -1198,9 +1225,27 @@ function renderOfferDieCard(spec) {
   card.appendChild(foot);
 
   if (spec.onClick && !spec.disabled) {
-    card.addEventListener('click', spec.onClick);
+    card.addEventListener('click', function() { offerCardHandleClick(card, spec.onClick); });
   }
   return card;
+}
+
+// D-106 — every offer card/die-frame click gives it a gold outline and
+// dims its siblings in the same offer group immediately, then defers the
+// real effect (closing the layer, moving to the next step) by
+// OFFER_PICK_HIGHLIGHT_MS so the highlight is actually seen before the
+// layer moves on.
+function offerCardHandleClick(card, onClick) {
+  const group = card.parentElement;
+  if (group) {
+    Array.prototype.forEach.call(group.children, function(sib) {
+      sib.classList.toggle('offer-card-picked', sib === card);
+      sib.classList.toggle('offer-card-dimmed', sib !== card);
+    });
+  } else {
+    card.classList.add('offer-card-picked');
+  }
+  setTimeout(onClick, GAME_CONFIG.OFFER_PICK_HIGHLIGHT_MS);
 }
 
 // The tag line every card shows — a piece's synergy tags, or NONE.
@@ -1227,7 +1272,20 @@ function renderOfferPanel(panel, spec) {
     const cards = document.createElement('div');
     cards.className = 'offer-cards';
     const cardRenderer = spec.cardRenderer || renderOfferCard;
-    (spec.cards || []).forEach(function(c) { cards.appendChild(cardRenderer(c)); });
+    const cardEls = (spec.cards || []).map(function(c) {
+      const el = cardRenderer(c);
+      cards.appendChild(el);
+      return el;
+    });
+    // D-106 — a card already chosen this render (Load's own second step)
+    // carries the same gold outline a fresh click gives, its siblings the
+    // same dim, with no click needed.
+    if ((spec.cards || []).some(function(c) { return c.chosen; })) {
+      cardEls.forEach(function(el, i) {
+        el.classList.toggle('offer-card-picked', !!spec.cards[i].chosen);
+        el.classList.toggle('offer-card-dimmed', !spec.cards[i].chosen);
+      });
+    }
     body.appendChild(cards);
 
     if (spec.skip) {
@@ -1252,7 +1310,6 @@ function renderOfferPanel(panel, spec) {
       tip.className = 'hover-tip';
       tip.textContent = entry.text;
       btn.appendChild(tip);
-      btn.title = entry.text;
       btn.addEventListener('click', entry.onClick);
       small.appendChild(btn);
     });
@@ -1336,11 +1393,18 @@ function renderTopBarTokens() {
     const artifactId = gameState.run.artifacts[index];
     if (artifactId && gameState.config.artifacts[artifactId]) {
       const artifact = gameState.config.artifacts[artifactId];
-      slot.textContent = artifact.name;
-      slot.title = artifact.name + ' — ' + artifact.text;
+      // The visible name lives in its own child span — slot.textContent
+      // stays exactly the held artifact's name — with the hover tip as a
+      // sibling span, appended after (setHoverTip), never inside it.
+      slot.innerHTML = '';
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'artifact-slot-name';
+      nameSpan.textContent = artifact.name;
+      slot.appendChild(nameSpan);
+      setHoverTip(slot, artifact.name + ' — ' + artifact.text);
     } else {
-      slot.textContent = '';
-      slot.title = '';
+      slot.innerHTML = '';
+      slot.classList.remove('hover-parent');
     }
   });
 }
@@ -1385,8 +1449,8 @@ function renderDieIcons() {
     playerEl.innerHTML = '<div class="die-icon-wrap">' + dieIconSvg(GAME_CONFIG.DIE_SIZE.PLAYER, 'var(--text)') +
       '<div class="die-icon-number" style="color:' + playerDieIconColour() + '">' +
       (rolled === null ? '' : '<span class="die-icon-number-text">' + rolled + '</span>') + '</div></div>';
-    playerEl.title = 'Your die: d' + GAME_CONFIG.DIE_SIZE.PLAYER +
-      (rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.');
+    setHoverTip(playerEl, 'Your die: d' + GAME_CONFIG.DIE_SIZE.PLAYER +
+      (rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.'));
   }
 
   const enemyEl = document.getElementById('enemyDieIcon');
@@ -1394,7 +1458,7 @@ function renderDieIcons() {
   // D-29 — a normal with no die shows an empty outline, never a fake die.
   if (!gameState.enemy.hasDie || !gameState.enemy.die.faces.length) {
     enemyEl.innerHTML = '<div class="die-icon-empty"></div>';
-    enemyEl.title = 'This enemy carries no die.';
+    setHoverTip(enemyEl, 'This enemy carries no die.');
     return;
   }
   const size = gameState.enemy.die.faces.length;
@@ -1412,7 +1476,7 @@ function renderDieIcons() {
     '<div class="die-icon-number" style="color:var(--enemy-mod)">' + (rolled === null ? '' : '<span class="die-icon-number-text">' + rolled + '</span>') + '</div></div>' +
     '<div class="die-icon-side"><div style="color:' + wordColour + '">' + word + '</div>' +
     '<div style="color:var(--muted)">d' + size + '</div></div>';
-  enemyEl.title = 'Enemy die: d' + size + (rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.');
+  setHoverTip(enemyEl, 'Enemy die: d' + size + (rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.'));
 }
 
 const CARD_EFFECT_TEXT = {
@@ -1557,7 +1621,7 @@ function renderCardButtons() {
     const btn = document.createElement('button');
     btn.className = 'hand-card-el' + (affordable ? '' : ' unaffordable');
     btn.disabled = !active;
-    btn.title = card.name + ' — ' + getCardEffectText(cardId);
+    setHoverTip(btn, card.name + ' — ' + getCardEffectText(cardId));
 
     const costEl = document.createElement('span');
     costEl.className = 'hand-card-cost';
@@ -1897,8 +1961,8 @@ function renderDieActionPanel() {
     // Purify offers only when a purifiable face exists (D-54-style hide).
     if (purifiableFaceExists()) {
       const purifyBtn = document.createElement('button');
-      purifyBtn.textContent = 'PURIFY';
-      purifyBtn.title = 'Take every mod off one face. The face stays as heavy as it was.';
+      purifyBtn.textContent = 'Purify';
+      setHoverTip(purifyBtn, 'Take every mod off one face. The face stays as heavy as it was.');
       purifyBtn.addEventListener('click', function() { log('[CLICK] Purify'); dieActionChoosePurify(); });
       row.appendChild(purifyBtn);
     }
