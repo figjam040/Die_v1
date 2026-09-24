@@ -1127,25 +1127,17 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   // on-screen build stamp, found in this file's CSV column instead (flagged
   // by BUILD 123, fixed here). Closed by deleting the constant outright and
   // reading GAME_CONFIG.BUILD live off the page at row-build time instead.
-  // Two checks: the source no longer declares its own BUILD constant (a
-  // static-source check, so a future reintroduction fails immediately even
-  // if no batch is ever run against it), and a real one-run batch's CSV
-  // output actually carries GAME_CONFIG.BUILD in its `build` column.
+  // BUILD 159 (KI-38, D-70): this test used to invoke the autoplayer's own
+  // whole-run function to prove the CSV row's build column live — the
+  // autoplayer must never run except when explicitly asked. Now a pure
+  // source-text check: no own BUILD constant, and the CSV build column is
+  // stamped from the same GAME_CONFIG.BUILD read this file reads elsewhere.
   // ---------------------------------------------------------------
   await runTest('BUILD 124: autoplay.js has no own BUILD constant and stamps its CSV from GAME_CONFIG.BUILD', async () => {
     const autoplaySrc = fs.readFileSync(path.resolve(__dirname, 'autoplay.js'), 'utf8');
     assert.ok(!/const\s+BUILD\s*=/.test(autoplaySrc), 'tests/autoplay.js must not declare its own BUILD constant — the CSV build column must come from GAME_CONFIG.BUILD instead');
-
-    const { playRun } = require('./autoplay.js');
-    const liveBrowser = await chromium.launch();
-    const page = await freshPage(liveBrowser);
-    const configBuild = await page.evaluate(() => GAME_CONFIG.BUILD);
-    await liveBrowser.close();
-
-    const runBrowser = await chromium.launch();
-    const row = await playRun(runBrowser, 1, 'asBuilt', 20);
-    await runBrowser.close();
-    assert.strictEqual(row.build, configBuild, 'tests/autoplay.js CSV row `build` column (' + row.build + ') must equal GAME_CONFIG.BUILD (' + configBuild + ')');
+    assert.ok(/build:\s*gameConfigBuild/.test(autoplaySrc), 'tests/autoplay.js must stamp its CSV row\'s `build` column from a GAME_CONFIG.BUILD read (gameConfigBuild), not a literal');
+    assert.ok(/gameConfigBuild\s*=\s*await page\.evaluate\(function\(\)\s*\{\s*return GAME_CONFIG\.BUILD;\s*\}\)/.test(autoplaySrc), 'tests/autoplay.js must read gameConfigBuild live off the page via GAME_CONFIG.BUILD');
   });
 
   // ---------------------------------------------------------------

@@ -1118,3 +1118,36 @@ Stage 2.84 (BUILD 157) — three items, kept.
 Verification: build157 6/6, facts 111/111, mods 42/42, build156 7/7, guardrails 19/19.
 
 Full write-ups for earlier builds: HISTORY.md.
+
+---
+
+# CONFIRMED WORKING index lines, builds 001 to 140 (moved out of CLAUDE.md's CONFIRMED WORKING section by BUILD 159, verbatim, in build order)
+
+These eight lines are the only index-level summary for builds 001, 002, 012 and every other build from 001 to 140 that has no line of its own below — most of those builds do have a full paragraph earlier in this file (see Stage 0.1 onward, above), this is only the short index text that used to sit in CLAUDE.md.
+
+001–067 engine, phase machine, three laws, eleven mods, fifteen cards, Nat 20/Nat 1, Load/Strengthen, card reward, weight display. Lines per build in HISTORY.md.
+068–082 run scaffold, two-lane map, rites, die rewards from elites, five-slot lanes, die-row picker, run-outcome guards.
+083–098 dev drawer, Nat 1/Penitence tuning, intent retunes, New Run guard, rite card removal, rolled-face highlight, file split, listener dedup, audio module, pitch chains, boss/elite dice, enemy Nat 1 self-poison.
+099–104 docs rewrite (099, unverified), Vigil/enemy roll proven live, js/config.js GAME_CONFIG + facts.test.js, trigger-count badge, one font.
+105–120 seeded autoplayer, DIE_SIZE per entity, trigger counts in modData, run record, facts split, Anthem, Elevation, two mods per face, hover text, Load All, screenshot baseline. 106 unverified.
+121–127 stacks name poison, build stamp from GAME_CONFIG.BUILD, LOAD_PRIORITY from ranked pool, three acts per-act scaling, pool exhaustion converts Load to Strengthen, bot plays three acts.
+128–135 checkpoint 3: eight-slot lanes, tiers/offer split, synergy tags, outside-roll trigger, Bound, instant win on enemy death.
+136–140 checkpoint 3 on-screen text, enemy poison 3/4/5, Bound badge, two-mod face names, hop on trigger, ENEMY/ELITE/BOSS title, enemy hover text, Tenet/Gradual uncapped.
+
+---
+
+# BUILD 158 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 159)
+
+Stage 2.85 (BUILD 158) — four items, kept.
+
+(A) D-99 — rollOdds() returns pct rounded to one decimal, nearest, not floored (3.8%, 19.2%). See DIE COLUMN, WEIGHTED ROLL ALGORITHM.
+
+(B) D-100 — dead act 1 constants deleted: ACT1_LANE_FIGHT_HP drops its unused value ([58,65,78,85]); ENEMIES.verger_lane, ELITE_DIE, BOSS_DIE (never read) gone. buildAct() reads the four lane values by index 0-3. See ACTS, ENEMY DIE PER TYPE.
+
+(C) D-101 — a boss's Nat 20 (Hierophant, Cardinal, Pontifex) no longer sweeps loaded buff faces. Unless already winding up/releasing, it forces its next intent to its own pattern's charge entry via forcedNextIntent — winds up next round, releases the round after, breakable as any Charge. See ENEMY DIE PER TYPE.
+
+(D) D-102/KI-37 — the Load offer renders three d20 wireframes (art/die_frame.png, fallback DIE) with the mod's symbol centred on the top face, instead of the card frame; same name/tier/tag/text/foot below. .offer-card-art (card/artifact/shop offers) is now a fixed 240px height so art boxes and CLICK TO CHOOSE line up regardless of text length. See THE REWARD LAYER.
+
+Verification: npm test all green (build158 8/8, facts 111/111, mods 42/42, guardrails 19/19, every prior suite). D-101/D-102 required correcting pre-existing assertions in build142/154/155/156 that hardcoded the old Nat 20/Load-card behaviour. facts.test.js's autoplay-bot test (pre-existing) intermittently crashes its tab here, same on an unmodified prior copy — environment flake, not a regression.
+
+BUILD 159 index note: two process fixes, no game change — KI-38/D-70 (facts.test.js's BUILD 124 test no longer plays a bot run) and a CLAUDE.md size trim (CONFIRMED WORKING reshaped to one line per build 141-159, one line for 001-140, both moved above by this same build). Full write-up: CLAUDE.md CURRENT SUBSTAGE, until BUILD 160 moves it here.

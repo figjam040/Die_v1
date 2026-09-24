@@ -742,38 +742,38 @@ DEV DRAWER — #devChrome, below the panels, opened by #devChromeToggleBtn. Clos
 
 Full reports for every build below live in HISTORY.md, verbatim, in order. This section is an index only — read when a build's full detail is needed.
 
-001–067 engine, phase machine, three laws, eleven mods, fifteen cards, Nat 20/Nat 1, Load/Strengthen, card reward, weight display. Lines per build in HISTORY.md.
-068–082 run scaffold, two-lane map, rites, die rewards from elites, five-slot lanes, die-row picker, run-outcome guards.
-083–098 dev drawer, Nat 1/Penitence tuning, intent retunes, New Run guard, rite card removal, rolled-face highlight, file split, listener dedup, audio module, pitch chains, boss/elite dice, enemy Nat 1 self-poison.
-099–104 docs rewrite (099, unverified), Vigil/enemy roll proven live, js/config.js GAME_CONFIG + facts.test.js, trigger-count badge, one font.
-105–120 seeded autoplayer, DIE_SIZE per entity, trigger counts in modData, run record, facts split, Anthem, Elevation, two mods per face, hover text, Load All, screenshot baseline. 106 unverified.
-121–127 stacks name poison, build stamp from GAME_CONFIG.BUILD, LOAD_PRIORITY from ranked pool, three acts per-act scaling, pool exhaustion converts Load to Strengthen, bot plays three acts.
-128–135 checkpoint 3: eight-slot lanes, tiers/offer split, synergy tags, outside-roll trigger, Bound, instant win on enemy death.
-136–140 checkpoint 3 on-screen text, enemy poison 3/4/5, Bound badge, two-mod face names, hop on trigger, ENEMY/ELITE/BOSS title, enemy hover text, Tenet/Gradual uncapped.
-141–145 poison answer (F33), enemy intent patterns (F34), enemy dice of any size w/ Wrath/Drain/Seal (F35), all fifteen designed enemies (F36/F37) + enemy Nat sound/visual (KI-22), anti-bloat pass (comment rule, guardrail tests), black-palette skin pass, horizontal face-row layout pass.
-146–152 CLAUDE.md/window trims, intent hover box, KI-28 Charge/poison-tick fix + run transcript, the awe status + Dread/Genuflect/Kneel/Compline/Tremendum/Mysterium, break numbers -4 + Bulwark + gold/shop + artifacts (KI-29), Purify + The Font, KI-30 lower[3] fix.
+(BUILDs 001 to 140) recorded one per line in HISTORY.md; see it for any build before 141.
+(BUILD 141) — poison answer (F33/KI-26), enemy intent patterns (F34) and enemy dice of any size w/ Wrath/Drain/Seal (F35), foundational for BUILD 142's full enemy roster.
+(BUILD 142) — fifteen designed enemies (F36/F37) with real dice/patterns, enemy Nat sound/visual (KI-22), Hosanna/Threnody reworked, Seal now clears every round.
+(BUILD 143) — anti-bloat pass: comment rule enforced across all files, CLAUDE.md standing sections trimmed, guardrails.test.js added (byte/line-length/comment-share checks).
+(BUILD 144) — skin pass: self-hosted Press Start 2P/VT323 fonts, black palette, log-panel toggle (gameState.ui), no mechanic change.
+(BUILD 145) — layout pass: horizontal 1-20 face row, d20/enemy die icons, intent icon, portrait hand cards, restyled map, new SCREEN LAYOUT section, no mechanic change.
+(BUILD 146) — CLAUDE.md trim, window auto-scaling (applyScale()), End Turn/hand card resize, intent icon hover sentence, character art loading (none shipped).
+(BUILD 147) — intent hover box via .hover-tip (title attrs removed), console filter for missing art/ resources, blank rolled face now holds its highlight, die icon number backing box.
+(BUILD 148) — KI-28 Charge break counts the release round's own poison tick, run transcript (gameState.run.transcript), log Play/All views, log full-screen overlay.
+(BUILD 149) — the awe status (aweStacks, lowers Attack damage), Dread/Genuflect mods + Kneel/Compline/Tremendum/Mysterium cards, card art image loading (none shipped).
+(BUILD 150) — OQ-16 Charge breakAt lowered 4, card Bulwark, gold rewards, the shop (cards/artifact/Strengthen/removal), three artifacts, KI-29 threnodyFace test fix.
+(BUILD 151) — die action Purify (removes mods from a loaded face), the event slot/The Font (unresolved roll), lower lane now 6 fights via the event slot.
+(BUILD 152) — KI-30: build142.test.js's lower[3] assertions updated for the event slot, CLAUDE_MD_MAX_BYTES centralised, .claude/ gitignored, guardrails' stray-file check uses git check-ignore.
 (BUILD 153) — relics renamed artifacts (8 slots, ARTIFACT_MAX 8), ten new artifacts, sold in shop at 150, seven new cards (pool 48).
 (BUILD 154) — second UI pass: one reward panel shape (three 380x470 cards, D-86) across die action/card/artifact/shop/Font, pop numbers (D-87, F46), stamp reads BUILD only.
 (BUILD 155) — KI-31 node re-entry fix, roll odds under each face (rollOdds()), the reward layer over the fight's own face row, CLAUDE.md trimmed to a 72,000-byte ceiling.
 (BUILD 156) — KI-32 face row fix, map screen reduced to the map (D-98), DIE/ARTIFACTS/CARDS info layers, act backgrounds (D-97).
 (BUILD 157) — KI-34 NAT caption wrap, KI-35 artifact slot text wrap, KI-36 run record build column + shop-opened log line.
 (BUILD 158) — D-99 odds to one decimal, D-100 dead act 1 lane/die constants deleted, D-101 boss Nat 20 forces a Charge, D-102/KI-37 Load offer as wireframe d20s + fixed card art box height.
+(BUILD 159) — KI-38/D-70: facts.test.js's BUILD 124 test no longer plays a bot run, source-text check only. CLAUDE.md trimmed; CONFIRMED WORKING now one line per build 141-159, one line for 001-140.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.85 (BUILD 158) — four items, kept.
+Stage 2.86 (BUILD 159) — two process fixes, kept.
 
-(A) D-99 — rollOdds() returns pct rounded to one decimal, nearest, not floored (3.8%, 19.2%). See DIE COLUMN, WEIGHTED ROLL ALGORITHM.
+(A) KI-38/D-70 — tests/facts.test.js's autoplay-CSV-stamp test no longer plays a bot run. It now reads tests/autoplay.js as source text and asserts it declares no own BUILD constant and stamps its CSV `build` column from GAME_CONFIG.BUILD, without ever invoking playRun().
 
-(B) D-100 — dead act 1 constants deleted: ACT1_LANE_FIGHT_HP drops its unused value ([58,65,78,85]); ENEMIES.verger_lane, ELITE_DIE, BOSS_DIE (never read) gone. buildAct() reads the four lane values by index 0-3. See ACTS, ENEMY DIE PER TYPE.
+(B) CLAUDE.md trimmed under CLAUDE_MD_MAX_BYTES so future builds can record their own CONFIRMED WORKING line without immediately needing another trim pass. CONFIRMED WORKING now holds one line per build from 141 to 159, plus a single line pointing at HISTORY.md for every build from 001 to 140.
 
-(C) D-101 — a boss's Nat 20 (Hierophant, Cardinal, Pontifex) no longer sweeps loaded buff faces. Unless already winding up/releasing, it forces its next intent to its own pattern's charge entry via forcedNextIntent — winds up next round, releases the round after, breakable as any Charge. See ENEMY DIE PER TYPE.
-
-(D) D-102/KI-37 — the Load offer renders three d20 wireframes (art/die_frame.png, fallback DIE) with the mod's symbol centred on the top face, instead of the card frame; same name/tier/tag/text/foot below. .offer-card-art (card/artifact/shop offers) is now a fixed 240px height so art boxes and CLICK TO CHOOSE line up regardless of text length. See THE REWARD LAYER.
-
-Verification: npm test all green (build158 8/8, facts 111/111, mods 42/42, guardrails 19/19, every prior suite). D-101/D-102 required correcting pre-existing assertions in build142/154/155/156 that hardcoded the old Nat 20/Load-card behaviour. facts.test.js's autoplay-bot test (pre-existing) intermittently crashes its tab here, same on an unmodified prior copy — environment flake, not a regression.
+Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
