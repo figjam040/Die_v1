@@ -1151,3 +1151,17 @@ Stage 2.85 (BUILD 158) — four items, kept.
 Verification: npm test all green (build158 8/8, facts 111/111, mods 42/42, guardrails 19/19, every prior suite). D-101/D-102 required correcting pre-existing assertions in build142/154/155/156 that hardcoded the old Nat 20/Load-card behaviour. facts.test.js's autoplay-bot test (pre-existing) intermittently crashes its tab here, same on an unmodified prior copy — environment flake, not a regression.
 
 BUILD 159 index note: two process fixes, no game change — KI-38/D-70 (facts.test.js's BUILD 124 test no longer plays a bot run) and a CLAUDE.md size trim (CONFIRMED WORKING reshaped to one line per build 141-159, one line for 001-140, both moved above by this same build). Full write-up: CLAUDE.md CURRENT SUBSTAGE, until BUILD 160 moves it here.
+
+---
+
+# BUILD 159 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 160)
+
+Stage 2.86 (BUILD 159) — two process fixes, kept.
+
+(A) KI-38/D-70 — tests/facts.test.js's autoplay-CSV-stamp test no longer plays a bot run. It now reads tests/autoplay.js as source text and asserts it declares no own BUILD constant and stamps its CSV `build` column from GAME_CONFIG.BUILD, without ever invoking playRun().
+
+(B) CLAUDE.md trimmed under CLAUDE_MD_MAX_BYTES so future builds can record their own CONFIRMED WORKING line without immediately needing another trim pass. CONFIRMED WORKING now holds one line per build from 141 to 159, plus a single line pointing at HISTORY.md for every build from 001 to 140.
+
+Verification: see paste-back.
+
+BUILD 160 index note: one item, no game change — the CLAUDE.md size cap rises from 72,000 to 90,000 bytes (D-84 amended 25 Sep). Full write-up: CLAUDE.md CURRENT SUBSTAGE, until BUILD 161 moves it here.

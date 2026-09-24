@@ -684,7 +684,7 @@ Every build updates #buildStamp (index.html) to its own stage/build number, whet
 
 Every build regenerates verify/ (`node tests/screenshots.js`) and reports the diff (`node tests/screenshots.js --compare`, changed-pixel count per screen vs. the previous run) in its paste-back — a visual defect costs a diff to notice, not a build. Same standing-exception status: run it even when the build doesn't touch index.html/rendering, so a regression is caught by the next build's screenshot set, not discovered cold several builds later.
 
-SIZE RULE: CURRENT SUBSTAGE holds the write-up of the newest build only. The first work step of every build moves the previous build's write-up to the end of HISTORY.md, word for word, by script, not by retyping. A CONFIRMED WORKING line is one line of at most 300 characters; the full text goes to HISTORY.md. This file stays at or under 72,000 bytes (CLAUDE_MD_MAX_BYTES, tests/shared-constants.js — lowered from 80,000 by BUILD 155).
+SIZE RULE: CURRENT SUBSTAGE holds the write-up of the newest build only. The first work step of every build moves the previous build's write-up to the end of HISTORY.md, word for word, by script, not by retyping. A CONFIRMED WORKING line is one line of at most 300 characters; the full text goes to HISTORY.md. This file stays at or under 90,000 bytes (CLAUDE_MD_MAX_BYTES, tests/shared-constants.js — lowered from 80,000 by BUILD 155).
 
 At the end of every session, paste back the new CONFIRMED WORKING line and the CURRENT SUBSTAGE section.
 
@@ -762,17 +762,16 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 157) — KI-34 NAT caption wrap, KI-35 artifact slot text wrap, KI-36 run record build column + shop-opened log line.
 (BUILD 158) — D-99 odds to one decimal, D-100 dead act 1 lane/die constants deleted, D-101 boss Nat 20 forces a Charge, D-102/KI-37 Load offer as wireframe d20s + fixed card art box height.
 (BUILD 159) — KI-38/D-70: facts.test.js's BUILD 124 test no longer plays a bot run, source-text check only. CLAUDE.md trimmed; CONFIRMED WORKING now one line per build 141-159, one line for 001-140.
+(BUILD 160) — CLAUDE.md size cap raised from 72,000 to 90,000 bytes (D-84 amended 25 Sep); CLAUDE_MD_MAX_BYTES is the single source, no test hardcodes the old figure. No game change.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.86 (BUILD 159) — two process fixes, kept.
+Stage 2.87 (BUILD 160) — one item, kept.
 
-(A) KI-38/D-70 — tests/facts.test.js's autoplay-CSV-stamp test no longer plays a bot run. It now reads tests/autoplay.js as source text and asserts it declares no own BUILD constant and stamps its CSV `build` column from GAME_CONFIG.BUILD, without ever invoking playRun().
-
-(B) CLAUDE.md trimmed under CLAUDE_MD_MAX_BYTES so future builds can record their own CONFIRMED WORKING line without immediately needing another trim pass. CONFIRMED WORKING now holds one line per build from 141 to 159, plus a single line pointing at HISTORY.md for every build from 001 to 140.
+(A) D-84 amended 25 Sep — the CLAUDE.md size cap rises from 72,000 to 90,000 bytes. CLAUDE_MD_MAX_BYTES (tests/shared-constants.js) stays the single source; tests/build159.test.js's CLAUDE_MD_UNDER_BYTES now reads that constant instead of its own hardcoded 72000. The SIZE RULE line below names 90,000. No game/mechanic change.
 
 Verification: see paste-back.
 
