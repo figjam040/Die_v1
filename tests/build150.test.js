@@ -30,6 +30,7 @@ async function freshPage(browser, viewport) {
   const page = await browser.newPage({ viewport: viewport || { width: 1600, height: 900 } });
   await page.goto(FILE_URL);
   await page.waitForFunction(() => typeof gameState !== 'undefined' && gameState.run.screen === 'map');
+  await page.evaluate(() => { devChromeOpen = true; });
   return page;
 }
 

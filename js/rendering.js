@@ -1191,78 +1191,40 @@ function renderOfferCard(spec) {
   return card;
 }
 
-// D-102/KI-37 — the Load offer's own card shape: a d20 wireframe
-// (art/die_frame.png, text fallback DIE) instead of the card frame, the
-// mod's symbol (art/mods/<id>.png, text fallback the mod's name) drawn
-// centred on the frame's top face. Same footprint/position and the same
-// name/tier/tag/text/foot classes as renderOfferCard() below it.
-function renderOfferDieCard(spec) {
-  const card = document.createElement('div');
-  card.className = 'offer-die-card' + (spec.chosen ? ' offer-card-chosen' : '') + (spec.disabled ? ' offer-card-disabled' : '');
-  card.dataset.offerId = spec.id;
-  setHoverTip(card, spec.name + ' — ' + spec.text);
+// D-110 — the Load offer's and the artifact offer's choice: the symbol
+// alone (art/mods/<id>.png or art/artifacts/<id>.png), no frame and no
+// visible text unless the file is missing, when the name stands in. The
+// name, tier (in its tier colour), tag and text live in a .hover-tip.
+function renderOfferSymbol(spec) {
+  const el = document.createElement('div');
+  el.className = 'offer-symbol' + (spec.chosen ? ' offer-card-chosen' : '') + (spec.disabled ? ' offer-card-disabled' : '');
+  el.dataset.offerId = spec.id;
 
-  const name = document.createElement('div');
-  name.className = 'offer-card-name';
-  name.textContent = spec.name;
-  card.appendChild(name);
-
-  const tier = document.createElement('div');
-  tier.className = 'offer-card-tier';
-  tier.textContent = spec.tierText;
-  card.appendChild(tier);
-
-  const frame = document.createElement('div');
-  frame.className = 'offer-die-frame';
-  const frameLabel = document.createElement('span');
-  frameLabel.className = 'offer-card-art-label';
-  frameLabel.textContent = 'DIE';
-  frame.appendChild(frameLabel);
-  const frameImg = document.createElement('img');
-  frameImg.className = 'offer-die-frame-img';
-  frameImg.alt = '';
-  frameImg.onload = function() { frameLabel.style.display = 'none'; };
-  frameImg.onerror = function() { frameImg.style.display = 'none'; };
-  frameImg.src = 'art/die_frame.png';
-  frame.appendChild(frameImg);
-
-  const symbolLabel = document.createElement('span');
-  symbolLabel.className = 'offer-die-symbol-label';
-  symbolLabel.textContent = spec.name;
-  frame.appendChild(symbolLabel);
+  const label = document.createElement('span');
+  label.className = 'offer-symbol-label';
+  label.textContent = spec.name;
+  el.appendChild(label);
   if (spec.artPath) {
-    const symbolImg = document.createElement('img');
-    symbolImg.className = 'offer-die-symbol-img';
-    symbolImg.alt = '';
-    symbolImg.onload = function() { symbolLabel.style.display = 'none'; };
-    symbolImg.onerror = function() { symbolImg.style.display = 'none'; };
-    symbolImg.src = spec.artPath;
-    frame.appendChild(symbolImg);
+    const img = document.createElement('img');
+    img.className = 'offer-symbol-img';
+    img.alt = '';
+    img.onload = function() { label.style.display = 'none'; };
+    img.onerror = function() { img.style.display = 'none'; };
+    img.src = spec.artPath;
+    el.appendChild(img);
   }
-  card.appendChild(frame);
 
-  const tag = document.createElement('div');
-  tag.className = 'offer-card-tag';
-  tag.textContent = spec.tagText;
-  card.appendChild(tag);
-
-  const text = document.createElement('div');
-  text.className = 'offer-card-text';
-  text.textContent = spec.text;
-  card.appendChild(text);
-
-  const foot = document.createElement('div');
-  foot.className = 'offer-card-foot';
-  foot.textContent = spec.footText;
-  card.appendChild(foot);
+  setHoverTip(el, [spec.name, spec.tierText, spec.tagText, spec.text]);
+  const tierLine = el.querySelector('.hover-tip').children[1];
+  tierLine.style.color = GAME_CONFIG.TIER_COLOURS[(spec.tierText || '').toLowerCase()] || GAME_CONFIG.TIER_COLOURS.none;
 
   if (spec.onClick && !spec.disabled) {
-    card.addEventListener('click', function() { offerCardHandleClick(card, spec.onClick); });
+    el.addEventListener('click', function() { offerCardHandleClick(el, spec.onClick); });
   }
-  return card;
+  return el;
 }
 
-// D-106 — every offer card/die-frame click gives it a gold outline and
+// D-106 — every offer card/symbol click gives it a gold outline and
 // dims its siblings in the same offer group immediately, then defers the
 // real effect (closing the layer, moving to the next step) by
 // OFFER_PICK_HIGHLIGHT_MS so the highlight is actually seen before the
@@ -2222,7 +2184,7 @@ function renderDieActionPanel() {
   renderOfferPanel(panel, {
     title: titleText,
     cards: cards,
-    cardRenderer: isLoadStep ? renderOfferDieCard : undefined,
+    cardRenderer: isLoadStep ? renderOfferSymbol : undefined,
     skip: null,
     buttonRow: buttonRow,
     instruction: instruction
@@ -2383,6 +2345,7 @@ function renderArtifactRewardPanel() {
 
   renderOfferPanel(panel, {
     title: 'Choose an artifact',
+    cardRenderer: renderOfferSymbol,
     cards: artifactRewardOptions.map(function(artifactId) {
       return offerCardSpecForArtifact(artifactId, null, 'CLICK TO CHOOSE', false, function() {
         log('[CLICK] ' + gameState.config.artifacts[artifactId].name);

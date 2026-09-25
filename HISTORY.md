@@ -1236,3 +1236,13 @@ tests/build164.test.js holds this build's assertions.
 Verification: see paste-back.
 
 BUILD 165 index note: D-109 art in the remaining three places: top-bar artifact slots, ARTIFACTS layer rows (48px icon) and DIE layer rows (32px mod symbols). No mechanic change.
+
+Stage 2.92 (BUILD 165) — D-109: artifact and mod art in the three places that showed text only.
+
+Top bar: each held artifact's slot shows art/artifacts/<id>.png filling the slot (pixelated), name and text in the hover box; the name span stays in the slot and is hidden only once the icon loads. ARTIFACTS layer: each row leads with a 48px icon. DIE layer: each loaded face's row leads with its mod symbol(s) from art/mods/<id>.png at 32px, two for a two-mod face; blank faces and faces 1/20 unchanged. attachArtIcon() (rendering.js) hides any img that fails to load, so a missing file changes nothing. No text removed.
+
+tests/build165.test.js holds this build's assertions.
+
+Verification: see paste-back.
+
+BUILD 166 index note: D-110 the Load and artifact offers as bare symbols with a hover box, dev mod dropdown shows its mod's description; D-113 the ROLL_PHASE pause only with the dev drawer open (or a live pre-roll artifact control), roll animation 3 frames over 200 ms.

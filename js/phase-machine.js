@@ -308,8 +308,16 @@ function nextPhase() {
   runPhase(PHASE_ORDER[nextIndex]);
 }
 
-// Long enough for a human to click one specific face among twenty.
+// Long enough for a human to click one specific face among twenty. Only
+// waited while the dev drawer is open (a forced roll needs the window) or
+// a pre-roll artifact control is live (D-113); otherwise the roll is at once.
 const ROLL_PHASE_PAUSE_MS = 1800;
+
+function preRollControlLive() {
+  return (hasArtifact('third_eye') && !gameState.run.thirdEyeUsedThisAct) ||
+    (hasArtifact('second_chance') && !gameState.turn.secondChanceUsedThisFight) ||
+    (hasArtifact('gilded_die') && gameState.run.gold >= GAME_CONFIG.ARTIFACTS.GILDED_DIE_PRICE && !gameState.turn.gildedFace);
+}
 
 // Auto-advances through every phase needing no player input, stopping at
 // CARD_PHASE. While sitting in ROLL_PHASE unresolved, pauses via
@@ -321,7 +329,7 @@ function autoAdvance() {
 }
 
 function autoAdvanceStep() {
-  if (gameState.turn.phase === 'ROLL_PHASE' && !playerRollResolved) {
+  if (gameState.turn.phase === 'ROLL_PHASE' && !playerRollResolved && (devChromeOpen || preRollControlLive())) {
     setTimeout(function() {
       if (gameState.turn.phase !== 'ROLL_PHASE') return;
       nextPhase();

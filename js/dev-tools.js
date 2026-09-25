@@ -50,6 +50,15 @@ function renderDevModOptions() {
     option.textContent = gameState.config.mods[modId].name;
     select.appendChild(option);
   });
+  renderDevModDescription();
+}
+
+// The selected mod's MOD_DESCRIPTION, beside the dropdown.
+function renderDevModDescription() {
+  const select = document.getElementById('devModSelect');
+  const span = document.getElementById('devModDescription');
+  if (!select || !span) return;
+  span.textContent = MOD_DESCRIPTION[select.value] || '';
 }
 
 // Caps at two mods per face: fills modId if blank, else modId2, else refuses.

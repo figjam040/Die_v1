@@ -43,7 +43,7 @@ async function freshPage(browser, viewport) {
 }
 
 async function enterOpeningFight(page) {
-  await page.evaluate(() => { enterSlot('opening', null); });
+  await page.evaluate(() => { devChromeOpen = true; enterSlot('opening', null); });
   await page.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
 }
 

@@ -152,14 +152,14 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   // ITEM D — D-102/KI-37
   // ---------------------------------------------------------------
 
-  await runTest('D-102/KI-37: the Load offer renders three wireframe die frames and no .offer-card element', async () => {
+  await runTest('D-102/KI-37: the Load offer renders three bare symbols and no .offer-card element', async () => {
     const page = await freshPage(browser);
     await page.evaluate(() => { openDieActionScreen('reward'); dieActionChooseLoad(); });
     const v = await page.evaluate(() => ({
-      dieCards: document.querySelectorAll('#dieActionPanel .offer-die-card').length,
+      dieCards: document.querySelectorAll('#dieActionPanel .offer-symbol').length,
       cardCards: document.querySelectorAll('#dieActionPanel .offer-card').length
     }));
-    assert.strictEqual(v.dieCards, 3, 'the Load offer must render three .offer-die-card frames, got ' + v.dieCards);
+    assert.strictEqual(v.dieCards, 3, 'the Load offer must render three .offer-symbol elements, got ' + v.dieCards);
     assert.strictEqual(v.cardCards, 0, 'the Load offer must not render any .offer-card element, got ' + v.cardCards);
     await page.close();
   });

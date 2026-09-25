@@ -171,6 +171,8 @@ document.getElementById('registryInspectorToggleBtn').addEventListener('click', 
   toggleBtn.textContent = expanded ? 'Listener Registry ▾' : 'Listener Registry ▸';
 });
 
+document.getElementById('devModSelect').addEventListener('change', renderDevModDescription);
+
 document.getElementById('devLoadModBtn').addEventListener('click', function() {
   log('[CLICK] Load Mod');
   devLoadMod();

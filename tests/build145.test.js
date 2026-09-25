@@ -153,8 +153,8 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
 
   await runTest('Item 4: the fight screen fits 1600 by 900 without a scrollbar', async () => {
     const page = await freshPage(browser);
-    await page.evaluate(() => { devChromeOpen = false; });
-    await enterOpeningFight(page);
+    await page.evaluate(() => { devChromeOpen = false; enterSlot('opening', null); });
+    await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
     const v = await page.evaluate(() => ({
       scrollHeight: document.documentElement.scrollHeight,
       innerHeight: window.innerHeight

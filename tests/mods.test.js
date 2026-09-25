@@ -46,7 +46,7 @@ async function freshFightPage(browser) {
   page.on('pageerror', err => pageErrors.push(err.message));
   await page.goto(FILE_URL);
   await page.waitForFunction(() => typeof gameState !== 'undefined' && gameState.run.screen === 'map');
-  await page.evaluate(() => { enterSlot('opening', null); });
+  await page.evaluate(() => { devChromeOpen = true; enterSlot('opening', null); });
   await page.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
   page._consoleErrors = consoleErrors;
   page._pageErrors = pageErrors;

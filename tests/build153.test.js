@@ -31,6 +31,7 @@ async function freshPage(browser) {
   page.on('dialog', function(d) { d.accept(); });
   await page.goto(FILE_URL);
   await page.waitForFunction(() => typeof gameState !== 'undefined' && gameState.run.screen === 'map');
+  await page.evaluate(() => { devChromeOpen = true; });
   return page;
 }
 

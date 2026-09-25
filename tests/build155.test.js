@@ -203,7 +203,7 @@ function faceRow(page, faceNumber) {
       const panelRect = document.getElementById('dieActionPanel').getBoundingClientRect();
       const rowRect = document.getElementById('playerDieList').getBoundingClientRect();
       return {
-        cardsShown: document.querySelectorAll('#dieActionPanel .offer-die-card').length,
+        cardsShown: document.querySelectorAll('#dieActionPanel .offer-symbol').length,
         panelBottom: panelRect.bottom,
         rowTop: rowRect.top,
         bandBDisplay: getComputedStyle(document.querySelector('.band-b')).display,

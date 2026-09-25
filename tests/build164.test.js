@@ -127,7 +127,7 @@ async function openChoose(page) {
 
   await runTest('face 20 caption contains MAX at weight 5 and not at weight 4', async () => {
     const page = await freshPage(browser);
-    await page.evaluate(() => { enterSlot('opening', null); });
+    await page.evaluate(() => { devChromeOpen = true; enterSlot('opening', null); });
     await page.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
     const caption = () => page.evaluate(() => {
       const rows = document.querySelectorAll('#playerDieList .die-face-caption');

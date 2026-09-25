@@ -79,15 +79,15 @@ async function enterPausedFight(page) {
     await page.close();
   });
 
-  await runTest('Item A: the Load offer shows three die frames; a pick marks one gold and opens the face row', async () => {
-    // D-102/KI-37 (BUILD 158): the Load offer renders wireframe die frames
-    // (.offer-die-card), not the card frame (.offer-card) — see build158.test.js.
+  await runTest('Item A: the Load offer shows three bare symbols; a pick marks one gold and opens the face row', async () => {
+    // D-110 (BUILD 166): the Load offer renders bare symbols (.offer-symbol),
+    // not the card frame (.offer-card) — see build166.test.js.
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
       openDieActionScreen();
       dieActionChooseLoad();
       const before = {
-        cards: document.querySelectorAll('#dieActionPanel .offer-die-card').length,
+        cards: document.querySelectorAll('#dieActionPanel .offer-symbol').length,
         chosen: document.querySelectorAll('#dieActionPanel .offer-card-chosen').length,
         pickable: document.querySelectorAll('#playerDieList .die-row-pickable').length
       };
@@ -100,20 +100,20 @@ async function enterPausedFight(page) {
         .map(f => f.number);
       return {
         before: before,
-        cards: document.querySelectorAll('#dieActionPanel .offer-die-card').length,
+        cards: document.querySelectorAll('#dieActionPanel .offer-symbol').length,
         chosen: document.querySelectorAll('#dieActionPanel .offer-card-chosen').length,
-        chosenFoot: (document.querySelector('#dieActionPanel .offer-card-chosen .offer-card-foot') || {}).textContent || '',
+        picked: document.querySelectorAll('#dieActionPanel .offer-symbol.offer-card-picked').length,
         instruction: (document.querySelector('#dieActionPanel .offer-instruction') || {}).textContent || '',
         pickableNumbers: pickableNumbers,
         blankNumbers: blankNumbers
       };
     });
-    assert.strictEqual(v.before.cards, 3, 'the Load offer must show three die frames, got ' + v.before.cards);
+    assert.strictEqual(v.before.cards, 3, 'the Load offer must show three symbols, got ' + v.before.cards);
     assert.strictEqual(v.before.chosen, 0, 'no card is chosen before a pick');
     assert.strictEqual(v.before.pickable, 0, 'no face is selectable before a mod is picked');
-    assert.strictEqual(v.cards, 3, 'the three die frames stay on screen after a pick');
+    assert.strictEqual(v.cards, 3, 'the three symbols stay on screen after a pick');
     assert.strictEqual(v.chosen, 1, 'exactly one card turns gold after a pick, got ' + v.chosen);
-    assert.ok(v.chosenFoot.indexOf('CHOSEN') === 0, 'the chosen card must read CHOSEN..., got "' + v.chosenFoot + '"');
+    assert.strictEqual(v.picked, 1, 'exactly one symbol carries the gold outline after a pick, got ' + v.picked);
     assert.ok(v.instruction.length > 0, 'the face row must carry a one-line instruction');
     // Every blank face 2-19 must be selectable, and faces 1 and 20 never.
     v.blankNumbers.forEach(function(n) {
@@ -147,11 +147,12 @@ async function enterPausedFight(page) {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
       openArtifactRewardScreen();
-      const cards = Array.from(document.querySelectorAll('#artifactRewardPanel .offer-card'));
+      const cards = Array.from(document.querySelectorAll('#artifactRewardPanel .offer-symbol'));
+      const tipLines = c => Array.from(c.querySelector('.hover-tip').children).map(d => d.textContent);
       return {
         count: cards.length,
-        names: cards.map(c => c.querySelector('.offer-card-name').textContent),
-        texts: cards.map(c => c.querySelector('.offer-card-text').textContent),
+        names: cards.map(c => tipLines(c)[0]),
+        texts: cards.map(c => tipLines(c)[3]),
         rows: document.querySelectorAll('#artifactRewardPanel .die-row').length,
         skip: (document.querySelector('#artifactRewardPanel .offer-skip') || {}).textContent || '',
         ids: cards.map(c => c.dataset.offerId)
@@ -257,9 +258,9 @@ async function enterPausedFight(page) {
       // Load: every mod card carries its MOD_DESCRIPTION text.
       openDieActionScreen();
       dieActionChooseLoad();
-      const modCard = document.querySelector('#dieActionPanel .offer-die-card');
+      const modCard = document.querySelector('#dieActionPanel .offer-symbol');
       out.modId = modCard.dataset.offerId;
-      out.modText = modCard.querySelector('.offer-card-text').textContent;
+      out.modText = modCard.querySelector('.hover-tip').lastElementChild.textContent;
       out.modTitle = (modCard.querySelector('.hover-tip') || {}).textContent || '';
 
       // The die action menu keeps Purify's own hover sentence.

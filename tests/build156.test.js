@@ -64,7 +64,7 @@ const ONE_PX_PNG = Buffer.from(
       openDieActionScreen();
       dieActionChooseLoad();
     });
-    await page.waitForFunction(() => document.querySelectorAll('#dieActionPanel .offer-die-card').length === 3);
+    await page.waitForFunction(() => document.querySelectorAll('#dieActionPanel .offer-symbol').length === 3);
 
     const during = await page.evaluate(() => {
       const r = document.getElementById('playerDieList').getBoundingClientRect();
