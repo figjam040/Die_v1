@@ -143,7 +143,7 @@ async function enterEventSlot(page) {
     const acts = await page.evaluate(() => ({ a1: buildAct(1), a2: buildAct(2), a3: buildAct(3) }));
     [acts.a1, acts.a2, acts.a3].forEach(function(act, i) {
       assert.strictEqual(act.lower[3].type, 'event', 'act ' + (i + 1) + ' lower[3] must be type event');
-      assert.strictEqual(act.lower[3].label, 'Event', 'act ' + (i + 1) + ' lower[3] must be labelled Event');
+      assert.strictEqual(act.lower[3].label, 'Anomaly', 'act ' + (i + 1) + ' lower[3] must be labelled Anomaly (D-117)');
       assert.strictEqual(act.lower[3].id, 'font', 'act ' + (i + 1) + ' lower[3] must carry id font');
       assert.strictEqual(act.upper[3].type, 'fight', 'act ' + (i + 1) + ' upper[3] must remain a fight (the Elite)');
       assert.strictEqual(act.upper[3].label, 'Elite', 'act ' + (i + 1) + ' upper[3] must remain the Elite');

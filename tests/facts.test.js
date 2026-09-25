@@ -169,7 +169,8 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.strictEqual(v.lowerFightCount, 4);
     assert.strictEqual(v.lowerEventCount, 1);
     assert.deepStrictEqual(v.upperLabels, ['Fight', 'Rite', 'Fight', 'Elite', 'Rite', 'Fight', 'Fight', 'Rite']);
-    assert.deepStrictEqual(v.lowerLabels, ['Fight', 'Rite', 'Fight', 'Event', 'Rite', 'Fight', 'Fight', 'Rite']);
+    // D-117: the event slot reads Anomaly to the player.
+    assert.deepStrictEqual(v.lowerLabels, ['Fight', 'Rite', 'Fight', 'Anomaly', 'Rite', 'Fight', 'Fight', 'Rite']);
     await page.close();
   });
 
@@ -258,7 +259,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.strictEqual(act.lower[2].enemy.hp, cfg.ACT1_LANE_FIGHT_HP[1]);
     // BUILD 151 (F44): lower[3] is now the event slot (The Font), not a fight.
     assert.strictEqual(act.lower[3].type, 'event');
-    assert.strictEqual(act.lower[3].label, 'Event');
+    assert.strictEqual(act.lower[3].label, 'Anomaly');
     [act.upper[0], act.upper[2], act.lower[0], act.lower[2]].forEach(function(s) {
       assert.ok(s.enemy.pattern.length > 0, 'every act 1 lane fight must carry a non-empty pattern');
     });

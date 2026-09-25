@@ -39,7 +39,7 @@
 // F40 (BUILD 143) npm test runs every test file; guardrails.test.js fails on CLAUDE.md size, CONFIRMED WORKING line length, stale CURRENT SUBSTAGE, comment share, a build number in a comment, or a stray file
 // F41 (BUILD 149) stacks of awe lower an Attack's damage to no less than 0, after Wrath, then decay by 1 at START_OF_TURN
 // F42 (BUILD 150) break numbers lowered by 4; gold (GOLD_REWARDS) from a fight win spends in the shop (SHOP) after every rite; three artifacts offered after an Elite/non-final-Boss win
-// F43 (BUILD 151) Purify: third die action, clears mods off a face (never 1/10/20), weight kept
+// F43 (BUILD 151, 167) Purify: third die action, clears mods off a face (never 1/10/20), weight kept; Remove (D-119) deletes a blank face, not 1/10/20, above DIE_MIN_FACES 12
 // F44 (BUILD 151) lower lane index 3 is the event The Font: unresolved roll picks the outcome
 // F45 (BUILD 153) artifacts: 13, up to ARTIFACT_MAX (8) held, offered after an Elite/non-final-Boss win and sold at SHOP.ARTIFACT_PRICE; their amounts live in ARTIFACTS
 // F46 (BUILD 154) every HP, block, poison, soul and gold change pops a number where it happened; DAMAGE_NUMBERS holds the rise, fade, step count and the six colours
@@ -47,12 +47,11 @@
 // F48 (BUILD 153) Merchant's Seal prices are floor(base x 0.75); removal stays 75
 // F49 (BUILD 162) an enemy with a die shows a face row under its art; dev click forces a face (D-103)
 // F50 (BUILD 166) DIE_ROLL_ANIMATION 3 frames over 200 ms; the ROLL_PHASE pause only with the dev drawer open (D-107, D-113)
-// F51 (BUILD 164) face 20 weight capped at FACE_TWENTY_MAX_WEIGHT 5 on every weight path, MAX shown on its caption (D-108)
-// ============================================================
+// F51 (BUILD 164) face 20 weight capped at FACE_TWENTY_MAX_WEIGHT 5 on every weight path, MAX shown on its caption (D-108)// ============================================================
 
 const GAME_CONFIG = {
 
-  BUILD: 166,
+  BUILD: 167,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -132,6 +131,7 @@ const GAME_CONFIG = {
 
   DIE_SIZE: { PLAYER: 20, ELITE: 12, BOSS: 20, NORMAL: 6 },
   FACE_TWENTY_MAX_WEIGHT: 5,
+  DIE_MIN_FACES: 12,
 
   ENEMY_WRATH_AMOUNT: 2,
 

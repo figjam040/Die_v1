@@ -361,7 +361,7 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
     await page.close();
   });
 
-  await runTest('Item 6: map nodes are square and outlined 2px', async () => {
+  await runTest('Item 6: map nodes are square and outlined 1px (D-118)', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
       const node = document.querySelector('#mapScreen .map-node');
@@ -381,10 +381,10 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
     // getComputedStyle's own quirky border-width reporting, so the
     // tolerance here is widened rather than chasing an exact compensation
     // formula for a value that already renders correctly on screen.
-    assert.ok(Math.abs(v.border - 2) < 0.2, 'a map node must carry a 2px outline, got ' + v.border + 'px');
-    // D-98 (BUILD 156): node labels dropped one size, 11px -> 10px, as
-    // part of the map's own 1.5x-larger redraw.
-    assert.strictEqual(v.font, '10px', 'a map node label must render at 10px, got ' + v.font);
+    // D-118: every box outline is 1px.
+    assert.ok(Math.abs(v.border - 1) < 0.3, 'a map node must carry a 1px outline, got ' + v.border + 'px');
+    // D-98 took node labels to 10px; D-118 scales that by --ui-scale (0.75).
+    assert.strictEqual(v.font, '7.5px', 'a map node label must render at 7.5px, got ' + v.font);
     await page.close();
   });
 

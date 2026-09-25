@@ -308,11 +308,17 @@ async function triggerMod(page, modId) {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
+    // The roll animation's stop re-renders the hand with fresh imgs; swap
+    // the card in only once it has stopped, then wait on the img itself.
+    await page.waitForFunction(() => dieRollAnimationsIdle());
     await page.evaluate(() => {
       gameState.config.cards.fake_card = { id: 'fake_card', name: 'Fake Card', soulCost: 1, type: 'utility', classRestriction: null, effect: function () {} };
       updatePlayer({ hand: ['fake_card'].concat(gameState.player.hand.slice(1)) });
     });
-    await page.waitForTimeout(200); // let the (missing) image's error event fire
+    await page.waitForFunction(() => {
+      const img = document.querySelector('#handRow .hand-card-el .hand-card-art img');
+      return img && getComputedStyle(img).display === 'none';
+    }, null, { timeout: 3000 }).catch(() => {});
     const v = await page.evaluate(() => {
       const firstCard = document.querySelector('#handRow .hand-card-el');
       const artBox = firstCard.querySelector('.hand-card-art');

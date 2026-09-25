@@ -18,7 +18,7 @@ function forcePlayerRoll(faceNumber) {
   }
   if (playerRollResolved) { return; }
   playerRollResolved = true;
-  const face = gameState.die.faces[faceNumber - 1];
+  const face = getPlayerFace(faceNumber);
   log('[DEV] forced roll: face ' + faceNumber);
   resolvePlayerRoll(face);
 }
@@ -70,14 +70,19 @@ function devLoadMod() {
     log('[DEV] cannot modify face 1 or face 20 (NAT faces)');
     return;
   }
+  const index = playerFaceIndex(faceNumber);
+  if (index === -1) {
+    log('[DEV] face ' + faceNumber + ' was removed, refused');
+    return;
+  }
   const newFaces = gameState.die.faces.slice();
-  const face = newFaces[faceNumber - 1];
+  const face = newFaces[index];
   if (face.modId === null) {
-    newFaces[faceNumber - 1] = Object.assign({}, face, { modId: modId });
+    newFaces[index] = Object.assign({}, face, { modId: modId });
     updateDie({ faces: newFaces });
     log('[DEV] loaded ' + gameState.config.mods[modId].name + ' onto face ' + faceNumber);
   } else if (!face.modId2) {
-    newFaces[faceNumber - 1] = Object.assign({}, face, { modId2: modId });
+    newFaces[index] = Object.assign({}, face, { modId2: modId });
     updateDie({ faces: newFaces });
     log('[DEV] loaded ' + gameState.config.mods[modId].name + ' onto face ' + faceNumber + ' as a second mod');
   } else {
@@ -93,13 +98,14 @@ function devLoadAll() {
   const newFaces = gameState.die.faces.slice();
   let filled = 0;
   let skipped = 0;
-  for (let faceNumber = 2; faceNumber <= GAME_CONFIG.DIE_SIZE.PLAYER - 1; faceNumber++) {
-    const face = newFaces[faceNumber - 1];
+  for (let index = 0; index < newFaces.length; index++) {
+    const face = newFaces[index];
+    if (face.number === 1 || face.number === GAME_CONFIG.DIE_SIZE.PLAYER) continue;
     if (face.modId === null) {
-      newFaces[faceNumber - 1] = Object.assign({}, face, { modId: modId });
+      newFaces[index] = Object.assign({}, face, { modId: modId });
       filled++;
     } else if (!face.modId2) {
-      newFaces[faceNumber - 1] = Object.assign({}, face, { modId2: modId });
+      newFaces[index] = Object.assign({}, face, { modId2: modId });
       filled++;
     } else {
       skipped++;
@@ -119,8 +125,13 @@ function devClearFace() {
     log('[DEV] cannot modify face 1 or face 20 (NAT faces)');
     return;
   }
+  const index = playerFaceIndex(faceNumber);
+  if (index === -1) {
+    log('[DEV] face ' + faceNumber + ' was removed, refused');
+    return;
+  }
   const newFaces = gameState.die.faces.slice();
-  newFaces[faceNumber - 1] = Object.assign({}, newFaces[faceNumber - 1], { modId: null, modId2: null });
+  newFaces[index] = Object.assign({}, newFaces[index], { modId: null, modId2: null });
   updateDie({ faces: newFaces });
   log('[DEV] cleared face ' + faceNumber);
 }

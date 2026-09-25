@@ -239,6 +239,8 @@ const SOUND_TABLE = {
   boss_defeated: playBossDefeatedSound,
   die_action_load: playDieActionLoadSound,
   die_action_strengthen: playDieActionStrengthenSound,
+  // D-119 — Remove reuses the sound Purify plays.
+  die_action_remove: playDieActionStrengthenSound,
   card_reward_basic: playCardRewardBasicSound,
   card_reward_rich: playCardRewardRichSound
 };

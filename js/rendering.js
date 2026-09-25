@@ -147,13 +147,12 @@ function refreshInspector() {
   renderMapScreen();
   renderInfoLayers();
 
-  // the reward layer (die action/card/artifact/shop/The Font)
+  // the reward layer (die action/card/artifact/shop/The Font/the rite)
   // always shows over the fight screen, even when it was opened from the
-  // map (a rite's shop, an elite's artifact reward, The Font): the fight
-  // screen carries the one face row these all now share. riteScreenPanel
-  // is not part of this — it stays over the map, ungated by this flag.
+  // map (a rite, its shop, an elite's artifact reward, The Font): the fight
+  // screen carries the one face row these all share (D-116).
   const rewardLayerActive = dieActionStep !== null || cardRewardStep !== null ||
-    artifactRewardStep !== null || shopStep !== null || eventStep !== null;
+    artifactRewardStep !== null || shopStep !== null || eventStep !== null || riteStep !== null;
   document.getElementById('fightScreen').style.display = (gameState.run.screen === 'fight' || rewardLayerActive) ? 'flex' : 'none';
   document.getElementById('fightScreen').classList.toggle('reward-layer-active', rewardLayerActive);
   document.getElementById('mapScreen').style.display = (gameState.run.screen === 'map' && !rewardLayerActive) ? 'flex' : 'none';
@@ -292,17 +291,18 @@ function paintRollHero() {
 // shown already includes this trigger.
 function rollHeroTriggerCount(seg) {
   if (seg.modId === null || seg.faceNumber == null) return 0;
-  const face = gameState.die.faces[seg.faceNumber - 1];
+  const face = getPlayerFace(seg.faceNumber);
   const modData = (face && face.modData) || {};
   return (seg.slot === 2 ? modData.triggerCount2 : modData.triggerCount) || 0;
 }
 
-function renderRollResult(faceNumber, modIdRaw) {
+function renderRollResult(faceNumberText, modIdRaw) {
   const hero = document.getElementById('rollHero');
   if (!hero) return;
 
   const modId = (modIdRaw === 'null') ? null : modIdRaw;
-  const face = gameState.die.faces[faceNumber - 1];
+  const faceNumber = parseInt(faceNumberText, 10);
+  const face = getPlayerFace(faceNumber);
 
   if (modId === 'NAT_ONE' || modId === 'ENEMY_NAT_ONE') {
     rollHeroSegments = [{ modId: null, name: 'Penitence', value: null, isNat: true, natText: 'NAT 1' }];
@@ -1375,10 +1375,23 @@ function renderThirdEyeButton() {
   if (!gildedEligible) { gildedDieChoosing = false; }
 }
 
+// D-114 — the coin icon beside the amount; the amount is the only part
+// that ever changes, so the icon element is never rebuilt.
 function renderTopBarTokens() {
   const goldEl = document.getElementById('goldValue');
   if (!goldEl) return;
-  goldEl.textContent = 'GOLD ' + (gameState.run.gold === undefined ? '—' : gameState.run.gold);
+  const goldIcon = document.getElementById('goldIcon');
+  if (goldIcon && !goldIcon.dataset.wired) {
+    goldIcon.dataset.wired = '1';
+    const showFallback = function() {
+      goldIcon.style.display = 'none';
+      document.getElementById('goldFallback').style.display = '';
+    };
+    goldIcon.onerror = showFallback;
+    if (goldIcon.complete && goldIcon.naturalWidth === 0) showFallback();
+  }
+  document.getElementById('goldAmount').textContent = gameState.run.gold === undefined ? '—' : gameState.run.gold;
+  setHoverTip(goldEl, 'Gold: ' + (gameState.run.gold === undefined ? '—' : gameState.run.gold) + '. Spent in the shop after every rite.');
 
   const artifactRow = document.getElementById('artifactRow');
   if (!artifactRow) return;
@@ -1811,7 +1824,7 @@ function renderCardButtons() {
 // same convention playerRollResolved/lastEnemyHp already use, rather than
 // added to gameState.
 
-let dieActionStep = null; // null | 'choose' | 'load_pick_mod' | 'load_pick_face' | 'strengthen_pick_face' | 'purify_pick_face'
+let dieActionStep = null; // null | 'choose' | 'load_pick_mod' | 'load_pick_face' | 'strengthen_pick_face' | 'purify_pick_face' | 'remove_pick_face'
 let dieActionMods = []; // the (up to) 3 mod ids offered this pass
 let dieActionChosenModId = null;
 
@@ -1972,16 +1985,17 @@ function dieActionPickMod(modId) {
 function dieActionPickLoadFace(faceNumber) {
   const modName = gameState.config.mods[dieActionChosenModId].name;
   const newFaces = gameState.die.faces.slice();
-  const face = newFaces[faceNumber - 1];
+  const index = playerFaceIndex(faceNumber);
+  const face = newFaces[index];
   // A blank face fills modId; an already-loaded face fills modId2. Both
   // slots full is a defensive refusal — the picker's own eligibility
   // should never offer such a face. Cap two, never three.
   if (face.modId === null) {
-    newFaces[faceNumber - 1] = Object.assign({}, face, { modId: dieActionChosenModId });
+    newFaces[index] = Object.assign({}, face, { modId: dieActionChosenModId });
     updateDie({ faces: newFaces });
     log('[DIE ACTION] loaded ' + modName + ' onto face ' + faceNumber);
   } else if (!face.modId2) {
-    newFaces[faceNumber - 1] = Object.assign({}, face, { modId2: dieActionChosenModId });
+    newFaces[index] = Object.assign({}, face, { modId2: dieActionChosenModId });
     updateDie({ faces: newFaces });
     log('[DIE ACTION] loaded ' + modName + ' onto face ' + faceNumber + ' as a second mod');
   } else {
@@ -2031,19 +2045,55 @@ function dieActionPickStrengthenFace(faceNumber) {
 // live off gameState.die.faces, so a purified mod is eligible for Load
 // again the instant this returns (D-07).
 function dieActionPickPurifyFace(faceNumber) {
-  const face = gameState.die.faces[faceNumber - 1];
+  const face = getPlayerFace(faceNumber);
   const removedIds = [face.modId];
   if (face.modId2) removedIds.push(face.modId2);
   const removedNames = removedIds.map(function(id) { return gameState.config.mods[id].name; });
 
   const newFaces = gameState.die.faces.slice();
-  newFaces[faceNumber - 1] = { number: face.number, modId: null, modId2: null, weight: face.weight };
+  newFaces[playerFaceIndex(faceNumber)] = { number: face.number, modId: null, modId2: null, weight: face.weight };
   updateDie({ faces: newFaces });
 
   log('[DIE] purify face ' + faceNumber + ': ' + removedNames.join(', ') + ' removed');
   updateRunRecord({ dieActionEvents: gameState.runRecord.dieActionEvents.concat([{ type: 'purify', faceNumber: faceNumber, removed: removedIds.slice() }]) });
   playAudioEvent('die_action_strengthen');
   appendTranscript('PURIFY ' + faceNumber + ' > ' + removedNames.join(','));
+  closeDieActionScreen();
+}
+
+// D-119 — Remove: a blank face other than 1, 20 and the anchor's own face,
+// only while the die still has more than DIE_MIN_FACES faces. A loaded
+// face never qualifies; Purify it first.
+function isRemoveEligibleFace(f) {
+  if (gameState.die.faces.length <= GAME_CONFIG.DIE_MIN_FACES) return false;
+  if (f.number === 1 || f.number === GAME_CONFIG.DIE_SIZE.PLAYER) return false;
+  if (f.number === 10) return false;
+  return f.modId === null && !f.modId2;
+}
+
+function removableFaceExists() {
+  return gameState.die.faces.some(isRemoveEligibleFace);
+}
+
+function dieActionChooseRemove() {
+  dieActionStep = 'remove_pick_face';
+  refreshInspector();
+}
+
+// Deletes the face from the die for the rest of the run: the face row,
+// the roll bag, rollOdds() and the DIE layer all read gameState.die.faces,
+// so each loses the face the moment this writes.
+function dieActionPickRemoveFace(faceNumber) {
+  const face = getPlayerFace(faceNumber);
+  if (!face || !isRemoveEligibleFace(face)) {
+    log('[DIE] remove refused: face ' + faceNumber + ' is not eligible');
+    return;
+  }
+  updateDie({ faces: gameState.die.faces.filter(function(f) { return f.number !== faceNumber; }) });
+  log('[DIE] Removed face ' + faceNumber + ', die now ' + gameState.die.faces.length + ' faces');
+  updateRunRecord({ dieActionEvents: gameState.runRecord.dieActionEvents.concat([{ type: 'remove', faceNumber: faceNumber }]) });
+  playAudioEvent('die_action_remove');
+  appendTranscript('Removed face ' + faceNumber);
   closeDieActionScreen();
 }
 
@@ -2082,6 +2132,9 @@ function currentPlayerDiePickConfig() {
       showBecomes: false
     };
   }
+  if (dieActionStep === 'remove_pick_face') {
+    return { isEligible: isRemoveEligibleFace, onPick: dieActionPickRemoveFace, showBecomes: false };
+  }
   return null;
 }
 
@@ -2103,13 +2156,18 @@ function renderDieActionPanel() {
   const row = document.createElement('div');
   row.className = 'die-action-row';
 
+  // D-115 — every step of this layer is titled Choose; what to choose
+  // rides the instruction line (a face-picking step) or the choices themselves.
+  titleText = 'Choose';
+
   if (dieActionStep === 'choose') {
-    titleText = 'Fight won — choose a die action';
     buttonRow = row;
 
     // Load shows whenever a blank face exists among faces 2-19 AND the
     // pool hasn't run dry (D-54) — a real 3-mod offer must be buildable.
-    const blankFaceExists = gameState.die.faces.slice(1, 19).some(function(f) { return f.modId === null; });
+    const blankFaceExists = gameState.die.faces.some(function(f) {
+      return f.number !== 1 && f.number !== GAME_CONFIG.DIE_SIZE.PLAYER && f.modId === null;
+    });
     if (blankFaceExists && eligibleLoadModIds().length >= 3) {
       const loadBtn = document.createElement('button');
       loadBtn.textContent = 'Load';
@@ -2133,6 +2191,15 @@ function renderDieActionPanel() {
       row.appendChild(purifyBtn);
     }
 
+    // D-119 — hidden when no blank face qualifies or the die is at DIE_MIN_FACES.
+    if (removableFaceExists()) {
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = 'Remove';
+      setHoverTip(removeBtn, 'Take one blank face off the die for the rest of the run. The die keeps at least ' + GAME_CONFIG.DIE_MIN_FACES + ' faces.');
+      removeBtn.addEventListener('click', function() { log('[CLICK] Remove'); dieActionChooseRemove(); });
+      row.appendChild(removeBtn);
+    }
+
     const skipBtn = document.createElement('button');
     skipBtn.textContent = 'Skip';
     skipBtn.addEventListener('click', function() { log('[CLICK] Skip'); dieActionChooseSkip(); });
@@ -2142,8 +2209,6 @@ function renderDieActionPanel() {
   } else if (dieActionStep === 'load_pick_mod' || dieActionStep === 'load_pick_face') {
     // Both Load steps show the same three mod cards; the second step adds
     // the face picker and marks the chosen card.
-    titleText = 'Choose a mod to load';
-
     if (dieActionMods.length === 0) {
       const none = document.createElement('div');
       none.className = 'die-action-empty';
@@ -2165,16 +2230,16 @@ function renderDieActionPanel() {
     // valid target — blank faces and already-loaded faces are both
     // eligible together, always.
     const chosenName = gameState.config.mods[dieActionChosenModId].name.toUpperCase();
-    titleText = 'Choose a face for ' + gameState.config.mods[dieActionChosenModId].name;
     instruction = chosenName + ', CHOOSE A FACE BELOW';
 
   } else if (dieActionStep === 'strengthen_pick_face') {
-    titleText = 'Choose a face to strengthen';
     instruction = 'CHOOSE A FACE TO STRENGTHEN';
 
   } else if (dieActionStep === 'purify_pick_face') {
-    titleText = 'Choose a face to purify';
     instruction = 'CHOOSE A FACE TO PURIFY';
+
+  } else if (dieActionStep === 'remove_pick_face') {
+    instruction = 'CHOOSE A BLANK FACE TO REMOVE';
   }
 
   // no die row of this panel's own: the fight's own face row
@@ -2278,7 +2343,7 @@ function renderCardRewardPanel() {
 
   // Three cards, pick one, no face row (D-86).
   renderOfferPanel(panel, {
-    title: 'Fight won — choose a card',
+    title: 'Choose',
     cards: cardRewardOptions.map(function(cardId) {
       return offerCardSpecForCard(cardId, null, 'CLICK TO CHOOSE', false, function() {
         log('[CLICK] ' + gameState.config.cardPool[cardId].name);
@@ -2344,7 +2409,7 @@ function renderArtifactRewardPanel() {
   }
 
   renderOfferPanel(panel, {
-    title: 'Choose an artifact',
+    title: 'Choose',
     cardRenderer: renderOfferSymbol,
     cards: artifactRewardOptions.map(function(artifactId) {
       return offerCardSpecForArtifact(artifactId, null, 'CLICK TO CHOOSE', false, function() {
@@ -2376,7 +2441,7 @@ function offerCardSpecForArtifact(artifactId, priceText, footText, disabled, onC
 
 // ---------- RITE SCREEN ----------
 // A rite slot offers a choice of heal, take a die action, or remove a
-// card, then returns to the map.
+// card; the shop follows, then the map returns.
 
 let riteStep = null; // null | 'choose' | 'remove_pick_card'
 
@@ -2452,18 +2517,14 @@ function renderRiteScreen() {
     return;
   }
 
-  panel.style.display = 'flex';
-  panel.innerHTML = '';
-
-  // Same CSS classes the die action / card reward panels already reuse.
-  const title = document.createElement('div');
-  title.className = 'die-action-title';
-
+  // D-116 — the rite is its own screen in the reward layer, titled Rite,
+  // the fight's face row exposed beneath it like every other layer step.
   const row = document.createElement('div');
   row.className = 'die-action-row';
+  let instruction = null;
 
   if (riteStep === 'remove_pick_card') {
-    title.textContent = 'Choose a card to remove';
+    instruction = 'CHOOSE A CARD TO REMOVE';
 
     gameState.player.ownedCards.forEach(function(cardId, index) {
       const card = getCard(cardId);
@@ -2479,8 +2540,6 @@ function renderRiteScreen() {
       row.appendChild(btn);
     });
   } else {
-    title.textContent = 'Rite — choose one';
-
     const healBtn = document.createElement('button');
     healBtn.textContent = 'Heal ' + GAME_CONFIG.RITE_HEAL + ' HP';
     healBtn.addEventListener('click', function() { log('[CLICK] Heal ' + GAME_CONFIG.RITE_HEAL + ' HP'); riteChooseHeal(); });
@@ -2498,8 +2557,7 @@ function renderRiteScreen() {
     row.appendChild(removeBtn);
   }
 
-  panel.appendChild(title);
-  panel.appendChild(row);
+  renderOfferPanel(panel, { title: 'Rite', cards: [], skip: null, buttonRow: row, instruction: instruction });
 }
 
 // ---------- EVENT SCREEN — The Font (slot type 'event', id 'font') ----------
@@ -2534,8 +2592,8 @@ function eventRoll() {
   if (face.modId === 'NAT_TWENTY') {
     updateTurn({ rolledFaceNumber: face.number, rollOutcome: 'nat_twenty' });
     updateRun({ gold: gameState.run.gold + GAME_CONFIG.EVENT.NAT_TWENTY_GOLD });
-    log('[EVENT] font: rolled ' + face.number + ', outcome nat twenty, +' + GAME_CONFIG.EVENT.NAT_TWENTY_GOLD + ' gold, Load offered');
-    appendTranscript('EVENT font: rolled ' + face.number + ' NAT 20, +' + GAME_CONFIG.EVENT.NAT_TWENTY_GOLD + ' gold');
+    log('[ANOMALY] font: rolled ' + face.number + ', outcome nat twenty, +' + GAME_CONFIG.EVENT.NAT_TWENTY_GOLD + ' gold, Load offered');
+    appendTranscript('ANOMALY font: rolled ' + face.number + ' NAT 20, +' + GAME_CONFIG.EVENT.NAT_TWENTY_GOLD + ' gold');
     eventStep = null;
     openDieActionScreen('event');
     return;
@@ -2547,26 +2605,26 @@ function eventRoll() {
     updatePlayer({ hp: newHp });
     updateTurn({ rolledFaceNumber: face.number, rollOutcome: 'nat_one' });
     eventOutcomeText = 'The water keeps what it is owed.';
-    log('[EVENT] font: rolled ' + face.number + ', outcome nat one, hp ' + before + ' to ' + newHp);
-    appendTranscript('EVENT font: rolled ' + face.number + ' NAT 1, hp ' + before + ' to ' + newHp);
+    log('[ANOMALY] font: rolled ' + face.number + ', outcome nat one, hp ' + before + ' to ' + newHp);
+    appendTranscript('ANOMALY font: rolled ' + face.number + ' NAT 1, hp ' + before + ' to ' + newHp);
   } else if (face.modId !== null && isFaceTwentyAtCap(face.number)) {
     updateRun({ gold: gameState.run.gold + GAME_CONFIG.EVENT.BLANK_GOLD });
     updateTurn({ rolledFaceNumber: face.number, rollOutcome: 'blank' });
     eventOutcomeText = 'Coins lie on the bottom.';
-    log('[EVENT] font: rolled ' + face.number + ', outcome blank, +' + GAME_CONFIG.EVENT.BLANK_GOLD + ' gold, face 20 at the cap');
-    appendTranscript('EVENT font: rolled ' + face.number + ' blank, +' + GAME_CONFIG.EVENT.BLANK_GOLD + ' gold, face 20 at the cap');
+    log('[ANOMALY] font: rolled ' + face.number + ', outcome blank, +' + GAME_CONFIG.EVENT.BLANK_GOLD + ' gold, face 20 at the cap');
+    appendTranscript('ANOMALY font: rolled ' + face.number + ' blank, +' + GAME_CONFIG.EVENT.BLANK_GOLD + ' gold, face 20 at the cap');
   } else if (face.modId !== null) {
     const newWeight = strengthenFace(face.number);
     updateTurn({ rolledFaceNumber: face.number, rollOutcome: 'mod' });
     eventOutcomeText = 'The rolled face comes up heavier.';
-    log('[EVENT] font: rolled ' + face.number + ', outcome loaded face, weight now ' + newWeight);
-    appendTranscript('EVENT font: rolled ' + face.number + ' loaded, weight now ' + newWeight);
+    log('[ANOMALY] font: rolled ' + face.number + ', outcome loaded face, weight now ' + newWeight);
+    appendTranscript('ANOMALY font: rolled ' + face.number + ' loaded, weight now ' + newWeight);
   } else {
     updateRun({ gold: gameState.run.gold + GAME_CONFIG.EVENT.BLANK_GOLD });
     updateTurn({ rolledFaceNumber: face.number, rollOutcome: 'blank' });
     eventOutcomeText = 'Coins lie on the bottom.';
-    log('[EVENT] font: rolled ' + face.number + ', outcome blank, +' + GAME_CONFIG.EVENT.BLANK_GOLD + ' gold');
-    appendTranscript('EVENT font: rolled ' + face.number + ' blank, +' + GAME_CONFIG.EVENT.BLANK_GOLD + ' gold');
+    log('[ANOMALY] font: rolled ' + face.number + ', outcome blank, +' + GAME_CONFIG.EVENT.BLANK_GOLD + ' gold');
+    appendTranscript('ANOMALY font: rolled ' + face.number + ' blank, +' + GAME_CONFIG.EVENT.BLANK_GOLD + ' gold');
   }
 
   eventStep = 'result';
@@ -2782,7 +2840,7 @@ function renderShopPanel() {
       btn.addEventListener('click', function() { log('[CLICK] ' + card.name); shopRemoveCard(index); });
       row.appendChild(btn);
     });
-    renderOfferPanel(panel, { title: 'Choose a card to remove', cards: [], skip: null, buttonRow: row });
+    renderOfferPanel(panel, { title: 'SHOP', cards: [], skip: null, buttonRow: row, instruction: 'CHOOSE A CARD TO REMOVE' });
     return;
   }
 
@@ -2933,7 +2991,7 @@ function renderMapScreen() {
   // otherwise the still-current node underneath (a Rite mid-panel, most of
   // all) can be entered a second time.
   const rewardPanelOpen = dieActionStep !== null || cardRewardStep !== null
-    || artifactRewardStep !== null || shopStep !== null;
+    || artifactRewardStep !== null || shopStep !== null || riteStep !== null || eventStep !== null;
 
   // D-98 — the map screen shows the top bar and the map only; the act
   // number already reads on the top bar's own #actStamp.

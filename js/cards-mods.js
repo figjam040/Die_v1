@@ -336,7 +336,7 @@ function init() {
     id: 'tenet', name: 'Tenet', soulCost: 2, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['growth', 'mass'],
     effect: function(gameState) {
       const faceNumber = gameState.turn.rolledFaceNumber;
-      const face = faceNumber ? gameState.die.faces[faceNumber - 1] : null;
+      const face = faceNumber ? getPlayerFace(faceNumber) : null;
       const triggers = (face && face.modData && face.modData.triggerCount) || 0;
       const damage = dealDamage('enemy', 6 + triggers, 'attack', 'tenet');
       log('[CARD] tenet: ' + damage + ' damage (face triggered ' + triggers + ' times)');
@@ -584,11 +584,11 @@ function init() {
     id: 'threnody', name: 'Threnody', soulCost: 2, type: 'utility', classRestriction: null, tier: 'uncommon', tags: ['growth'],
     effect: function(gameState) {
       const faceNumber = gameState.run.threnodyFace;
-      const face = gameState.die.faces[faceNumber - 1];
-      const loaded = face.modId !== null && !isFaceSealed(faceNumber);
+      const face = getPlayerFace(faceNumber);
+      const loaded = !!face && face.modId !== null && !isFaceSealed(faceNumber);
       const triggered = triggerFaceOutsideRoll(faceNumber);
       if (!triggered) {
-        log('[CARD] Threnody: face ' + faceNumber + ' could not trigger (already triggered outside a roll this round, or the round trigger cap was reached)');
+        log('[CARD] Threnody: face ' + faceNumber + ' could not trigger (removed, already triggered outside a roll this round, or the round trigger cap was reached)');
         return;
       }
       if (loaded) {
@@ -634,7 +634,7 @@ function init() {
     id: 'kyrie', name: 'Kyrie', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['bound'],
     effect: function(gameState) {
       const faceNumber = gameState.turn.rolledFaceNumber;
-      const face = gameState.die.faces[faceNumber - 1];
+      const face = getPlayerFace(faceNumber);
       const bound = isBoundFace(face);
       const damage = dealDamage('enemy', bound ? 10 : 5, 'attack', 'kyrie');
       log('[CARD] kyrie: ' + damage + ' damage' + (bound ? ' (rolled face was Bound)' : ''));
@@ -668,7 +668,7 @@ function init() {
     effect: function(gameState) {
       const block = dealBlock(6, 'canticle');
       const faceNumber = gameState.turn.rolledFaceNumber;
-      const face = gameState.die.faces[faceNumber - 1];
+      const face = getPlayerFace(faceNumber);
       const loaded = face.modId !== null && face.modId !== 'NAT_ONE' && face.modId !== 'NAT_TWENTY' && !isFaceSealed(faceNumber);
       if (loaded) {
         const granted = grantBoundToFace(faceNumber);
@@ -864,7 +864,7 @@ function init() {
         // This sweep path dispatches directly rather than through
         // triggerFaceOutsideRoll(), so it needs its own hop mark.
         markFaceHopped(faceNumber);
-        const f = gameState.die.faces[faceNumber - 1];
+        const f = getPlayerFace(faceNumber);
         callListeners('MOD_TRIGGER', { modId: f.modId, faceNumber: f.number, natTwentySweep: true });
         if (f.modId2) {
           callListeners('MOD_TRIGGER', { modId: f.modId2, faceNumber: f.number, natTwentySweep: true });
@@ -1040,7 +1040,7 @@ function init() {
       // triggering face's own modData — data.modId tells us which of this
       // face's (up to two) mod slots just fired. Merges into any existing
       // modData (e.g. Zeal's own accumulatedBonus) rather than replacing it.
-      const faceIndex = data.faceNumber - 1;
+      const faceIndex = playerFaceIndex(data.faceNumber);
       const face = gameState.die.faces[faceIndex];
       const existingModData = face.modData || {};
       const newModData = Object.assign({}, existingModData);
@@ -1189,7 +1189,7 @@ function init() {
     tags: ['mass', 'growth'],
     effect: function(data) {
       const faceNumber = data.faceNumber;
-      const face = gameState.die.faces[faceNumber - 1];
+      const face = getPlayerFace(faceNumber);
       const bonus = (face.modData && face.modData.accumulatedBonus) || 0;
       const damage = dealDamage('enemy', 10 + bonus, 'attack', 'zeal');
 
@@ -1198,7 +1198,7 @@ function init() {
       // Merges into the face's existing modData rather than replacing it
       // wholesale — mod_dispatch already wrote this trigger's own
       // triggerCount into modData before calling this effect().
-      newFaces[faceNumber - 1] = Object.assign({}, face, { modData: Object.assign({}, face.modData, { accumulatedBonus: newBonus }) });
+      newFaces[playerFaceIndex(faceNumber)] = Object.assign({}, face, { modData: Object.assign({}, face.modData, { accumulatedBonus: newBonus }) });
       updateDie({ faces: newFaces });
 
       log('[MOD] zeal: ' + damage + ' damage (bonus +' + bonus + ', face ' + faceNumber + ' now +' + newBonus + ')');
@@ -1255,8 +1255,8 @@ function init() {
     }
   };
 
-  // 10 damage; the face directly above (faceNumber + 1) permanently gains
-  // +1 weight, but only if it's loaded and not face 20.
+  // 10 damage; the face above (the next number still on the die, D-119)
+  // permanently gains +1 weight, but only if it's loaded and not face 20.
   gameState.config.mods['elevation'] = {
     id: 'elevation',
     name: 'Elevation',
@@ -1265,9 +1265,9 @@ function init() {
     effect: function(data) {
       const damage = dealDamage('enemy', 10, 'attack', 'elevation');
 
-      const aboveNumber = data.faceNumber + 1;
-      const aboveFace = gameState.die.faces[aboveNumber - 1];
-      if (aboveFace && aboveFace.modId !== null && aboveNumber !== 20) {
+      const aboveNumber = nextFaceNumberAbove(data.faceNumber);
+      const aboveFace = aboveNumber === null ? null : getPlayerFace(aboveNumber);
+      if (aboveFace && aboveFace.modId !== null && aboveNumber !== GAME_CONFIG.DIE_SIZE.PLAYER) {
         const newWeight = strengthenFace(aboveNumber);
         log('[MOD] elevation: ' + damage + ' damage, face ' + aboveNumber + ' weight now ' + newWeight);
       } else {
@@ -1351,13 +1351,13 @@ function init() {
     tags: ['growth', 'bastion'],
     effect: function(data) {
       const faceNumber = data.faceNumber;
-      const face = gameState.die.faces[faceNumber - 1];
+      const face = getPlayerFace(faceNumber);
       const bonus = (face.modData && face.modData.copeBonus) || 0;
       const block = dealBlock(8 + bonus, 'cope');
 
       const newBonus = bonus + 2;
       const newFaces = gameState.die.faces.slice();
-      newFaces[faceNumber - 1] = Object.assign({}, face, { modData: Object.assign({}, face.modData, { copeBonus: newBonus }) });
+      newFaces[playerFaceIndex(faceNumber)] = Object.assign({}, face, { modData: Object.assign({}, face.modData, { copeBonus: newBonus }) });
       updateDie({ faces: newFaces });
 
       log('[MOD] cope: ' + block + ' block (bonus +' + bonus + ', face ' + faceNumber + ' now +' + newBonus + ')');
@@ -1570,7 +1570,7 @@ function init() {
     tithe_box: { id: 'tithe_box', name: 'Tithe Box', text: 'Every Nat 20 pays 15 gold.' },
     merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", text: 'Shop prices a quarter lower. Card removal stays at 75.' },
     leaden_face: { id: 'leaden_face', name: 'Leaden Face', text: 'Strengthen adds 2 weight, not 1.' },
-    reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', text: 'When a Bound face is rolled, the loaded face directly above it triggers too.' },
+    reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', text: 'When a Bound face is rolled, the next face above it on the die triggers too, if loaded.' },
     plague_bell: { id: 'plague_bell', name: 'Plague Bell', text: 'Fight start: the enemy takes stacks of poison equal to half your loaded faces, rounded down.' },
     alms: { id: 'alms', name: 'Alms', text: 'A blank roll gives 1 soul instead of 2 block.' },
     hourglass: { id: 'hourglass', name: 'Hourglass', text: 'Round 1 of every fight, the enemy does nothing.' },
@@ -1621,11 +1621,12 @@ function init() {
   registerListener('MOD_TRIGGER', 'artifact_reliquary_chain', function(data) {
     if (!hasArtifact('reliquary_chain')) { return; }
     if (data.faceNumber !== gameState.turn.rolledFaceNumber) { return; }
-    const face = gameState.die.faces[data.faceNumber - 1];
+    const face = getPlayerFace(data.faceNumber);
     if (!isBoundFace(face)) { return; }
-    const aboveNumber = data.faceNumber + 1;
-    if (aboveNumber >= GAME_CONFIG.DIE_SIZE.PLAYER) { return; }
-    if (gameState.die.faces[aboveNumber - 1].modId === null) { return; }
+    // D-119: the next number still on the die, not data.faceNumber + 1.
+    const aboveNumber = nextFaceNumberAbove(data.faceNumber);
+    if (aboveNumber === null || aboveNumber >= GAME_CONFIG.DIE_SIZE.PLAYER) { return; }
+    if (getPlayerFace(aboveNumber).modId === null) { return; }
     log('[ARTIFACT] Reliquary Chain: face ' + aboveNumber + ' triggers too');
     triggerFaceOutsideRoll(aboveNumber);
   }, 'permanent');

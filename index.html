@@ -39,6 +39,11 @@
 
     --game-font: 'Press Start 2P', 'Courier New', monospace;
     --game-font-2: 'VT323', 'Courier New', monospace;
+
+    /* D-118 — every font size outside the two face rows, the two die
+       icons and the character art is written calc(Npx * var(--ui-scale)),
+       N the pre-D-118 size, so a later pass changes this one number. */
+    --ui-scale: 0.75;
   }
 
   * { box-sizing: border-box; }
@@ -57,7 +62,7 @@
     font-family: var(--game-font-2);
     margin: 0;
     padding: 0;
-    font-size: 17px;
+    font-size: calc(17px * var(--ui-scale));
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -92,7 +97,7 @@
   #buildStamp {
     flex-shrink: 0;
     font-family: var(--game-font-2);
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-scale));
     line-height: 16px;
     color: var(--muted);
   }
@@ -103,18 +108,26 @@
     gap: 8px;
   }
 
+  /* D-114 — the coin at 32px, the amount beside it, no box. */
   #goldValue {
-    width: 84px;
-    height: 26px;
-    border: 2px solid #3a3a3a;
+    height: 32px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 4px;
     font-family: var(--game-font-2);
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-scale));
     line-height: 1;
-    color: var(--muted);
+    color: var(--text);
   }
+
+  #goldIcon {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+    flex-shrink: 0;
+  }
+
+  #goldFallback { color: var(--muted); }
 
   #artifactRow {
     display: flex;
@@ -128,7 +141,7 @@
 
   .top-bar-info-buttons button {
     height: 26px;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-scale));
   }
 
   /* D-98 — full-screen cover, same shape as the log's own full-screen
@@ -154,7 +167,7 @@
 
   .info-list-row {
     font-family: var(--game-font-2);
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-scale));
     line-height: 1.3;
     color: var(--text);
     border-bottom: 1px solid var(--line);
@@ -181,9 +194,9 @@
   #secondChanceBtn,
   #gildedDieBtn {
     font-family: var(--game-font);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-scale));
     padding: 4px 10px;
-    border: 2px solid var(--nat);
+    border: 1px solid var(--nat);
     color: var(--nat);
     background: var(--panel-bg);
     margin-top: 4px;
@@ -204,7 +217,7 @@
     position: relative;
     width: 26px;
     height: 26px;
-    border: 2px solid #3a3a3a;
+    border: 1px solid #3a3a3a;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -219,7 +232,7 @@
     overflow: hidden;
     width: 100%;
     font-family: var(--game-font-2);
-    font-size: 8px;
+    font-size: calc(8px * var(--ui-scale));
     line-height: 1.05;
     color: var(--nat);
     text-align: center;
@@ -232,7 +245,7 @@
     align-items: center;
     gap: 16px;
     font-family: var(--game-font);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-scale));
   }
 
   #actStamp { color: var(--text); }
@@ -324,10 +337,9 @@
 
   .panel-title {
     color: var(--white);
-    font-weight: bold;
     letter-spacing: 0.5px;
     margin-bottom: 6px;
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-scale));
     font-family: var(--game-font);
   }
 
@@ -353,7 +365,7 @@
     width: 340px;
     height: 220px;
     flex-shrink: 0;
-    border: 2px solid #2a2a2a;
+    border: 1px solid #2a2a2a;
     background: #000;
     display: flex;
     align-items: center;
@@ -397,8 +409,7 @@
   #enemyIntentValue {
     position: relative;
     font-family: var(--game-font);
-    font-size: 26px;
-    font-weight: bold;
+    font-size: calc(26px * var(--ui-scale));
     line-height: 1;
     color: var(--nat);
     white-space: nowrap;
@@ -406,7 +417,7 @@
 
   #enemyIntentLabel {
     font-family: var(--game-font-2);
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-scale));
     line-height: 1;
     color: var(--phase-color);
     text-align: center;
@@ -437,15 +448,14 @@
 
   .side-title {
     font-family: var(--game-font);
-    font-size: 20px;
-    font-weight: bold;
+    font-size: calc(20px * var(--ui-scale));
     color: var(--text);
     margin-bottom: 4px;
   }
 
   #enemyNameValue {
     font-family: var(--game-font-2);
-    font-size: 26px;
+    font-size: calc(26px * var(--ui-scale));
     line-height: 1;
     color: var(--text);
   }
@@ -458,15 +468,13 @@
 
   .stat-label {
     font-family: var(--game-font);
-    font-size: 14px;
-    font-weight: bold;
+    font-size: calc(14px * var(--ui-scale));
     color: var(--text);
   }
 
   .stat-value {
     font-family: var(--game-font);
-    font-size: 14px;
-    font-weight: bold;
+    font-size: calc(14px * var(--ui-scale));
     color: var(--text);
   }
 
@@ -486,12 +494,12 @@
     width: 28px;
     height: 28px;
     flex-shrink: 0;
-    border: 2px solid currentColor;
+    border: 1px solid currentColor;
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: var(--game-font);
-    font-size: 9px;
+    font-size: calc(9px * var(--ui-scale));
     line-height: 1;
   }
 
@@ -503,14 +511,14 @@
 
   .side-note {
     font-family: var(--game-font-2);
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-scale));
     line-height: 1.05;
     color: var(--blank);
   }
 
   .side-note-label {
     font-family: var(--game-font-2);
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-scale));
     line-height: 1.05;
     color: var(--muted);
   }
@@ -544,7 +552,7 @@
     align-items: center;
     gap: 6px;
     background: #000;
-    border: 2px solid var(--player-mod);
+    border: 1px solid var(--player-mod);
     color: var(--player-mod);
     font-family: var(--game-font);
     padding: 8px 6px;
@@ -560,7 +568,7 @@
     width: 100%;
     height: 100px;
     flex-shrink: 0;
-    border: 2px solid #1a1a1a;
+    border: 1px solid #1a1a1a;
     display: block;
   }
 
@@ -588,23 +596,21 @@
     align-items: center;
     justify-content: center;
     background: #000;
-    border: 2px solid var(--player-mod);
+    border: 1px solid var(--player-mod);
     color: var(--text);
-    font-size: 11px;
-    font-weight: bold;
+    font-size: calc(11px * var(--ui-scale));
     z-index: 1;
   }
 
   .hand-card-name {
-    font-size: 12px;
-    font-weight: bold;
+    font-size: calc(12px * var(--ui-scale));
     line-height: 1.4;
     text-align: center;
   }
 
   .hand-card-effect {
     font-family: var(--game-font-2);
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-scale));
     line-height: 1.05;
     color: var(--blank);
     text-align: center;
@@ -710,7 +716,7 @@
   .roll-hero-number {
     font-family: var(--game-font);
     font-weight: bold;
-    font-size: 17px;
+    font-size: calc(17px * var(--ui-scale));
     line-height: 1;
     color: var(--text);
   }
@@ -720,7 +726,7 @@
 
   .roll-hero-label {
     font-family: var(--game-font);
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-scale));
     letter-spacing: 1px;
     text-transform: uppercase;
     color: var(--player-mod);
@@ -1053,8 +1059,7 @@
   .phase-badge {
     display: inline-block;
     padding: 2px 8px;
-    font-size: 11px;
-    font-weight: bold;
+    font-size: calc(11px * var(--ui-scale));
     font-family: var(--game-font);
     letter-spacing: 0.5px;
     border: 1px solid currentColor;
@@ -1090,9 +1095,8 @@
   .result-banner {
     display: inline-block;
     font-family: var(--game-font);
-    font-weight: bold;
     letter-spacing: 2px;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-scale));
   }
 
   .result-banner.result-win { color: #fbbf24; }
@@ -1137,7 +1141,8 @@
   #cardRewardPanel,
   #artifactRewardPanel,
   #eventScreenPanel,
-  #shopPanel {
+  #shopPanel,
+  #riteScreenPanel {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -1149,8 +1154,10 @@
      ROLL/CONTINUE), so it needs to claim the same vertical centring the
      taller reward panels get from their own content filling most of
      .band-top; this grows to fill what's left of band-top (band-b/band-c
-     hidden while the reward layer is open) and centres inside itself. */
-  #eventScreenPanel {
+     hidden while the reward layer is open) and centres inside itself.
+     The rite screen (D-116) is centred the same way. */
+  #eventScreenPanel,
+  #riteScreenPanel {
     flex: 1 1 auto;
     justify-content: center;
     width: 100%;
@@ -1159,7 +1166,7 @@
 
   .die-action-title {
     font-family: var(--game-font);
-    font-size: 17px;
+    font-size: calc(17px * var(--ui-scale));
     font-weight: bold;
     color: var(--white);
     text-align: center;
@@ -1175,9 +1182,9 @@
   .die-action-row button {
     position: relative;
     font-family: var(--game-font);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-scale));
     padding: 10px 18px;
-    border: 2px solid var(--nat);
+    border: 1px solid var(--nat);
     color: var(--nat);
     background: var(--panel-bg);
   }
@@ -1199,7 +1206,7 @@
 
   .die-action-empty {
     color: var(--muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
 
   /* ---------- THE ONE OFFER PANEL (D-86) ---------- */
@@ -1225,7 +1232,7 @@
     min-width: 0;
     box-sizing: border-box;
     padding: 20px;
-    border: 2px solid var(--player-mod);
+    border: 1px solid var(--player-mod);
     background: #000000;
     display: flex;
     flex-direction: column;
@@ -1238,13 +1245,13 @@
 
   .offer-card-name {
     font-family: var(--game-font);
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-scale));
     color: var(--white);
   }
 
   .offer-card-tier {
     font-family: var(--game-font);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-scale));
     color: var(--nat);
   }
 
@@ -1253,7 +1260,7 @@
     height: 240px;
     flex: 0 0 240px;
     min-height: 0;
-    border: 2px solid #1a1a1a;
+    border: 1px solid #1a1a1a;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1262,7 +1269,7 @@
 
   .offer-card-art-label {
     font-family: var(--game-font);
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-scale));
     color: var(--muted);
   }
 
@@ -1277,13 +1284,13 @@
 
   .offer-card-tag {
     font-family: var(--game-font);
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-scale));
     color: var(--muted);
   }
 
   .offer-card-text {
     font-family: var(--game-font-2);
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-scale));
     line-height: 1.15;
     color: var(--text);
   }
@@ -1291,7 +1298,7 @@
   .offer-card-foot {
     margin-top: auto;
     font-family: var(--game-font);
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-scale));
     color: var(--blank);
   }
 
@@ -1316,7 +1323,7 @@
 
   .offer-symbol-label {
     font-family: var(--game-font);
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-scale));
     color: var(--white);
     text-align: center;
   }
@@ -1328,9 +1335,9 @@
 
   .offer-skip {
     font-family: var(--game-font);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-scale));
     padding: 14px 20px;
-    border: 2px solid var(--nat);
+    border: 1px solid var(--nat);
     color: var(--nat);
     background: var(--panel-bg);
     align-self: center;
@@ -1348,9 +1355,9 @@
   .offer-small {
     position: relative;
     font-family: var(--game-font);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-scale));
     padding: 8px 14px;
-    border: 2px solid var(--player-mod);
+    border: 1px solid var(--player-mod);
     color: var(--player-mod);
     background: var(--panel-bg);
   }
@@ -1360,7 +1367,7 @@
 
   .offer-instruction {
     font-family: var(--game-font);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
     color: var(--nat);
     text-align: center;
   }
@@ -1378,7 +1385,7 @@
     position: fixed;
     transform: translate(-50%, -50%);
     font-family: var(--game-font);
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-scale));
     white-space: nowrap;
     pointer-events: none;
   }
@@ -1402,7 +1409,7 @@
     border: 1px solid var(--line);
     color: var(--text);
     font-family: var(--game-font-2);
-    font-size: 17px;
+    font-size: calc(17px * var(--ui-scale));
     font-weight: normal;
     text-align: center;
     white-space: normal;
@@ -1530,9 +1537,9 @@
     justify-content: center;
     gap: 0;
     margin: 40px 0;
-    /* ~1.5x the map's earlier size, trimmed just enough (19 nodes across
-       two lanes plus Start/Boss) that nothing clips at 1600px wide. */
-    zoom: 1.4;
+    /* The widest zoom at which all 19 nodes plus Start/Boss sit inside the
+       map panel's own border at 1600px wide (D-118; 1.4 overran it). */
+    zoom: 1.25;
   }
 
   .map-start-node,
@@ -1608,12 +1615,12 @@
 
   .map-node {
     font-family: var(--game-font);
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-scale));
     line-height: 1.4;
     width: 70px;
     height: 70px;
     padding: 0 3px;
-    border: 2px solid var(--line);
+    border: 1px solid var(--line);
     color: var(--muted);
     background: var(--panel-bg);
     display: flex;
@@ -1632,7 +1639,7 @@
 
   .map-node-current {
     color: var(--nat);
-    border: 2px solid var(--nat);
+    border: 1px solid var(--nat);
     cursor: pointer;
   }
   .map-node-current:hover {
@@ -1642,7 +1649,7 @@
 
   .map-node-choice {
     color: var(--nat);
-    border: 2px dashed var(--nat);
+    border: 1px dashed var(--nat);
     cursor: pointer;
   }
   .map-node-choice:hover {
@@ -1659,7 +1666,7 @@
   /* DEV ONLY — jump target for a node the run hasn't reached yet. */
   .map-node-dev-jump {
     color: var(--muted);
-    border: 2px dotted var(--muted);
+    border: 1px dotted var(--muted);
     opacity: 0.75;
     cursor: pointer;
   }
@@ -1692,11 +1699,11 @@
   button {
     background: #000000;
     color: var(--text);
-    border: 2px solid var(--line);
+    border: 1px solid var(--line);
     border-radius: 0;
     padding: 4px 10px;
     font-family: inherit;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-scale));
     cursor: pointer;
   }
 
@@ -1708,8 +1715,7 @@
     flex-shrink: 0;
     align-self: center;
     font-family: var(--game-font);
-    font-size: 11px;
-    font-weight: bold;
+    font-size: calc(11px * var(--ui-scale));
     letter-spacing: 0.5px;
     padding: 0;
     background: var(--text);
@@ -1724,7 +1730,7 @@
 
   #startGameBtn {
     font-family: inherit;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-scale));
     padding: 4px 10px;
     color: var(--enemy-mod);
     border-color: var(--enemy-mod);
@@ -1746,7 +1752,7 @@
 
   #inspectorContent {
     white-space: pre-wrap;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-scale));
     display: none;
     color: var(--muted);
     margin-top: 5px;
@@ -1765,7 +1771,7 @@
 
   #registryInspectorContent {
     white-space: pre-wrap;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-scale));
     display: none;
     color: var(--muted);
     margin-top: 5px;
@@ -1774,7 +1780,7 @@
   #registryInspectorContent.expanded { display: block; }
 
   .registry-hook-group { margin-bottom: 8px; }
-  .registry-hook-name { color: var(--text); font-weight: bold; }
+  .registry-hook-name { color: var(--text); }
   .registry-clear-group { margin-left: 12px; }
   .registry-listener-id { margin-left: 24px; }
   .registry-empty { color: var(--muted); font-style: italic; }
@@ -1803,7 +1809,7 @@
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px dashed var(--line);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
 
   #devPauseControl label {
@@ -1811,7 +1817,7 @@
     align-items: center;
     gap: 6px;
     color: var(--muted);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-scale));
     letter-spacing: 0.5px;
     cursor: pointer;
   }
@@ -1824,11 +1830,11 @@
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px dashed var(--line);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
 
   #devStepControl button {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
     padding: 5px 8px;
   }
 
@@ -1840,19 +1846,19 @@
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px dashed var(--line);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
 
   .dev-mod-loader-label {
     color: var(--muted);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-scale));
     letter-spacing: 0.5px;
   }
 
   #devModLoader select,
   #devModLoader input,
   #devModLoader button {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
     padding: 5px 8px;
   }
 
@@ -1868,13 +1874,13 @@
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px dashed var(--line);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
 
   #devPoisonApplier select,
   #devPoisonApplier input,
   #devPoisonApplier button {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
     padding: 5px 8px;
   }
 
@@ -1909,13 +1915,13 @@
     padding: 8px 10px;
     white-space: pre-wrap;
     font-family: var(--game-font-2);
-    font-size: 15px;
-    line-height: 17px;
+    font-size: calc(15px * var(--ui-scale));
+    line-height: 1.15;
   }
 
   .app.log-open #log {
-    font-size: 22px;
-    line-height: 24px;
+    font-size: calc(22px * var(--ui-scale));
+    line-height: 1.1;
   }
 
   #log div {
@@ -1941,7 +1947,7 @@
     display: block;
   }
 
-  .log-phase { color: #a88a5a; font-weight: bold; margin-top: 6px; }
+  .log-phase { color: #a88a5a; margin-top: 6px; }
   .log-roll { color: #e2e8f0; }
   .log-mod { color: #a78bfa; }
   .log-card { color: #60a5fa; }
@@ -1957,7 +1963,7 @@
   .log-win { color: #fbbf24; }
   .log-loss { color: #dc2626; }
   .log-click { color: #4a3f2a; }
-  .log-dev { color: #22d3ee; font-weight: bold; }
+  .log-dev { color: #22d3ee; }
   .log-default { color: var(--text); }
 </style>
 </head>
@@ -1970,9 +1976,9 @@
     <div>
       <div id="buildStamp">DIE V1 — BUILD <span id="buildStampNumber"></span></div>
       <div class="top-bar-tokens">
-        <!-- No gold mechanic exists in V1; this reads gameState.run.gold if
-             that field is ever added, and an em dash until then. -->
-        <div id="goldValue">GOLD —</div>
+        <!-- D-114: the coin icon, then the amount. A failed icon load
+             hides the icon and shows the word GOLD in its place. -->
+        <div id="goldValue"><img id="goldIcon" src="art/gold.png" alt=""><span id="goldFallback" style="display:none;">GOLD</span><span id="goldAmount">—</span></div>
         <div id="artifactRow">
           <div class="artifact-slot"></div>
           <div class="artifact-slot"></div>
@@ -2110,9 +2116,9 @@
       </div>
 
       <!-- the reward layer (die action / card / artifact /
-           shop / The Font). Sits where band-b/band-c stood: those and the
+           shop / The Font / the rite). Sits where band-b/band-c stood: those and the
            roll stage's own icons/hero are hidden by .reward-layer-active
-           (below) while any one of these five is open, so the layer reads
+           (below) while any one of these six is open, so the layer reads
            as a cover over the fight screen with the die row exposed right
            under it — the same row every one of these already shares. -->
       <div class="panel" id="dieActionPanel" style="display:none;"></div>
@@ -2120,6 +2126,8 @@
       <div class="panel" id="artifactRewardPanel" style="display:none;"></div>
       <div class="panel" id="eventScreenPanel" style="display:none;"></div>
       <div class="panel" id="shopPanel" style="display:none;"></div>
+      <!-- D-116: the rite screen, part of the same layer. -->
+      <div class="panel" id="riteScreenPanel" style="display:none;"></div>
 
       </div><!-- /.band-top -->
 
@@ -2139,10 +2147,6 @@
       </div>
 
     </div><!-- /#fightScreen -->
-
-    <!-- Rite slot choice — hidden except mid-choice; stays over the map,
-         not part of the reward layer (it has no die row of its own). -->
-    <div class="panel" id="riteScreenPanel" style="display:none;"></div>
 
     <div class="controls-row">
       <div id="devChrome">

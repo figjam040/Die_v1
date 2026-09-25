@@ -1246,3 +1246,17 @@ tests/build165.test.js holds this build's assertions.
 Verification: see paste-back.
 
 BUILD 166 index note: D-110 the Load and artifact offers as bare symbols with a hover box, dev mod dropdown shows its mod's description; D-113 the ROLL_PHASE pause only with the dev drawer open (or a live pre-roll artifact control), roll animation 3 frames over 200 ms.
+
+Stage 2.93 (BUILD 166) — D-110 (offers as symbols) and D-113 (roll timing).
+
+D-110: the Load offer and the artifact reward each show three choices as the symbol alone (art/mods/<id>.png or art/artifacts/<id>.png, 160px, pixelated, centred in a 380px slot of the row), no frame, no visible text; renderOfferSymbol() (rendering.js) builds it. Hover shows a .hover-tip: name, rarity in its GAME_CONFIG.TIER_COLOURS colour (ARTIFACT for an artifact), tag line, text. A missing file shows the name in the same place. Click, gold outline and dimming unchanged (D-106). The card offer and shop keep their card frames; art/die_frame.png stays in the repo, unloaded. The dev drawer's #devModDescription span shows the selected mod's MOD_DESCRIPTION.
+
+D-113: autoAdvanceStep() waits ROLL_PHASE_PAUSE_MS only while the dev drawer is open, or while Third Eye, Second Chance or Gilded Die has a live pre-roll control (those need the window); otherwise the roll is at once. DIE_ROLL_ANIMATION is 3 frames over 200 ms.
+
+Tests: build166.test.js holds this build's assertions. Older tests whose helper waited for ROLL_PHASE now open the dev drawer first (build146-151, 153, 164, mods); build145's fit test waits for CARD_PHASE; build154/155/156/158 read .offer-symbol; build162 reads the animation constants.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.
+
+BUILD 167 index note: D-114 gold coin icon in the top bar; D-115 every reward layer title reads Choose; D-116 the rite is its own screen in the reward layer; D-117 the event slot reads Anomaly; D-118 sleek pass (--ui-scale 0.75, weight normal, 1px outlines, map zoom 1.25); D-119 Remove, the fourth die action, DIE_MIN_FACES 12.

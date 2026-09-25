@@ -93,8 +93,9 @@ function buildAct(actNumber) {
   };
   const rite = function() { return { type: 'rite', label: 'Rite', completed: false }; };
   // The Font — the lower lane's own slot index 3, opposite the upper
-  // lane's Elite. One per act, id 'font' (see openEventScreen()).
-  const event = function() { return { type: 'event', label: 'Event', id: 'font', completed: false }; };
+  // lane's Elite. One per act, id 'font' (see openEventScreen()). The
+  // player reads it as an Anomaly (D-117); the type key stays 'event'.
+  const event = function() { return { type: 'event', label: 'Anomaly', id: 'font', completed: false }; };
 
   if (actNumber === 1) {
     // Act 1's five lane-fight positions each carry their own fixed HP,
@@ -337,6 +338,7 @@ function buildRunRecordLine() {
   const eventsCol = r.dieActionEvents.map(function(e) {
     if (e.type === 'load') { return 'load:' + e.offered.join('|') + '>' + (e.picked === null ? '' : e.picked); }
     if (e.type === 'purify') { return 'purify:' + e.removed.join('|') + '>' + e.faceNumber; }
+    if (e.type === 'remove') { return 'remove:' + e.faceNumber; }
     return 'skip';
   }).join(';');
   const triggerCounts = collectTriggerCountsByMod();

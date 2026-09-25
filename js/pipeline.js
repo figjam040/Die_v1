@@ -71,20 +71,37 @@ function healPlayer(amount) {
 
 // ---------- DIE FACE HELPERS ----------
 
+// D-119: a removed face leaves a gap in the player die's numbering, so a
+// face is always found by its number, never by array index.
+function playerFaceIndex(faceNumber) {
+  return gameState.die.faces.findIndex(function(f) { return f.number === faceNumber; });
+}
+
+function getPlayerFace(faceNumber) {
+  return gameState.die.faces[playerFaceIndex(faceNumber)] || null;
+}
+
+// "The face above": the next higher number still on the die, or null.
+function nextFaceNumberAbove(faceNumber) {
+  const above = gameState.die.faces.filter(function(f) { return f.number > faceNumber; });
+  if (above.length === 0) return null;
+  return above.reduce(function(min, f) { return f.number < min ? f.number : min; }, above[0].number);
+}
+
 function isFaceTwentyAtCap(faceNumber) {
   if (faceNumber !== GAME_CONFIG.DIE_SIZE.PLAYER) return false;
-  return gameState.die.faces[faceNumber - 1].weight >= GAME_CONFIG.FACE_TWENTY_MAX_WEIGHT;
+  return getPlayerFace(faceNumber).weight >= GAME_CONFIG.FACE_TWENTY_MAX_WEIGHT;
 }
 
 // The one place any face's weight is ever written. Player die only —
 // nothing Strengthens or Ordains the enemy's die. Face 20 never rises past
 // FACE_TWENTY_MAX_WEIGHT: at the cap this returns the unchanged weight.
 function strengthenFace(faceNumber) {
-  const face = gameState.die.faces[faceNumber - 1];
+  const face = getPlayerFace(faceNumber);
   if (isFaceTwentyAtCap(faceNumber)) return face.weight;
   const newWeight = face.weight + 1;
   const newFaces = gameState.die.faces.slice();
-  newFaces[faceNumber - 1] = Object.assign({}, face, { weight: newWeight });
+  newFaces[playerFaceIndex(faceNumber)] = Object.assign({}, face, { weight: newWeight });
   updateDie({ faces: newFaces });
   return newWeight;
 }
@@ -92,10 +109,10 @@ function strengthenFace(faceNumber) {
 // Face 1/20's own run-scoped roll count, in face.modData.triggerCount —
 // the same field every other face's trigger badge reads.
 function bumpNatFaceTriggerCount(faceNumber) {
-  const face = gameState.die.faces[faceNumber - 1];
+  const face = getPlayerFace(faceNumber);
   const newFaces = gameState.die.faces.slice();
   const existingModData = face.modData || {};
-  newFaces[faceNumber - 1] = Object.assign({}, face, {
+  newFaces[playerFaceIndex(faceNumber)] = Object.assign({}, face, {
     modData: Object.assign({}, existingModData, { triggerCount: (existingModData.triggerCount || 0) + 1 })
   });
   updateDie({ faces: newFaces });
@@ -161,7 +178,7 @@ function thirdEyeChooseFace(faceNumber) {
   if (gameState.turn.phase !== 'ROLL_PHASE' || playerRollResolved) { return; }
   playerRollResolved = true;
   updateRun({ thirdEyeUsedThisAct: true });
-  const face = gameState.die.faces[faceNumber - 1];
+  const face = getPlayerFace(faceNumber);
   log('[ARTIFACT] Third Eye: face ' + faceNumber + ' chosen');
   resolvePlayerRoll(face);
 }
@@ -268,13 +285,13 @@ function grantBoundToFace(faceNumber) {
     log('[BOUND] grant refused: face ' + faceNumber + ' is a Nat face');
     return false;
   }
-  const face = gameState.die.faces[faceNumber - 1];
-  if (face.modId === null && face.modId2 === null) {
+  const face = getPlayerFace(faceNumber);
+  if (!face || (face.modId === null && face.modId2 === null)) {
     log('[BOUND] grant refused: face ' + faceNumber + ' is blank');
     return false;
   }
   const newFaces = gameState.die.faces.slice();
-  newFaces[faceNumber - 1] = Object.assign({}, face, { modData: Object.assign({}, face.modData, { boundGranted: true }) });
+  newFaces[playerFaceIndex(faceNumber)] = Object.assign({}, face, { modData: Object.assign({}, face.modData, { boundGranted: true }) });
   updateDie({ faces: newFaces });
   log('[BOUND] face ' + faceNumber + ' granted Bound for the fight');
   return true;
@@ -381,6 +398,10 @@ function triggerFaceOutsideRoll(faceNumber) {
     log('[TRIGGER] outside-roll trigger refused: face ' + faceNumber + ' is a Nat face');
     return false;
   }
+  if (!getPlayerFace(faceNumber)) {
+    log('[TRIGGER] outside-roll trigger refused: face ' + faceNumber + ' was removed');
+    return false;
+  }
   if (gameState.turn.outsideTriggeredFaces.indexOf(faceNumber) !== -1) {
     log('[TRIGGER] outside-roll trigger refused: face ' + faceNumber + ' already triggered outside a roll this round');
     return false;
@@ -397,7 +418,7 @@ function triggerFaceOutsideRoll(faceNumber) {
   updateTurn({ outsideTriggeredFaces: gameState.turn.outsideTriggeredFaces.concat(faceNumber) });
   markFaceHopped(faceNumber);
 
-  const face = gameState.die.faces[faceNumber - 1];
+  const face = getPlayerFace(faceNumber);
   if (face.modId !== null && !isFaceSealed(faceNumber)) {
     log('[TRIGGER] face ' + faceNumber + ' triggered outside a roll (modId: ' + face.modId + ')');
     callListeners('MOD_TRIGGER', { modId: face.modId, faceNumber: face.number });
