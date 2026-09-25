@@ -43,13 +43,15 @@
 // F44 (BUILD 151) lower lane index 3 is the event The Font: unresolved roll picks the outcome
 // F45 (BUILD 153) artifacts: 13, up to ARTIFACT_MAX (8) held, offered after an Elite/non-final-Boss win and sold at SHOP.ARTIFACT_PRICE; their amounts live in ARTIFACTS
 // F46 (BUILD 154) every HP, block, poison, soul and gold change pops a number where it happened; DAMAGE_NUMBERS holds the rise, fade, step count and the six colours
-// F47 (BUILD 162) an enemy with a die shows a face row under its art, one square per face; dev drawer open, a click forces that face (D-103)
-// F48 (BUILD 162) each die icon animates its roll, 5 frames over 400 ms (DIE_ROLL_ANIMATION); face row, strip and pops follow (D-107)
+// F47 (BUILD 142) Lector reads a 6: +1 Drain; Hierophant a Nat 1: cancels, 5 poison; Pontifex reads the heaviest face: Wrath
+// F48 (BUILD 153) Merchant's Seal prices are floor(base x 0.75); removal stays 75
+// F49 (BUILD 162) an enemy with a die shows a face row under its art; dev click forces a face (D-103)
+// F50 (BUILD 162) each die icon animates its roll (DIE_ROLL_ANIMATION) (D-107)
 // ============================================================
 
 const GAME_CONFIG = {
 
-  BUILD: 162,
+  BUILD: 163,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -57,7 +59,7 @@ const GAME_CONFIG = {
     COLOUR: '#e8e4d0'
   },
 
-  // F48
+  // F50
   DIE_ROLL_ANIMATION: {
     FRAME_COUNT: 5,
     DURATION_MS: 400,

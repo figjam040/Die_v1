@@ -1200,3 +1200,17 @@ Every pre-existing test file that asserted against a native `.title` (build141/1
 Verification: see paste-back.
 
 BUILD 162 index note: D-103/KI-42 the enemy die as its own face row under the enemy art with a dev force-roll click, and D-107 the stepped die roll animation on both die icons (GAME_CONFIG.DIE_ROLL_ANIMATION). No mechanic change. Full write-up: CLAUDE.md CURRENT SUBSTAGE, until BUILD 163 moves it here.
+
+Stage 2.89 (BUILD 162) — two items, D-103 (closes KI-42) and D-107, kept.
+
+(A) D-103 — the enemy's own die draws as a face row on the fight screen: #enemyDieList (the existing element, restyled and moved, not a new one — no load-order change, no name collision) now sits in a new .enemy-art-col wrapper under #enemyArtBox, absolutely placed so the art box never shifts. One square per face — 6/12 at 28px, 20 at 22px — in the player row's own .face-btn look, smaller (its own .enemy-face-row class twinned onto each .die-col-h rule, not .die-col-h itself, so the page still has one .die-col-h face row): blank faces like a blank player face, buff faces --enemy-mod (class loaded), Nat faces --nat. No percent captions. Hover shows the same .hover-tip text faceHoverText() builds, prefixed by faceTitleText(), which no longer prints weight for an enemy face. A dieless enemy renders no rows and the row hides via :empty; the reward layer hides it with band-b, the player row stays pinned (KI-32 untouched). The inline display:none and the rendering line re-hiding it are gone. With the dev drawer open, clicking an enemy face in ENEMY_ROLL_PHASE forces it through the existing forceEnemyRoll(); closed, faces only hover. Because START_OF_TURN clears enemyRolledFaceNumber in the same synchronous cascade as the roll, the row and enemy icon read a display-only copy (enemyRollDisplay, rendering.js), held through the round after the roll and dropped on a new fight (round 0) or a new enemy die.
+
+(B) D-107 — both die icons animate every roll, forced, artifact or natural: GAME_CONFIG.DIE_ROLL_ANIMATION (FRAME_COUNT 5, DURATION_MS 400, ROTATE_STEP_DEG 30, FLASH_MS 100, SHAKE_PX 2, SHAKE_CYCLES 2, SHAKE_STEP_MS 40). Five stepped frames, each a new random number (a display-only generator, so seeded gameplay Math.random is untouched) and 30deg further round; then upright on the rolled number, one flash to --text, two left-right shakes. The face row's rolled/hopped look, the roll strip and every pop hold until the snap, then land together (a pop whose readout a reward layer hid meanwhile is dropped). Display only: no phase, state or timing in the game waits on it. The Font's roll (map screen) doesn't animate.
+
+tests/build162.test.js holds this build's assertions. Two older tests read the strip/pops synchronously right after a forced roll; build145's roll-stage test and build154's 16-damage pop test now wait for dieRollAnimationsIdle() first — no assertion changed.
+
+Standing sections not updated: tests/build159.test.js requires everything above CONFIRMED WORKING to stay byte-identical to the Die_v1_backup_158 copy, which conflicts with the ownership rule. SCREEN LAYOUT still says #enemyDieList is display:none and says nothing of the roll animation. Needs a planning-chat ruling.
+
+Verification: see paste-back.
+
+BUILD 163 index note: KI-43 byte-identical standing check removed, SCREEN LAYOUT records BUILD 162; KI-44 config.js header F47-F50 reconciled. No game change.

@@ -12,7 +12,6 @@ const assert = require('assert');
 const { CLAUDE_MD_MAX_BYTES } = require('./shared-constants.js');
 
 const ROOT = path.resolve(__dirname, '..');
-const BACKUP_ROOT = path.resolve(ROOT, '..', 'Die_v1_backup_158');
 const CLAUDE_MD_UNDER_BYTES = CLAUDE_MD_MAX_BYTES;
 
 const results = [];
@@ -57,30 +56,6 @@ runTest('CLAUDE.md is under ' + CLAUDE_MD_UNDER_BYTES + ' bytes', () => {
   const bytes = Buffer.byteLength(claudeMd, 'utf8');
   assert.ok(bytes < CLAUDE_MD_UNDER_BYTES, 'CLAUDE.md is ' + bytes + ' bytes, must be under ' + CLAUDE_MD_UNDER_BYTES);
   assert.ok(CLAUDE_MD_UNDER_BYTES <= CLAUDE_MD_MAX_BYTES, 'CLAUDE_MD_MAX_BYTES (' + CLAUDE_MD_MAX_BYTES + ') must not be lower than the ' + CLAUDE_MD_UNDER_BYTES + '-byte target itself');
-});
-
-runTest('CLAUDE.md standing sections (everything before CONFIRMED WORKING) are byte-identical to the BUILD 158 backup\'s, aside from BUILD 160\'s own authorized SIZE RULE byte-cap edit', () => {
-  const backupClaudeMdPath = path.resolve(BACKUP_ROOT, 'CLAUDE.md');
-  assert.ok(fs.existsSync(backupClaudeMdPath), 'BUILD 158 backup CLAUDE.md not found at ' + backupClaudeMdPath);
-  const backupClaudeMd = fs.readFileSync(backupClaudeMdPath, 'utf8');
-
-  const currentMarker = '# CONFIRMED WORKING';
-  const currentIdx = claudeMd.indexOf(currentMarker);
-  assert.ok(currentIdx !== -1, 'could not find # CONFIRMED WORKING in the current CLAUDE.md');
-  const currentStanding = claudeMd.slice(0, currentIdx);
-
-  const backupIdx = backupClaudeMd.indexOf(currentMarker);
-  assert.ok(backupIdx !== -1, 'could not find # CONFIRMED WORKING in the BUILD 158 backup CLAUDE.md');
-  const backupStanding = backupClaudeMd.slice(0, backupIdx);
-
-  // BUILD 160 (D-84 amended 25 Sep) is authorized to change only the byte
-  // figure on the SIZE RULE line; normalize that one figure before
-  // comparing so every other standing byte still must match exactly.
-  const sizeRuleBytesPattern = /at or under [\d,]+ bytes/;
-  const normalizedCurrent = currentStanding.replace(sizeRuleBytesPattern, 'at or under N bytes');
-  const normalizedBackup = backupStanding.replace(sizeRuleBytesPattern, 'at or under N bytes');
-
-  assert.strictEqual(normalizedCurrent, normalizedBackup, 'the standing sections (everything before # CONFIRMED WORKING) must be byte-identical to the BUILD 158 backup, aside from the SIZE RULE line\'s byte figure (BUILD 160, D-84) — nothing else above CONFIRMED WORKING may change');
 });
 
 runTest('CLAUDE.md CONFIRMED WORKING has exactly one line for each build 141 to 159, and one line for builds 001 to 140', () => {
