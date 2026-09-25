@@ -174,6 +174,13 @@
     padding: 6px 0;
   }
 
+  .info-row-triggers {
+    font-family: var(--game-font-2);
+    font-size: calc(17px * var(--ui-scale));
+    color: var(--blank);
+    margin-top: 2px;
+  }
+
   .info-row-icon {
     vertical-align: middle;
     margin-right: 10px;
@@ -933,6 +940,32 @@
     display: block;
     image-rendering: pixelated;
     object-fit: contain;
+  }
+
+  /* The strip ignores the pointer; each symbol takes it back and opens its
+     own mod's hover box upward over itself. The row's own box and its other
+     descendants' stay shut while one symbol is hovered. */
+  .face-symbol { pointer-events: auto; }
+
+  .die-row .face-symbol .hover-tip {
+    top: auto;
+    bottom: 100%;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    margin: 0 0 6px 0;
+    text-align: center;
+  }
+
+  .die-row:hover .face-symbol .hover-tip,
+  .die-row:has(.face-symbol:hover) > .hover-tip {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .die-row .face-symbol:hover .hover-tip {
+    opacity: 1;
+    visibility: visible;
   }
 
   /* ODDS_EMPHASIS (GAME_CONFIG) — one font step up; the drop

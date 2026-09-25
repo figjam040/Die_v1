@@ -91,7 +91,8 @@ function playRollSound() {
 // plays on the stop. Four quick ticks, each a little lower, inside 200ms.
 function playDieRollingSound() {
   [0, 45, 90, 135].forEach(function(delay, i) {
-    setTimeout(function() { playTone('square', 700 - i * 60, 700 - i * 60, 30, 0.05); }, delay);
+    const freq = (700 - i * 60) * 0.92;
+    setTimeout(function() { playTone('square', freq, freq, 30, 0.04); }, delay);
   });
 }
 
@@ -104,7 +105,7 @@ function playDieLandingSound() {
 // Deliberately duller than landing — blanks are most rolls and must not
 // read as an event.
 function playDieBlankSound() {
-  playTone('sine', 300, 260, 100, 0.07, 6);
+  playTone('sine', 300, 260, 100, 0.084, 6);
 }
 
 // ---------- Card play sounds (Chain A) ----------

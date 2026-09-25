@@ -141,8 +141,8 @@ const BANNED = [/applied/i, /applies/i, /this run/i, /[()]/];
         out.push(['enemy ' + name + ' ' + id, faceHoverText({ number: 6, modId: id, modId2: null, weight: 1 }, 3, name, 2) || '']);
       }));
       const capped = Object.assign({}, getPlayerFace(20), { weight: GAME_CONFIG.FACE_TWENTY_MAX_WEIGHT });
-      out.push(['title face 20 at cap', faceTitleText(capped, true, true)]);
-      out.push(['title face 2', faceTitleText(getPlayerFace(2), true, true)]);
+      out.push(['title face 20 at cap', faceTitleText(capped, true)]);
+      out.push(['title face 2', faceTitleText(getPlayerFace(2), true)]);
       return out;
     });
     const bad = texts.filter(t => BANNED.some(re => re.test(t[1])));
@@ -165,7 +165,7 @@ const BANNED = [/applied/i, /applies/i, /this run/i, /[()]/];
     await page.close();
   });
 
-  await runTest('Item B: the face hover box reads two lines — name, weight and trigger count, then the text', async () => {
+  await runTest('Item B: the face hover box reads two lines — name and weight, then the text', async () => {
     const page = await freshFight(browser);
     await loadTwoModFace(page);
     await page.evaluate(() => { forcePlayerRoll(10); });
@@ -177,9 +177,9 @@ const BANNED = [/applied/i, /applies/i, /this run/i, /[()]/];
       };
       return { ten: tipFor(10), two: tipFor(2), three: tipFor(3), smite: MOD_DESCRIPTION.smite, blight: MOD_DESCRIPTION.blight, consecrate: MOD_DESCRIPTION.consecrate };
     });
-    assert.deepStrictEqual(v.ten, ['Consecrate · weight 1 · triggered 1 times', v.consecrate]);
-    assert.deepStrictEqual(v.two, ['Smite + Blight · weight 1 · triggered 0 / 0 times', v.smite + ' / ' + v.blight]);
-    assert.deepStrictEqual(v.three, ['Blank · weight 1', 'Gain 2 block.']);
+    assert.deepStrictEqual(v.ten, ['Consecrate · weight 1', v.consecrate]);
+    assert.deepStrictEqual(v.two, ['Smite / Blight · weight 1', v.smite + ' / ' + v.blight]);
+    assert.deepStrictEqual(v.three, ['BLANK · weight 1', 'Gain 2 block.']);
     await page.close();
   });
 

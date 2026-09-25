@@ -1332,3 +1332,15 @@ Tests: build170.test.js. Corrected to the new text: build145 Titles, build165 AR
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+Stage 2.98 (BUILD 171) — KI-48 Anthem reads its own face, KI-49 Jubilee counts weight added.
+
+KI-48: Anthem deals 6 damage plus 4 per weight of the face carrying it, read through getPlayerFace(data.faceNumber), so a Nat 20 sweep, Magnificat, Novena, Cardinal or Threnody trigger reads the right face. Text: Deal 6 damage, plus 4 per weight on this face.
+
+KI-49: gameState.run.weightAdded (0 on a new run) is incremented only inside strengthenFace(), by the weight it adds; Leaden Face counts 2, Ordain and Elevation 1, Gilded Die never (it writes turn.gildedFace, not weight). Jubilee reads it, so Remove no longer lowers it.
+
+Tests: build171.test.js. facts.test.js's Jubilee test now sets run.weightAdded to 12 instead of writing face weights.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.

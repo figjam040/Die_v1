@@ -282,7 +282,7 @@ async function enterPausedFight(page) {
       // hover tip (it's the only place a blank face's own info lives once
       // the native title is gone) — so tips now equal every face, not just
       // loaded/Nat ones.
-      out.tips = document.querySelectorAll('#playerDieList .die-row .hover-tip').length;
+      out.tips = document.querySelectorAll('#playerDieList .die-row > .hover-tip').length;
       out.tippableFaces = gameState.die.faces.length;
       dieActionChooseSkip();
       cardRewardSkip();

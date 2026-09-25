@@ -442,7 +442,7 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
     await page.close();
   });
 
-  await runTest('Titles: a loaded face hover tip names its mod, weight and run trigger count', async () => {
+  await runTest('Titles: a loaded face hover tip names its mod and weight, and no trigger count', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     const title = await page.evaluate(() => {
@@ -454,7 +454,7 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
     });
     assert.ok(title.indexOf('Blight') === 0, 'the hover tip must lead with the mod name, got: ' + title);
     assert.ok(title.indexOf('weight 1') !== -1, 'the hover tip must name the weight, got: ' + title);
-    assert.ok(title.indexOf('triggered 2 times') !== -1, 'the hover tip must name the run trigger count, got: ' + title);
+    assert.ok(title.indexOf('triggered') === -1, 'the hover tip must carry no trigger count, got: ' + title);
     await page.close();
   });
 

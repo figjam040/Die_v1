@@ -438,29 +438,30 @@ function faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount) {
   return text;
 }
 
-// The square's own name / weight / trigger count / Bound line, the hover
-// box's first line above faceHoverText()'s. Reads state only.
-function faceTitleText(face, showTriggerCounts, isPlayerDie) {
+// The square's own name / weight / Bound line, the hover box's first line
+// above faceHoverText()'s. Never a trigger count: the DIE layer alone shows
+// that. Reads state only.
+function faceTitleText(face, isPlayerDie) {
   const parts = [];
   if (face.modId === null) {
-    parts.push('Blank');
+    parts.push('BLANK');
   } else if (face.modId2) {
-    parts.push(modDisplayName(face.modId) + ' + ' + modDisplayName(face.modId2));
+    parts.push(modDisplayName(face.modId) + ' / ' + modDisplayName(face.modId2));
   } else {
     parts.push(modDisplayName(face.modId));
   }
   // Enemy faces never gain weight, so their tips don't print it (D-103).
   if (isPlayerDie) parts.push('weight ' + face.weight + (isFaceTwentyAtCap(face.number) ? ' MAX' : ''));
-  if (showTriggerCounts && face.modId !== null) {
-    const modData = face.modData || {};
-    const count1 = modData.triggerCount || 0;
-    parts.push(face.modId2
-      ? 'triggered ' + count1 + ' / ' + (modData.triggerCount2 || 0) + ' times'
-      : 'triggered ' + count1 + ' times');
-  }
   if (isBoundFace(face)) parts.push('Bound');
   if (isPlayerDie && isFaceSealed(face.number)) parts.push('Sealed');
   return parts.join(' · ');
+}
+
+// The hover box a mod symbol under a face opens: that one mod's name and the
+// face's weight, then that mod's own text.
+function faceSymbolTipLines(face, modId) {
+  const text = isFaceSealed(face.number) ? 'Counts as blank this round.' : MOD_DESCRIPTION[modId];
+  return [modDisplayName(modId) + ' · weight ' + face.weight, text];
 }
 
 // D-124: the mod ids whose symbols sit under a face, load order. Blank and
@@ -744,6 +745,7 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     // weight itself moved into the square's own title (faceTitleText()
     // already prints "weight N"). NAT 1/NAT 20 keep their labels, with the
     // percent beside them.
+    let symbolStrip = null;
     if (isHorizontal) {
       const caption = document.createElement('div');
       caption.className = 'die-face-caption';
@@ -778,12 +780,17 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
 
       // D-124: the loaded face's mod symbol(s) in a strip under the caption,
       // absolutely placed so the square and caption above never move.
-      const symbolStrip = document.createElement('div');
+      // Appended after the row's own tip (below), so row.querySelector
+      // ('.hover-tip') still finds the face's box first.
+      symbolStrip = document.createElement('div');
       symbolStrip.className = 'face-symbol-strip';
       faceSymbolModIds(face).forEach(function(modId) {
-        attachArtIcon(symbolStrip, 'mods', modId, FACE_SYMBOL_PX, 'face-symbol-img');
+        const symbol = document.createElement('span');
+        symbol.className = 'face-symbol';
+        attachArtIcon(symbol, 'mods', modId, FACE_SYMBOL_PX, 'face-symbol-img');
+        setHoverTip(symbol, faceSymbolTipLines(face, modId));
+        symbolStrip.appendChild(symbol);
       });
-      row.appendChild(symbolStrip);
     }
 
     let pickEligible = false;
@@ -807,13 +814,12 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     // first line again at one more weight.
     let becomesText = null;
     if (pickConfig && pickConfig.showBecomes && pickEligible) {
-      becomesText = faceTitleText(Object.assign({}, face, { weight: face.weight + 1 }), false, isPlayerDie);
+      becomesText = faceTitleText(Object.assign({}, face, { weight: face.weight + 1 }), isPlayerDie);
     }
     // D-104/KI-41 — no native title anywhere: this row's own .hover-tip
     // carries everything the old title used to, on every row, blank faces
-    // included. D-125: two lines — name, weight and trigger count, then
-    // the text.
-    const titleText = faceTitleText(face, showTriggerBadges, isPlayerDie);
+    // included. D-125: two lines — name and weight, then the text.
+    const titleText = faceTitleText(face, isPlayerDie);
     const blankText = isPlayerDie ? 'Gain ' + GAME_CONFIG.BLANK_ROLL_BLOCK + ' block.' : 'Nothing happens.';
     const baseHoverText = hoverText || blankText;
     const tip = document.createElement('span');
@@ -832,6 +838,7 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       tip.appendChild(becomesLine);
     }
     row.appendChild(tip);
+    if (symbolStrip) row.appendChild(symbolStrip);
 
     container.appendChild(row);
   });
@@ -3215,7 +3222,17 @@ function renderInfoLayers() {
       [face.modId, face.modId2].forEach(function(modId) {
         if (modId && gameState.config.mods[modId]) attachArtIcon(row, 'mods', modId, 32, 'info-row-icon');
       });
-      row.appendChild(document.createTextNode('Face ' + face.number + ' — ' + faceTitleText(face, true, true)));
+      row.appendChild(document.createTextNode('Face ' + face.number + ' — ' + faceTitleText(face, true)));
+      if (face.modId !== null) {
+        const modData = face.modData || {};
+        const count1 = modData.triggerCount || 0;
+        const counts = document.createElement('div');
+        counts.className = 'info-row-triggers';
+        counts.textContent = face.modId2
+          ? 'triggered ' + count1 + ' / ' + (modData.triggerCount2 || 0) + ' times'
+          : 'triggered ' + count1 + ' times';
+        row.appendChild(counts);
+      }
       content.appendChild(row);
     });
   }
