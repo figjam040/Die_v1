@@ -1564,19 +1564,19 @@ function init() {
   // enemy die mechanics use for "registered unconditionally, checks which
   // one applies".
   gameState.config.artifacts = {
-    third_eye: { id: 'third_eye', name: 'Third Eye', tier: 'rare', text:'Once per act, before a roll, choose the face.' },
-    loaded_die: { id: 'loaded_die', name: 'Loaded Die', tier: 'rare', text:'Roll twice, the higher face stands.' },
-    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', text:'When the enemy winds up or releases, roll twice and both faces trigger.' },
-    tithe_box: { id: 'tithe_box', name: 'Tithe Box', tier: 'rare', text:'Every Nat 20 pays 15 gold.' },
-    merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", tier: 'rare', text:'Shop prices a quarter lower. Card removal stays at 75.' },
-    leaden_face: { id: 'leaden_face', name: 'Leaden Face', tier: 'rare', text:'Strengthen adds 2 weight, not 1.' },
-    reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', tier: 'rare', text:'When a Bound face is rolled, the next face above it on the die triggers too, if loaded.' },
-    plague_bell: { id: 'plague_bell', name: 'Plague Bell', tier: 'rare', text:'Fight start: the enemy takes stacks of poison equal to half your loaded faces, rounded down.' },
-    alms: { id: 'alms', name: 'Alms', tier: 'rare', text:'A blank roll gives 1 soul instead of 2 block.' },
-    hourglass: { id: 'hourglass', name: 'Hourglass', tier: 'rare', text:'Round 1 of every fight, the enemy does nothing.' },
-    second_chance: { id: 'second_chance', name: 'Second Chance', tier: 'rare', text:'Once per fight, reroll.' },
-    gilded_die: { id: 'gilded_die', name: 'Gilded Die', tier: 'rare', text:'Before a roll, pay 10 gold: one face gets +2 weight for that roll only.' },
-    bone_counter: { id: 'bone_counter', name: 'Bone Counter', tier: 'rare', text:'Nat 1 costs 15 gold instead of Penitence. Under 15 gold, Penitence as normal.' }
+    third_eye: { id: 'third_eye', name: 'Third Eye', tier: 'rare', text: 'Once per act, before a roll, choose the face.' },
+    loaded_die: { id: 'loaded_die', name: 'Loaded Die', tier: 'rare', text: 'Roll twice, the higher face stands.' },
+    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', text: 'When the enemy winds up or releases, roll twice and both faces trigger.' },
+    tithe_box: { id: 'tithe_box', name: 'Tithe Box', tier: 'rare', text: 'Every Nat 20 pays 15 gold.' },
+    merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", tier: 'rare', text: 'Shop prices a quarter lower. Card removal stays at 75.' },
+    leaden_face: { id: 'leaden_face', name: 'Leaden Face', tier: 'rare', text: 'Strengthen adds 2 weight, not 1.' },
+    reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', tier: 'rare', text: 'When a Bound face is rolled, the next face above it on the die triggers too, if loaded.' },
+    plague_bell: { id: 'plague_bell', name: 'Plague Bell', tier: 'rare', text: 'Fight start: the enemy takes stacks of poison equal to half your loaded faces, rounded down.' },
+    alms: { id: 'alms', name: 'Alms', tier: 'rare', text: 'A blank roll gives 1 soul instead of 2 block.' },
+    hourglass: { id: 'hourglass', name: 'Hourglass', tier: 'rare', text: 'Round 1 of every fight, the enemy does nothing.' },
+    second_chance: { id: 'second_chance', name: 'Second Chance', tier: 'rare', text: 'Once per fight, reroll.' },
+    gilded_die: { id: 'gilded_die', name: 'Gilded Die', tier: 'rare', text: 'Before a roll, pay 10 gold: one face gets +2 weight for that roll only.' },
+    bone_counter: { id: 'bone_counter', name: 'Bone Counter', tier: 'rare', text: 'Nat 1 costs 15 gold instead of Penitence. Under 15 gold, Penitence as normal.' }
   };
 
   // Every artifact with a hook of its own to sit on registers here,
