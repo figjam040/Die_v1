@@ -1226,3 +1226,13 @@ tests/build163.test.js holds this build's assertions.
 Verification: see paste-back.
 
 BUILD 164 index note: D-108 (answers OQ-18) face 20 weight capped at FACE_TWENTY_MAX_WEIGHT 5 on every weight path, MAX on its caption and DIE layer, Strengthen hidden when only a capped face 20 qualifies.
+
+Stage 2.91 (BUILD 164) — D-108 (answers OQ-18): face 20's weight is capped at GAME_CONFIG.FACE_TWENTY_MAX_WEIGHT (5).
+
+strengthenFace() refuses to raise face 20 past 5 and returns the unchanged weight, so Strengthen, Leaden Face, Ordain, Elevation and The Font all obey it. The Strengthen picker (die action and shop) marks a capped face 20 inert; with nothing else eligible the Strengthen button is not offered. Leaden Face's second step is skipped at the cap and logged. The Font gives BLANK_GOLD instead of a weight when the rolled face is a capped face 20. Face 20's caption reads MAX beside its percent at weight 5; the DIE layer and hover text name the cap.
+
+tests/build164.test.js holds this build's assertions.
+
+Verification: see paste-back.
+
+BUILD 165 index note: D-109 art in the remaining three places: top-bar artifact slots, ARTIFACTS layer rows (48px icon) and DIE layer rows (32px mod symbols). No mechanic change.

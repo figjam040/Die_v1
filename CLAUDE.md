@@ -706,7 +706,7 @@ Log: every event and calculation. Prefixed [PHASE] [MOD] [CARD] [DAMAGE] [BLOCK]
 
 The fight screen is designed for 1600 by 900, fits a 16:9 window with no scrollbar. The play column (.left-col) is centred, max-width 1600px, min-width min(1280px, 100%), padding 16px 24px 14px. Colour is identity, motion is state: a face's hue never changes, a flash or hold says what just happened, the screen shows state, not conclusions (D-30). Every number, name, weight, trigger count and state is visible or readable from a native title on hover — information never decreases.
 
-ACTION BAR — div.top-bar, 58px, outside .app, three groups. Left: #buildStamp, under it #goldValue (84x26px, GOLD + gameState.run.gold) beside #artifactRow's eight 26px slots (each an artifact's name, its text as a title), then #dieInfoBtn/#artifactsInfoBtn/#cardsInfoBtn (INFO LAYERS). Centre, var(--game-font) 13px: #actStamp as ACT N, ROUND with #roundValue, #phaseBadge in --phase-color, #resultBanner. Right, 30px buttons: #devChromeToggleBtn, #copyRunRecordBtn, #logToggleBtn, #startGameBtn.
+ACTION BAR — div.top-bar, 58px, outside .app, three groups. Left: #buildStamp, under it #goldValue (84x26px, GOLD + gameState.run.gold) beside #artifactRow's eight 26px slots (each an artifact's art/artifacts/<id>.png icon filling the slot, its name under it until the icon loads, its text in the hover box), then #dieInfoBtn/#artifactsInfoBtn/#cardsInfoBtn (INFO LAYERS). Centre, var(--game-font) 13px: #actStamp as ACT N, ROUND with #roundValue, #phaseBadge in --phase-color, #resultBanner. Right, 30px buttons: #devChromeToggleBtn, #copyRunRecordBtn, #logToggleBtn, #startGameBtn.
 
 ART BAND — #fightScreen's middle band, remaining height (min 220px). #playerArtBox/#enemyArtBox are 340x220px boxes, each an img (#playerArtImg/#enemyArtImg, src art/ordained.png and art/<enemy name lowercased>.png) plus a text label that swap on load/error — no art ships this build, so the label shows. Left of #enemyArtBox: #enemyIntentIcon, 40px inline SVG stroked --nat — sword/Attack, bolt/Charge, slashed bolt/Release, drop/Afflict, bolt again/Broken — aria-label carries the kind word; #enemyIntentValue beside it shows only the number (or BROKEN / the enemy Nat's wording). Both carry the full sentence in a .hover-tip child (opens downward, same as every die row's hover), no title attribute. #enemyIntentLabel under both carries a Charge wind-up's "break N / M".
 
@@ -730,7 +730,7 @@ POP NUMBERS — every HP, block, poison, soul and gold change pops a number wher
 
 MAP SCREEN (D-98) — #mapScreen shows the top bar and the map only: no ACT N MAP title (the top bar's own already says it), no YOUR DIE/PLAYER DIE/ELITE PREVIEW/ELITE DIE/BOSS PREVIEW/BOSS DIE. .map-composition draws at zoom 1.4 (~1.5x, trimmed so nothing clips at 1600px), centred; node labels one size down (10px). Node/connector states keep their classes/colours, dev-jump nodes stay dotted/muted. Hovering the Elite or Boss node shows a .hover-tip with the same name/HP/pattern/loaded-faces text the removed panels printed (enemyPreviewHoverText()) — a dev-jump node's own tip appends rather than laying a second one over the same spot. KI-31: enterSlot() marks the slot entered before its handler runs, refuses (logged) a second call on an entered slot; an entered current node reads as completed. No map node, dev-jump included, accepts a click while the reward layer is open.
 
-INFO LAYERS (D-98) — #dieInfoBtn/#artifactsInfoBtn/#cardsInfoBtn (top bar) open #dieInfoLayer/#artifactsInfoLayer/#cardsInfoLayer, full-screen covers gated on gameState.ui.dieInfoOpen/artifactsInfoOpen/cardsInfoOpen. DIE lists the 20 faces (faceTitleText()) plus HP; ARTIFACTS lists run.artifacts by name/text; CARDS lists ownedCards by id with cost/getCardEffectText(). renderInfoLayers() runs every refreshInspector(); CLOSE or Escape closes; same buttons work on the fight screen too.
+INFO LAYERS (D-98) — #dieInfoBtn/#artifactsInfoBtn/#cardsInfoBtn (top bar) open #dieInfoLayer/#artifactsInfoLayer/#cardsInfoLayer, full-screen covers gated on gameState.ui.dieInfoOpen/artifactsInfoOpen/cardsInfoOpen. DIE lists the 20 faces (faceTitleText()) plus HP, a loaded face's row led by its mod symbol(s), art/mods/<id>.png at 32px; ARTIFACTS lists run.artifacts by name/text, each row led by a 48px art/artifacts/<id>.png icon; every icon hides on load error; CARDS lists ownedCards by id with cost/getCardEffectText(). renderInfoLayers() runs every refreshInspector(); CLOSE or Escape closes; same buttons work on the fight screen too.
 
 LOG PANEL — #log in .right-col, shown only while gameState.ui.logOpen; #logToggleBtn flips it, default closed every page load, works on the map as on the fight screen. Open, .right-col covers the whole play column (position fixed, inset 0, black background, 24px padding) rather than sitting beside it — the fight keeps rendering underneath, unchanged when closed — #log at 22px VT323, a #logViewToggleBtn (LOG: PLAY / LOG: ALL) and #logCloseBtn doing what #logToggleBtn does. Play view hides `.log-state`/`.log-listener` lines (still in the DOM); All view shows them.
 
@@ -768,17 +768,18 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 
 (BUILD 163) — KI-43 byte-identical standing-sections check removed, SCREEN LAYOUT records BUILD 162; KI-44 config.js header F47-F50 reconciled. No game change.
 (BUILD 164) — D-108 face 20 weight capped at 5 (FACE_TWENTY_MAX_WEIGHT) on every weight path; MAX on its caption and DIE layer; Strengthen hidden when only a capped face 20 qualifies.
+(BUILD 165) — D-109 artifact and mod art in the top-bar artifact slots, ARTIFACTS layer (48px) and DIE layer (32px mod symbols); every image hides on error, no text removed.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.91 (BUILD 164) — D-108 (answers OQ-18): face 20's weight is capped at GAME_CONFIG.FACE_TWENTY_MAX_WEIGHT (5).
+Stage 2.92 (BUILD 165) — D-109: artifact and mod art in the three places that showed text only.
 
-strengthenFace() refuses to raise face 20 past 5 and returns the unchanged weight, so Strengthen, Leaden Face, Ordain, Elevation and The Font all obey it. The Strengthen picker (die action and shop) marks a capped face 20 inert; with nothing else eligible the Strengthen button is not offered. Leaden Face's second step is skipped at the cap and logged. The Font gives BLANK_GOLD instead of a weight when the rolled face is a capped face 20. Face 20's caption reads MAX beside its percent at weight 5; the DIE layer and hover text name the cap.
+Top bar: each held artifact's slot shows art/artifacts/<id>.png filling the slot (pixelated), name and text in the hover box; the name span stays in the slot and is hidden only once the icon loads. ARTIFACTS layer: each row leads with a 48px icon. DIE layer: each loaded face's row leads with its mod symbol(s) from art/mods/<id>.png at 32px, two for a two-mod face; blank faces and faces 1/20 unchanged. attachArtIcon() (rendering.js) hides any img that fails to load, so a missing file changes nothing. No text removed.
 
-tests/build164.test.js holds this build's assertions.
+tests/build165.test.js holds this build's assertions.
 
 Verification: see paste-back.
 

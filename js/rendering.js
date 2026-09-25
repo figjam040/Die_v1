@@ -1050,6 +1050,20 @@ function attachCardArtImg(container, cardId) {
   return img;
 }
 
+// Mod/artifact icon at a fixed pixel size; a missing file hides the img and
+// leaves the row's own text as it was.
+function attachArtIcon(container, folder, id, px, className) {
+  const img = document.createElement('img');
+  img.className = className;
+  img.alt = '';
+  img.style.width = px + 'px';
+  img.style.height = px + 'px';
+  img.onerror = function() { img.style.display = 'none'; };
+  img.src = 'art/' + folder + '/' + id + '.png';
+  container.appendChild(img);
+  return img;
+}
+
 // ---------- POP NUMBERS — the drawing primitive only (F46) ----------
 // Never called from a render function: state.js announces, beside the
 // [STATE] log line for the same change. Keyed anchorId|kind so several
@@ -1413,15 +1427,28 @@ function renderTopBarTokens() {
       const artifact = gameState.config.artifacts[artifactId];
       // The visible name lives in its own child span — slot.textContent
       // stays exactly the held artifact's name — with the hover tip as a
-      // sibling span, appended after (setHoverTip), never inside it.
-      slot.innerHTML = '';
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'artifact-slot-name';
-      nameSpan.textContent = artifact.name;
-      slot.appendChild(nameSpan);
+      // sibling span, appended after (setHoverTip), never inside it. The
+      // icon is kept between renders so it never reloads; the name span is
+      // hidden only once the icon has loaded.
+      if (slot.dataset.artifactId !== artifactId) {
+        slot.innerHTML = '';
+        slot.dataset.artifactId = artifactId;
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'artifact-slot-name';
+        nameSpan.textContent = artifact.name;
+        slot.appendChild(nameSpan);
+        const img = document.createElement('img');
+        img.className = 'artifact-slot-img';
+        img.alt = '';
+        img.onload = function() { nameSpan.style.visibility = 'hidden'; };
+        img.onerror = function() { img.style.display = 'none'; };
+        img.src = 'art/artifacts/' + artifactId + '.png';
+        slot.appendChild(img);
+      }
       setHoverTip(slot, artifact.name + ' — ' + artifact.text);
     } else {
       slot.innerHTML = '';
+      delete slot.dataset.artifactId;
       slot.classList.remove('hover-parent');
     }
   });
@@ -3081,21 +3108,30 @@ function renderInfoLayers() {
   if (gameState.ui.dieInfoOpen) {
     const content = document.getElementById('dieInfoContent');
     let html = '<div class="info-list-row">HP ' + gameState.player.hp + ' / ' + gameState.player.maxHp + '</div>';
-    html += gameState.die.faces.map(function(face) {
-      return '<div class="info-list-row">Face ' + face.number + ' — ' + faceTitleText(face, true, true) + '</div>';
-    }).join('');
     content.innerHTML = html;
+    gameState.die.faces.forEach(function(face) {
+      const row = document.createElement('div');
+      row.className = 'info-list-row';
+      [face.modId, face.modId2].forEach(function(modId) {
+        if (modId && gameState.config.mods[modId]) attachArtIcon(row, 'mods', modId, 32, 'info-row-icon');
+      });
+      row.appendChild(document.createTextNode('Face ' + face.number + ' — ' + faceTitleText(face, true, true)));
+      content.appendChild(row);
+    });
   }
 
   if (gameState.ui.artifactsInfoOpen) {
     const content = document.getElementById('artifactsInfoContent');
     const artifacts = gameState.run.artifacts;
-    content.innerHTML = artifacts.length
-      ? artifacts.map(function(id) {
-          const artifact = gameState.config.artifacts[id];
-          return '<div class="info-list-row">' + (artifact ? artifact.name + ' — ' + artifact.text : id) + '</div>';
-        }).join('')
-      : '<div class="info-list-row">No artifacts held.</div>';
+    content.innerHTML = artifacts.length ? '' : '<div class="info-list-row">No artifacts held.</div>';
+    artifacts.forEach(function(id) {
+      const artifact = gameState.config.artifacts[id];
+      const row = document.createElement('div');
+      row.className = 'info-list-row';
+      attachArtIcon(row, 'artifacts', id, 48, 'info-row-icon');
+      row.appendChild(document.createTextNode(artifact ? artifact.name + ' — ' + artifact.text : id));
+      content.appendChild(row);
+    });
   }
 
   if (gameState.ui.cardsInfoOpen) {

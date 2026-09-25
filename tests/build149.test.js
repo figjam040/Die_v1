@@ -307,6 +307,10 @@ async function triggerMod(page, modId) {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
+    await page.evaluate(() => {
+      gameState.config.cards.fake_card = { id: 'fake_card', name: 'Fake Card', soulCost: 1, type: 'utility', classRestriction: null, effect: function () {} };
+      updatePlayer({ hand: ['fake_card'].concat(gameState.player.hand.slice(1)) });
+    });
     await page.waitForTimeout(200); // let the (missing) image's error event fire
     const v = await page.evaluate(() => {
       const firstCard = document.querySelector('#handRow .hand-card-el');
