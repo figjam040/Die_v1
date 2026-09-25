@@ -1,9 +1,10 @@
 // Shared limits and page helpers used by more than one test file, so they
 // can never disagree. CLAUDE_MD_MAX_BYTES matches CLAUDE.md's own standing
 // rule (SIZE RULE: this file stays at or under 90,000 bytes) and F40,
-// asserted in tests/guardrails.test.js. TEST_FILE_MAX_LINES caps every file
-// under tests/; JS_FILE_MAX_LINES caps every file under js/. Both are
-// asserted in tests/guardrails.test.js.
+// asserted in tests/guardrails.test.js. TEST_FILE_MAX_LINES caps every .js
+// file under tests/; JS_FILE_MAX_LINES caps every file under js/, held just
+// above js/cards-mods.js until that file is split, then lowered to 1500.
+// Both are asserted in tests/guardrails.test.js.
 const path = require('path');
 const assert = require('assert');
 
@@ -118,10 +119,69 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   throw new Error('did not reach phase ' + targetPhase);
 }
 
+// F26: every js/ file shares one global scope, so a top-level name
+// declared twice silently overwrites the first. Walks the source at brace
+// depth 0, skipping comments, strings, template literals and regex
+// literals, and returns every function/class/const/let/var name it declares.
+function topLevelNames(src) {
+  const names = [];
+  const regexAfterWord = ['return', 'typeof', 'case', 'in', 'of', 'delete', 'void', 'throw', 'new', 'else'];
+  let i = 0, depth = 0, lastSig = '', lastWord = '';
+  const n = src.length;
+  function skipQuoted(q) {
+    i++;
+    while (i < n && src[i] !== q) {
+      if (src[i] === '\\') i++;
+      else if (q === '`' && src[i] === '$' && src[i + 1] === '{') {
+        let d = 1; i += 2;
+        while (i < n && d > 0) { if (src[i] === '{') d++; else if (src[i] === '}') d--; i++; }
+        continue;
+      }
+      i++;
+    }
+    i++;
+  }
+  while (i < n) {
+    const c = src[i];
+    if (c === '/' && src[i + 1] === '/') { while (i < n && src[i] !== '\n') i++; continue; }
+    if (c === '/' && src[i + 1] === '*') { i = src.indexOf('*/', i + 2); i = i === -1 ? n : i + 2; continue; }
+    if (c === '"' || c === "'" || c === '`') { skipQuoted(c); lastSig = c; lastWord = ''; continue; }
+    if (c === '/' && (!/[\w$)\]]/.test(lastSig) || regexAfterWord.indexOf(lastWord) !== -1)) {
+      i++;
+      let inClass = false;
+      while (i < n && (inClass || src[i] !== '/') && src[i] !== '\n') {
+        if (src[i] === '\\') i++;
+        else if (src[i] === '[') inClass = true;
+        else if (src[i] === ']') inClass = false;
+        i++;
+      }
+      i++;
+      while (i < n && /[a-z]/.test(src[i])) i++;
+      lastSig = '/'; lastWord = '';
+      continue;
+    }
+    if (/[A-Za-z_$]/.test(c)) {
+      const word = src.slice(i).match(/^[\w$]+/)[0];
+      i += word.length;
+      if (depth === 0 && ['function', 'class', 'const', 'let', 'var'].indexOf(word) !== -1) {
+        const m = src.slice(i).match(/^[\s*]*([A-Za-z_$][\w$]*)/);
+        if (m) { names.push(m[1]); i += m[0].length; lastSig = 'a'; lastWord = m[1]; continue; }
+      }
+      lastSig = 'a'; lastWord = word;
+      continue;
+    }
+    if (c === '{' || c === '(' || c === '[') depth++;
+    else if (c === '}' || c === ')' || c === ']') depth--;
+    if (!/\s/.test(c)) { lastSig = c; lastWord = ''; }
+    i++;
+  }
+  return names;
+}
+
 module.exports = {
   CLAUDE_MD_MAX_BYTES: 90000,
   TEST_FILE_MAX_LINES: 800,
-  JS_FILE_MAX_LINES: 3500,
+  JS_FILE_MAX_LINES: 1700,
   FILE_URL,
   createRunner,
   TEST_FACE,
@@ -130,5 +190,6 @@ module.exports = {
   assertNoErrors,
   freshPage,
   enterOpeningFight,
-  advanceUntilPhase
+  advanceUntilPhase,
+  topLevelNames
 };

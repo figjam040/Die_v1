@@ -533,13 +533,13 @@ function specOnlyDeepEqual(actual, expected, label) {
   await browser.close();
 
   // ---------------------------------------------------------------
-  // F26 — files under /js/: eleven, in the documented order. Filesystem
+  // F26 — files under /js/: fifteen, in the documented order. Filesystem
   // fact, checked from Node directly rather than through a page.
   // ---------------------------------------------------------------
-  await runTest('F26 eleven files under /js/, in load order', async () => {
-    const expected = ['config', 'state', 'listener-registry', 'audio', 'pipeline', 'cards-mods', 'run-and-map', 'phase-machine', 'rendering', 'dev-tools', 'bootstrap'];
+  await runTest('F26 fifteen files under /js/, in load order', async () => {
+    const expected = ['config', 'state', 'listener-registry', 'audio', 'pipeline', 'cards-mods', 'run-and-map', 'phase-machine', 'rendering', 'render-fight', 'render-map', 'render-layers', 'render-text', 'dev-tools', 'bootstrap'];
     const actual = fs.readdirSync(path.resolve(__dirname, '..', 'js')).filter(function(f) { return f.endsWith('.js'); }).map(function(f) { return f.replace(/\.js$/, ''); });
-    assert.strictEqual(actual.length, 11);
+    assert.strictEqual(actual.length, 15);
     expected.forEach(function(name) { assert.ok(actual.indexOf(name) !== -1, 'missing js/' + name + '.js'); });
     const html = fs.readFileSync(path.resolve(__dirname, '..', 'index.html'), 'utf8');
     const order = (html.match(/<script src="js\/([a-z-]+)\.js"><\/script>/g) || []).map(function(tag) { return tag.match(/js\/([a-z-]+)\.js/)[1]; });

@@ -1374,3 +1374,17 @@ Tests: build173.test.js. Corrected: facts (Vacancy tier and the 24/16/8 card tie
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+Stage 3.01 (BUILD 174) — tests and guardrails only (KI-51).
+
+Item A: facts.test.js and mods.test.js are split by BUILD label into twenty new files, build108 to build139: 34 test files became 54, the 111 facts tests became 28 in facts.test.js plus 83 in build files (four appended to existing ones), the 42 mod tests 34 plus 8. The page helpers, createRunner() and the mod suites' freshFightPage()/triggerMod()/assertNoErrors() live once, in tests/shared-constants.js.
+
+Item B: guardrails.test.js fails when a test file exceeds TEST_FILE_MAX_LINES (800) or a js/ file exceeds JS_FILE_MAX_LINES (3500, to be lowered); both constants sit in shared-constants.js beside CLAUDE_MD_MAX_BYTES.
+
+Item C: Vacancy, Tabernacle and Reverberation carry only the Blank tag; the mass tag is gone from them.
+
+Tests: corrected build130 (the two tag lines), build146 (the guardrail count is no longer hard-coded), build147 (the art-failure filter is read from shared-constants.js).
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.

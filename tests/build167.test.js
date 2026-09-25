@@ -289,10 +289,10 @@ function stringLiterals(src) {
   // ---------------------------------------------------------------
   // ITEM D — D-117 Anomaly
 
-  await runTest('D: no player-facing Event string remains in rendering.js, run-and-map.js or index.html', async () => {
+  await runTest('D: no player-facing Event string remains in the render files, run-and-map.js or index.html', async () => {
     const wordEvent = /\bEvent\b|\bEVENT\b/;
     const offenders = [];
-    ['js/rendering.js', 'js/run-and-map.js'].forEach((rel) => {
+    ['js/rendering.js', 'js/render-fight.js', 'js/render-map.js', 'js/render-layers.js', 'js/render-text.js', 'js/run-and-map.js'].forEach((rel) => {
       stringLiterals(fs.readFileSync(path.join(ROOT, rel), 'utf8')).forEach((s) => {
         if (wordEvent.test(s)) offenders.push(rel + ': ' + s);
       });

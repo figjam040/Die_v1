@@ -8,7 +8,7 @@ const assert = require('assert');
 const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const { CLAUDE_MD_MAX_BYTES, TEST_FILE_MAX_LINES, JS_FILE_MAX_LINES } = require('./shared-constants');
+const { CLAUDE_MD_MAX_BYTES, TEST_FILE_MAX_LINES, JS_FILE_MAX_LINES, topLevelNames } = require('./shared-constants');
 
 function countLines(file) {
   return fs.readFileSync(file, 'utf8').split('\n').length - 1;
@@ -238,7 +238,7 @@ function factsBlockLineRange(src) {
 
   await runTest('tests/ holds no .png and nothing but the allowed script names', async () => {
     const testsDir = path.join(ROOT, 'tests');
-    const allowedExact = ['screenshots.js', 'pngdiff.js', 'autoplay.js', 'run-all.js', 'guardrails.test.js', 'shared-constants.js'];
+    const allowedExact = ['screenshots.js', 'pngdiff.js', 'autoplay.js', 'autoplay-lib.js', 'run-all.js', 'guardrails.test.js', 'shared-constants.js'];
     const entries = fs.readdirSync(testsDir).filter(function(f) {
       return fs.statSync(path.join(testsDir, f)).isFile();
     });
@@ -266,10 +266,10 @@ function factsBlockLineRange(src) {
     assert.strictEqual(offenders.length, 0, 'unexpected entries in repo root: ' + offenders.join(', '));
   });
 
-  await runTest('No test file under tests/ is longer than ' + TEST_FILE_MAX_LINES + ' lines (KI-51)', async () => {
+  await runTest('No .js file under tests/ is longer than ' + TEST_FILE_MAX_LINES + ' lines (KI-51)', async () => {
     const testsDir = path.join(ROOT, 'tests');
     const offenders = fs.readdirSync(testsDir)
-      .filter(function(f) { return f.endsWith('.test.js'); })
+      .filter(function(f) { return f.endsWith('.js'); })
       .map(function(f) { return { file: 'tests/' + f, lines: countLines(path.join(testsDir, f)) }; })
       .filter(function(e) { return e.lines > TEST_FILE_MAX_LINES; });
     assert.strictEqual(offenders.length, 0, 'over ' + TEST_FILE_MAX_LINES + ' lines: ' + offenders.map(function(e) { return e.file + ' (' + e.lines + ')'; }).join(', '));
@@ -280,6 +280,27 @@ function factsBlockLineRange(src) {
       .map(function(f) { return { file: 'js/' + f, lines: countLines(path.join(jsDir, f)) }; })
       .filter(function(e) { return e.lines > JS_FILE_MAX_LINES; });
     assert.strictEqual(offenders.length, 0, 'over ' + JS_FILE_MAX_LINES + ' lines: ' + offenders.map(function(e) { return e.file + ' (' + e.lines + ')'; }).join(', '));
+  });
+
+  await runTest('No top-level function, class, const, let or var name is declared twice across js/ (F26)', async () => {
+    const where = {};
+    for (const file of jsFiles) {
+      topLevelNames(fs.readFileSync(path.join(jsDir, file), 'utf8')).forEach(function(name) {
+        (where[name] = where[name] || []).push('js/' + file);
+      });
+    }
+    const dupes = Object.keys(where).filter(function(name) { return where[name].length > 1; });
+    assert.ok(Object.keys(where).length > 300, 'the name scan found only ' + Object.keys(where).length + ' names');
+    assert.strictEqual(dupes.length, 0, 'declared twice: ' + dupes.map(function(name) { return name + ' in ' + where[name].join(' and '); }).join('; '));
+  });
+
+  await runTest('Every js/ file has exactly one script tag in index.html, and every script tag names a file that exists', async () => {
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    const srcs = Array.from(html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)).map(function(m) { return m[1]; });
+    const missing = srcs.filter(function(src) { return !fs.existsSync(path.join(ROOT, src)); });
+    assert.deepStrictEqual(missing, [], 'script tags naming no file');
+    const notOnce = jsFiles.filter(function(f) { return srcs.filter(function(src) { return src === 'js/' + f; }).length !== 1; });
+    assert.deepStrictEqual(notOnce, [], 'js/ files without exactly one script tag');
   });
 
   if (notYetTrimmed.length > 0) {

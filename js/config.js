@@ -1,6 +1,6 @@
 // ============================================================
 // CONFIG.JS
-// One constants file, loaded first, before state.js — file 1 of eleven
+// One constants file, loaded first, before state.js — file 1 of fifteen
 // (see PROJECT, CLAUDE.md). Every tunable number/structural constant lives
 // here, on one object, GAME_CONFIG; every other file reads it from here.
 //
@@ -24,7 +24,7 @@
 // F22 enemy Nat 20 forces the boss's Charge next round (forcedNextIntent, breakable as any Charge); buff faces trigger only when rolled · F23 enemy Nat 1 attack cancelled, self-applies a flat 5 stacks of poison, once per fight
 // F24 mods 27 (BUILD 149: +Dread, Genuflect; 26 offerable plus Consecrate, tiers 13/9/4), each asserted by tests/mods.test.js
 // F25 cards 48 (BUILD 153: +Venom, Ballast, Refrain, Second Sight, Cadence, Watchword, Blight Weight; BUILD 173: Vacancy to rare; tiers 24/16/8), each asserted by tests/facts.test.js
-// F26 files under /js/: eleven — config, state, listener-registry, audio, pipeline, cards-mods, run-and-map, phase-machine, rendering, dev-tools, bootstrap
+// F26 files under /js/: fifteen — config, state, listener-registry, audio, pipeline, cards-mods, run-and-map, phase-machine, rendering, render-fight, render-map, render-layers, render-text, dev-tools, bootstrap
 // F27 pitch chains cap 8, reset at START_OF_TURN
 // F28 sound duration ceiling 200 ms holds for every frequent sound (roll, card plays, damage, block, end turn, mod trigger, die action, card reward, fight_start_normal/elite); nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it — all six are rare, at most once per fight-ending event, boss fight, or Nat roll
 // F33 (BUILD 141) at END_PLAYER_TURN, before the player's poison tick, every 5 block held removes 1 stack of poison from the player
@@ -51,7 +51,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 174,
+  BUILD: 175,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {

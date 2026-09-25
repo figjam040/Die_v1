@@ -2398,9 +2398,11 @@
      order only matters for code that runs at parse time — none does; the
      sole kickoff is bootstrap.js's DOMContentLoaded->init(), by which
      point every file below has already executed. Order below is
-     dependency-first for readability. rendering.js and run-and-map.js
-     call each other (screens open/advance slots; slot dispatch opens
-     screens) — a genuine circularity, documented in each file's own header. -->
+     dependency-first for readability. render-layers.js/render-map.js and
+     run-and-map.js call each other (screens open/advance slots; slot
+     dispatch opens screens) — a genuine circularity. A top-level name
+     defined in two files silently overwrites the first; guardrails.test.js
+     fails on any such duplicate. -->
 <script src="js/config.js"></script>
 <script src="js/state.js"></script>
 <script src="js/listener-registry.js"></script>
@@ -2410,6 +2412,10 @@
 <script src="js/run-and-map.js"></script>
 <script src="js/phase-machine.js"></script>
 <script src="js/rendering.js"></script>
+<script src="js/render-fight.js"></script>
+<script src="js/render-map.js"></script>
+<script src="js/render-layers.js"></script>
+<script src="js/render-text.js"></script>
 <script src="js/dev-tools.js"></script>
 <script src="js/bootstrap.js"></script>
 

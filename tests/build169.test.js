@@ -143,7 +143,7 @@ async function hoverEveryTip(page, label) {
     assert.strictEqual(v.tiers.indexOf('common'), -1, "a piece still carries tier 'common'");
     v.tiers.filter(Boolean).forEach(function(t) { assert.ok(['basic', 'uncommon', 'rare', 'mythic', 'void'].indexOf(t) !== -1, 'unknown tier ' + t); });
     assert.ok(!/\bcommon\b/i.test(v.texts), 'a player-facing panel still reads COMMON');
-    const sources = ['config.js', 'cards-mods.js', 'rendering.js', 'state.js'].map(function(f) { return fs.readFileSync(path.join(ROOT, 'js', f), 'utf8'); }).join('\n');
+    const sources = ['config.js', 'cards-mods.js', 'rendering.js', 'render-fight.js', 'render-map.js', 'render-layers.js', 'render-text.js', 'state.js'].map(function(f) { return fs.readFileSync(path.join(ROOT, 'js', f), 'utf8'); }).join('\n');
     assert.ok(!/['"]common['"]/.test(sources), "a 'common' string literal remains in js/");
     await page.close();
   });
