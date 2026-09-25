@@ -959,7 +959,7 @@ function renderStats() {
   if (gameState.player.penitenceActive) playerDebuffs.push('penitence');
   const playerDebuffsEl = document.getElementById('playerDebuffsValue');
   playerDebuffsEl.textContent = playerDebuffs.length ? playerDebuffs.join(', ') : '—';
-  const poisonTip = 'Poison: at the start of each round, every ' + GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK + ' block still held removes 1 stack of poison. Then poison deals 1 damage per stack, ignoring block, and loses 1 stack.';
+  const poisonTip = 'Poison: at the end of your turn, every ' + GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK + ' block you hold removes 1 stack of poison. Then poison deals 1 damage per stack, ignoring block, and loses 1 stack.';
   setHoverTip(playerDebuffsEl, poisonTip);
   renderStatusRows(poisonTip);
   document.getElementById('playerDeckValue').textContent = gameState.player.deck.length;
@@ -1010,7 +1010,7 @@ function renderStatusRows(poisonTitle) {
   if (enemyRow) {
     enemyRow.innerHTML = '';
     if (gameState.enemy.poisonStacks > 0) {
-      icon(enemyRow, 'P' + gameState.enemy.poisonStacks, 'status-poison', 'Poison: deals 1 damage per stack at the start of its round, then loses 1 stack.');
+      icon(enemyRow, 'P' + gameState.enemy.poisonStacks, 'status-poison', 'Poison: deals 1 damage per stack at the end of its turn, then loses 1 stack.');
     }
     if (gameState.enemy.wrath > 0) {
       icon(enemyRow, 'W' + gameState.enemy.wrath, 'status-wrath', 'Wrath: each Attack deals this much more.');

@@ -46,14 +46,14 @@ async function enterOpeningFight(page) {
   // ITEM A — the poison answer
   // ---------------------------------------------------------------
 
-  await runTest('Item A-a: 12 block and 4 poison stacks removes 2 stacks, then the tick deals 2, leaving 1 stack and 0 block', async () => {
+  await runTest('Item A-a: 12 block and 4 poison stacks removes 2 stacks at END_PLAYER_TURN, then the tick deals 2, leaving 1 stack and the 12 block unspent', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => { updatePlayer({ block: 12, poisonStacks: 4 }); });
-    await page.evaluate(() => { runPhase('START_OF_TURN'); });
+    await page.evaluate(() => { runPhase('END_PLAYER_TURN'); });
     const v = await page.evaluate(() => ({ poison: gameState.player.poisonStacks, block: gameState.player.block }));
     assert.strictEqual(v.poison, 1, 'expected 1 stack of poison left, got ' + v.poison);
-    assert.strictEqual(v.block, 0, 'expected 0 block left, got ' + v.block);
+    assert.strictEqual(v.block, 12, 'expected the block read, not spent (12), got ' + v.block);
     await page.close();
   });
 
@@ -61,7 +61,7 @@ async function enterOpeningFight(page) {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => { updatePlayer({ block: 4, poisonStacks: 4 }); });
-    await page.evaluate(() => { runPhase('START_OF_TURN'); });
+    await page.evaluate(() => { runPhase('END_PLAYER_TURN'); });
     const v = await page.evaluate(() => gameState.player.poisonStacks);
     assert.strictEqual(v, 3, 'expected 3 stacks of poison left, got ' + v);
     await page.close();
@@ -72,7 +72,7 @@ async function enterOpeningFight(page) {
     await enterOpeningFight(page);
     const hpBefore = await page.evaluate(() => gameState.player.hp);
     await page.evaluate(() => { updatePlayer({ block: 25, poisonStacks: 3 }); });
-    await page.evaluate(() => { runPhase('START_OF_TURN'); });
+    await page.evaluate(() => { runPhase('END_PLAYER_TURN'); });
     const v = await page.evaluate(() => ({ poison: gameState.player.poisonStacks, hp: gameState.player.hp }));
     assert.strictEqual(v.poison, 0, 'expected 0 stacks of poison left, got ' + v.poison);
     assert.strictEqual(v.hp, hpBefore, 'expected no poison damage, hp changed from ' + hpBefore + ' to ' + v.hp);
@@ -83,7 +83,7 @@ async function enterOpeningFight(page) {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => { updateEnemy({ poisonStacks: 5 }); });
-    await page.evaluate(() => { runPhase('START_OF_TURN'); });
+    await page.evaluate(() => { runPhase('CHECK_WIN_LOSS'); });
     const v = await page.evaluate(() => gameState.enemy.poisonStacks);
     assert.strictEqual(v, 4, 'expected the enemy poison tick to still just decay by 1 (5 -> 4), got ' + v);
     await page.close();
@@ -171,7 +171,7 @@ async function enterOpeningFight(page) {
     await page2.close();
   });
 
-  await runTest('Item B-d: the release round\'s own poison tick counts toward the break (KI-28)', async () => {
+  await runTest('Item B-d: the poison tick that ends the wind-up round counts toward the break (KI-28)', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => {
@@ -180,9 +180,10 @@ async function enterOpeningFight(page) {
     });
     await page.evaluate(() => { runPhase('ENEMY_ACT_PHASE'); });
     await page.evaluate(() => { updateEnemy({ poisonStacks: 3 }); }); // gained during the wind-up round
-    await page.evaluate(() => { runPhase('START_OF_TURN'); }); // release begins: poison ticks for 3, then the break check
+    await page.evaluate(() => { runPhase('CHECK_WIN_LOSS'); }); // the wind-up round ends: poison ticks for 3
+    await page.evaluate(() => { runPhase('START_OF_TURN'); }); // release begins: the break check
     const broken = await page.evaluate(() => gameState.enemy.chargeBroken);
-    assert.strictEqual(broken, true, 'expected the release round\'s own poison tick to count toward the break');
+    assert.strictEqual(broken, true, 'expected the wind-up round\'s own end-of-turn poison tick to count toward the break');
     await page.close();
   });
 

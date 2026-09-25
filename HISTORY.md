@@ -1260,3 +1260,25 @@ Verification: see paste-back.
 Full write-ups: HISTORY.md.
 
 BUILD 167 index note: D-114 gold coin icon in the top bar; D-115 every reward layer title reads Choose; D-116 the rite is its own screen in the reward layer; D-117 the event slot reads Anomaly; D-118 sleek pass (--ui-scale 0.75, weight normal, 1px outlines, map zoom 1.25); D-119 Remove, the fourth die action, DIE_MIN_FACES 12.
+
+Stage 2.94 (BUILD 167) — gold coin, Choose titles, rite screen, Anomaly, sleek pass, Remove (D-114 to D-119).
+
+D-114: #goldValue is the art/gold.png coin at 32px (#goldIcon) with the amount beside it (#goldAmount), no box; a failed load hides the coin and shows the word GOLD (#goldFallback). The number never goes.
+
+D-115: every die action step, the card reward and the artifact reward are titled Choose; what to choose rides the instruction line. SHOP and The Font keep theirs. The die action buttons sit centred under the title.
+
+D-116: a Rite node opens #riteScreenPanel in the reward layer over the face row, not a strip under the map. Die action and card removal open there; the shop follows; the map returns with the node completed. KI-31 holds.
+
+D-117: the event slot's label and the Font's log/transcript lines read Anomaly; code keys stay event.
+
+D-118: --ui-scale (0.75) in :root scales every font size except the two face rows, the die icons and the art boxes; weight normal but for titles and the roll number; outlines 1px. The map's zoom drops from 1.4 to 1.25 so Start and Boss sit inside its panel.
+
+D-119: Remove, the fourth die action: one blank face (never 1, 20 or 10) off the die for the run, while more than DIE_MIN_FACES (12) remain. Faces are now found by number (getPlayerFace()); Elevation and Reliquary Chain read the next face still on the die.
+
+Tests: build167.test.js holds this build's assertions; facts.test.js and build151.test.js read the Anomaly label; build145's map node check reads 1px and 7.5px; build149 Item f now waits for the roll animation and the img instead of a fixed 200 ms (it was flaky before this build).
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.
+
+BUILD 168 index note: D-120 poison ticks at the end of the poisoned side's own turn: the player's in END_PLAYER_TURN, the enemy's in CHECK_WIN_LOSS, nothing at START_OF_TURN; the poison answer now runs at END_PLAYER_TURN; F09, F33 and F34 reworded.

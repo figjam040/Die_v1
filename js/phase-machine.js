@@ -29,6 +29,29 @@ function checkWinNow() {
   }
 }
 
+// Poison ticks at the end of the poisoned side's own turn: 1 damage per
+// stack through calculateDamage(), ignoring block, then 1 stack fewer. The
+// callers re-enter runPhase() so its top guard turns a kill into a win/loss.
+function tickPlayerPoison() {
+  if (gameState.player.poisonStacks > 0) {
+    const poisonDamage = calculateDamage(gameState.player.poisonStacks, 'poison');
+    const newStacks = gameState.player.poisonStacks - 1;
+    const hpBefore = gameState.player.hp;
+    const hpAfter = hpBefore - poisonDamage;
+    updatePlayer({ hp: hpAfter, poisonStacks: newStacks });
+    log('[POISON] player takes ' + poisonDamage + ' damage: HP ' + hpBefore + ' to ' + hpAfter);
+  }
+}
+
+function tickEnemyPoison() {
+  if (gameState.enemy.poisonStacks > 0) {
+    const poisonDamage = calculateDamage(gameState.enemy.poisonStacks, 'poison');
+    const newStacks = gameState.enemy.poisonStacks - 1;
+    updateEnemy({ hp: gameState.enemy.hp - poisonDamage, poisonStacks: newStacks });
+    log('[POISON] ' + poisonDamage + ' damage, ' + newStacks + ' stacks of poison remaining');
+  }
+}
+
 function runPhase(phase) {
   if (gameState.run.status === 'active') {
     if (gameState.enemy.hp <= 0) {
@@ -86,35 +109,6 @@ function runPhase(phase) {
 
     resetSoundChains();
 
-    if (gameState.player.poisonStacks > 0) {
-      const poisonDamage = calculateDamage(gameState.player.poisonStacks, 'poison');
-      const newStacks = gameState.player.poisonStacks - 1;
-      const hpBefore = gameState.player.hp;
-      const hpAfter = hpBefore - poisonDamage;
-      updatePlayer({ hp: hpAfter, poisonStacks: newStacks });
-      log('[POISON] player takes ' + poisonDamage + ' damage: HP ' + hpBefore + ' to ' + hpAfter);
-    }
-
-    // Re-enters runPhase() so the top guard fires before the enemy tick
-    // runs for a player the poison tick above just killed.
-    if (gameState.player.hp <= 0) {
-      runPhase(phase);
-      return;
-    }
-
-    if (gameState.enemy.poisonStacks > 0) {
-      // Bypasses block by construction — straight to enemy.hp.
-      const poisonDamage = calculateDamage(gameState.enemy.poisonStacks, 'poison');
-      const newStacks = gameState.enemy.poisonStacks - 1;
-      updateEnemy({ hp: gameState.enemy.hp - poisonDamage, poisonStacks: newStacks });
-      log('[POISON] ' + poisonDamage + ' damage, ' + newStacks + ' stacks of poison remaining');
-    }
-
-    if (gameState.enemy.hp <= 0) {
-      runPhase(phase);
-      return;
-    }
-
     if (gameState.enemy.aweStacks > 0) {
       const aweRemaining = gameState.enemy.aweStacks - 1;
       updateEnemy({ aweStacks: aweRemaining });
@@ -122,8 +116,9 @@ function runPhase(phase) {
     }
 
     // Enemies act from a repeating pattern of 1-4 intents — see
-    // advanceEnemyIntentForRound() (pipeline.js). Runs after the enemy's own
-    // poison tick above so a Charge's break check counts that tick (KI-28).
+    // advanceEnemyIntentForRound() (pipeline.js). Runs after the enemy's
+    // poison tick, taken at the previous round's CHECK_WIN_LOSS, so a
+    // Charge's break check counts that tick (KI-28).
     advanceEnemyIntentForRound();
 
     // A Seal lasts one round: REPLACED (not appended) every START_OF_TURN, even when empty.
@@ -173,6 +168,14 @@ function runPhase(phase) {
     const discardedCount = gameState.player.hand.length;
     updatePlayer({ discard: gameState.player.discard.concat(gameState.player.hand), hand: [] });
     log('[END] discarded ' + discardedCount + ' cards to discard pile');
+
+    // The player's own tick, after poison_answer_passive (a listener on this
+    // phase) and before the enemy rolls or acts.
+    tickPlayerPoison();
+    if (gameState.player.hp <= 0) {
+      runPhase(phase);
+      return;
+    }
   }
 
   if (phase === 'ENEMY_ROLL_PHASE') {
@@ -269,6 +272,15 @@ function runPhase(phase) {
 
   if (phase === 'CHECK_WIN_LOSS') {
     log('[PHASE] CHECK_WIN_LOSS — awaiting result');
+
+    // The enemy's own tick, after its intent resolved (runPhase()'s guard
+    // has already handled a player the intent killed) and before the next
+    // round's START_OF_TURN.
+    tickEnemyPoison();
+    if (gameState.enemy.hp <= 0) {
+      runPhase(phase);
+      return;
+    }
   }
 }
 

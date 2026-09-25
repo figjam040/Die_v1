@@ -437,7 +437,7 @@ function triggerFaceOutsideRoll(faceNumber) {
 // ---------- ENEMY INTENT PATTERN ----------
 
 // Fixes and shows this round's intent, called once per START_OF_TURN,
-// after both poison ticks resolve (KI-28). Handles: (1) Wrath's
+// after the enemy's poison tick from the round before (KI-28). Handles: (1) Wrath's
 // pending-to-active move; (2) the charge windup->release transition and
 // its break check; (3) picking this round's entry — the dev's
 // forcedNextIntent override if set, else the next pattern entry.
@@ -456,7 +456,7 @@ function advanceEnemyIntentForRound() {
 
   if (enemy.chargeStage === 'windup') {
     // Break check: HP lost since windupStartHp was captured — includes
-    // this round's own poison tick (KI-28).
+    // the poison tick that ended the wind-up round (KI-28).
     const entry = enemy.currentEntry;
     const hpLost = enemy.windupStartHp - enemy.hp;
     const broke = hpLost >= entry.breakAt;

@@ -245,11 +245,13 @@ START_OF_TURN → ROLL_PHASE → CARD_PHASE → END_PLAYER_TURN → ENEMY_ROLL_P
 
 ENEMY_ACT_PHASE returns immediately — before intent, block, or damage are touched — when gameState.turn.enemyAttackCancelledThisTurn is true, set by the enemy's own Nat 1 earlier the same turn, or when gameState.turn.enemyRoundSkippedThisTurn is true, set by Hourglass on round 1. Either way the pattern advances as if the intent had resolved; each reports its own wording.
 
+POISON TIMING (D-120, F09): poison ticks at the end of the poisoned side's own turn; START_OF_TURN no longer touches it. The player's ticks in END_PLAYER_TURN (tickPlayerPoison(), phase-machine.js), after hand-to-discard and after poison_answer_passive, before the enemy rolls or acts. The enemy's ticks in CHECK_WIN_LOSS (tickEnemyPoison()), after its intent resolved and before the next START_OF_TURN. A tick deals damage equal to the stacks through calculateDamage(), ignores block, then drops the stacks by 1. Stacks applied during a side's own turn tick at the end of that same turn; stacks applied to the other side wait for that side's next turn end. Each tick is followed by a re-entry of runPhase(), whose top guard turns a kill into a win before the next round, or a loss before the enemy acts. The R<round> transcript line prints the enemy's stacks before its own tick.
+
 ---
 
 # EVENT HOOKS — COMPLETE LIST
 
-These are the names registerListener() is designed around. The PHASE ORDER names (START_OF_TURN, ROLL_PHASE, CARD_PHASE, END_PLAYER_TURN, ENEMY_ROLL_PHASE, ENEMY_ACT_PHASE, CHECK_WIN_LOSS) are also real dispatchable hooks: runPhase(phase) calls callListeners(phase) unconditionally near its top, once per visit, before that phase's own if-branch — so a listener on one of these seven fires at that boundary, ahead of the phase's own logic. END_PLAYER_TURN is exercised today only by Vigil, firing before hand-to-discard, which is what lets it read hand size pre-discard.
+These are the names registerListener() is designed around. The PHASE ORDER names (START_OF_TURN, ROLL_PHASE, CARD_PHASE, END_PLAYER_TURN, ENEMY_ROLL_PHASE, ENEMY_ACT_PHASE, CHECK_WIN_LOSS) are also real dispatchable hooks: runPhase(phase) calls callListeners(phase) unconditionally near its top, once per visit, before that phase's own if-branch — so a listener on one of these seven fires at that boundary, ahead of the phase's own logic. END_PLAYER_TURN is exercised by Vigil, Tithe and Anathema, firing before hand-to-discard, which is what lets Vigil read hand size pre-discard, and by poison_answer_passive, registered first, so it runs ahead of the others and of the player's poison tick.
 
 Player-side hooks:
 BLANK_ROLL — { outsideRoll } — a genuinely blank roll, and the player's own Nat 1 once already fired this fight. outsideRoll: true marks a blank reached for rather than rolled (triggerFaceOutsideRoll()) — what Alms reads to leave those alone
@@ -546,7 +548,7 @@ Cardinal and Pontifex keep their own Nat 1 (branch on enemy.name): Cardinal's tr
 
 Per-enemy "reads" — applyEnemyReads() (pipeline.js), once per round, reading the player's roll: Lector triggers Drain on face 6; Hierophant's Nat 1 also fires on a player Nat 1; Pontifex triggers Wrath on the player's heaviest loaded face.
 
-Enemy intent (F34): every enemy acts from `pattern`, a repeating Attack/Charge/Afflict list, shown at START_OF_TURN (advanceEnemyIntentForRound(), after both poison ticks so a Charge's break check counts the release round's tick — KI-28), advanced by ENEMY_ACT_PHASE once a round resolves (Charge only after release). getIncomingIntentDamage() is the shared intent-damage reader (Interdict). The enemy's Nat 1 cancels whatever is live, wind-up included.
+Enemy intent (F34): every enemy acts from `pattern`, a repeating Attack/Charge/Afflict list, shown at START_OF_TURN (advanceEnemyIntentForRound(), after the enemy's own tick from the round before, so a Charge's break check counts the tick that ended the wind-up round — KI-28), advanced by ENEMY_ACT_PHASE once a round resolves (Charge only after release). getIncomingIntentDamage() is the shared intent-damage reader (Interdict). The enemy's Nat 1 cancels whatever is live, wind-up included.
 
 FIGHT PANEL TITLE: #enemyPanelTitle reads ENEMY/ELITE ★/BOSS ☠ off enemy.id. #enemyNameValue shows enemy.name. Pontifex's own #enemyReadLine: "Reads the heaviest face: Wrath +N when the player rolls it."
 
@@ -558,7 +560,7 @@ ENEMY DICE OF ANY SIZE, WRATH, DRAIN, SEAL (F35): buildEnemyDieFromSpec(spec) (p
 
 LOADED-FACE RULE / SEAL: isFaceSealed(faceNumber) (pipeline.js) is the one shared check. turn.sealedFaces is REPLACED by a copy of player.sealNextRound every START_OF_TURN (even empty), cleared at fight-start, so a Seal never survives past its round or into a new fight. Faces 1/20 are never Sealed.
 
-POISON ANSWER (F33): at START_OF_TURN, before poison ticks/block clears, a permanent listener (poison_answer_passive) removes floor(player.block / POISON_ANSWER_BLOCK_PER_STACK) stacks of the player's poison, capped at current stacks — block is read, not spent. Enemies have no block field.
+POISON ANSWER (F33): at END_PLAYER_TURN, before the player's poison tick, a permanent listener (poison_answer_passive) removes floor(player.block / POISON_ANSWER_BLOCK_PER_STACK) stacks of the player's poison, capped at current stacks — block is read, not spent. Enemies have no block field.
 
 ---
 
@@ -777,27 +779,22 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 165) — D-109 artifact and mod art in the top-bar artifact slots, ARTIFACTS layer (48px) and DIE layer (32px mod symbols); every image hides on error, no text removed.
 (BUILD 166) — D-110 Load and artifact offers as bare 160px symbols with a hover box, dev mod description; D-113 roll pause only with dev drawer open, roll animation 3 frames/200 ms.
 (BUILD 167) — D-114 gold coin icon, D-115 reward titles read Choose, D-116 rite screen in the reward layer, D-117 Event reads Anomaly, D-118 sleek pass (--ui-scale 0.75, weight normal, 1px outlines), D-119 Remove die action (DIE_MIN_FACES 12).
+(BUILD 168) — D-120 poison ticks at the end of the poisoned side's turn (player END_PLAYER_TURN, enemy CHECK_WIN_LOSS); START_OF_TURN no longer ticks; poison answer at END_PLAYER_TURN; KI-28 holds.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.94 (BUILD 167) — gold coin, Choose titles, rite screen, Anomaly, sleek pass, Remove (D-114 to D-119).
+Stage 2.95 (BUILD 168) — D-120, poison timing.
 
-D-114: #goldValue is the art/gold.png coin at 32px (#goldIcon) with the amount beside it (#goldAmount), no box; a failed load hides the coin and shows the word GOLD (#goldFallback). The number never goes.
+D-120: poison ticks at the end of the poisoned side's own turn. The player's tick is tickPlayerPoison() in END_PLAYER_TURN, after hand-to-discard and after poison_answer_passive (re-hooked from START_OF_TURN to END_PLAYER_TURN, where it runs ahead of the other listeners), before the enemy rolls or acts. The enemy's tick is tickEnemyPoison() in CHECK_WIN_LOSS, after its intent resolved and before the next START_OF_TURN. A tick still deals damage equal to the stacks through calculateDamage(), ignores block, and drops the stacks by 1; stacks applied in a side's own turn tick at the end of that same turn. Both START_OF_TURN ticks are deleted. Each tick is followed by a runPhase() re-entry, so its top guard ends the fight as a win before the next round, or as a loss before the enemy acts; no new death path.
 
-D-115: every die action step, the card reward and the artifact reward are titled Choose; what to choose rides the instruction line. SHOP and The Font keep theirs. The die action buttons sit centred under the title.
+KI-28 holds: the enemy's tick from the round before lands ahead of advanceEnemyIntentForRound(), so a Charge's break check counts the tick that ended the wind-up round.
 
-D-116: a Rite node opens #riteScreenPanel in the reward layer over the face row, not a strip under the map. Die action and card removal open there; the shop follows; the map returns with the node completed. KI-31 holds.
+Text: the player's poison tip reads "at the end of your turn", the enemy's poison icon "at the end of its turn". config.js's F09, F33 and F34, and CLAUDE.md's PHASE ORDER (new POISON TIMING paragraph), EVENT HOOKS, enemy intent and POISON ANSWER lines describe the new timing. No new F-line.
 
-D-117: the event slot's label and the Font's log/transcript lines read Anomaly; code keys stay event.
-
-D-118: --ui-scale (0.75) in :root scales every font size except the two face rows, the die icons and the art boxes; weight normal but for titles and the roll number; outlines 1px. The map's zoom drops from 1.4 to 1.25 so Start and Boss sit inside its panel.
-
-D-119: Remove, the fourth die action: one blank face (never 1, 20 or 10) off the die for the run, while more than DIE_MIN_FACES (12) remain. Faces are now found by number (getPlayerFace()); Elevation and Reliquary Chain read the next face still on the die.
-
-Tests: build167.test.js holds this build's assertions; facts.test.js and build151.test.js read the Anomaly label; build145's map node check reads 1px and 7.5px; build149 Item f now waits for the roll animation and the img instead of a fixed 200 ms (it was flaky before this build).
+Tests: build168.test.js holds this build's assertions. Corrected to the new timing: build141 Items A-a to A-d and B-d, build148 Item a (both cases), facts.test.js F09. mods.test.js unchanged.
 
 Verification: see paste-back.
 

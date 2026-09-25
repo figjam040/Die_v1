@@ -427,14 +427,13 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.close();
   });
 
-  await runTest('F09 poison decays N then N-1, ticked at START_OF_TURN', async () => {
+  await runTest('F09 poison decays N then N-1, ticked at the end of the poisoned side\'s turn', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => { updatePlayer({ poisonStacks: 6 }); });
-    await advanceUntilPhase(page, 'CHECK_WIN_LOSS');
+    await advanceUntilPhase(page, 'CARD_PHASE');
     const before = await page.evaluate(() => gameState.player.hp);
-    await page.evaluate(() => { nextPhase(); }); // CHECK_WIN_LOSS -> START_OF_TURN, poison ticks inline
-    await page.waitForFunction(() => gameState.turn.phase === 'START_OF_TURN' || gameState.turn.phase === 'ROLL_PHASE');
+    await page.evaluate(() => { nextPhase(); }); // CARD_PHASE -> END_PLAYER_TURN, the player's poison ticks inline
     const v = await page.evaluate(() => ({ hp: gameState.player.hp, stacks: gameState.player.poisonStacks }));
     assert.strictEqual(before - v.hp, 6, 'expected exactly 6 poison damage this tick');
     assert.strictEqual(v.stacks, 5, 'expected stacks to decay from 6 to 5');

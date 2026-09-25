@@ -1,8 +1,8 @@
 // ============================================================
 // TESTS/BUILD148.TEST.JS
 // Standing regression suite for BUILD 148: KI-28 (a Charge's break check
-// now runs after the enemy's own poison tick, so the release round's tick
-// counts toward the break), the run transcript, the log's Play/All views,
+// now runs after the enemy's own poison tick, so the tick that ends the
+// wind-up round counts toward the break), the run transcript, the log's Play/All views,
 // the log's full-screen mode, and the browser-zoom check. Same shape as
 // tests/build147.test.js: plain Node script, playwright launched directly,
 // node:assert. Run: node tests/build148.test.js
@@ -55,10 +55,10 @@ function realErrors(page) {
   const browser = await chromium.launch();
 
   // ---------------------------------------------------------------
-  // ITEM (a) — KI-28: the break check counts the release round's tick
+  // ITEM (a) — KI-28: the break check counts the wind-up round's end tick
   // ---------------------------------------------------------------
 
-  await runTest('Item a: wind-up damage plus the release round\'s own tick breaks the Charge, and the release deals no damage', async () => {
+  await runTest('Item a: wind-up damage plus the wind-up round\'s own end tick breaks the Charge, and the release deals no damage', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => {
@@ -69,21 +69,22 @@ function realErrors(page) {
     await page.evaluate(() => {
       // 6 damage dealt during the wind-up round — below breakAt (10) alone.
       updateEnemy({ hp: gameState.enemy.hp - 6 });
-      // Poison gained during the wind-up round; ticks at the release
-      // round's own START_OF_TURN, for 4 more — 6 + 4 = 10, reaches breakAt.
+      // Poison gained during the wind-up round; ticks as that round ends
+      // (CHECK_WIN_LOSS), for 4 more — 6 + 4 = 10, reaches breakAt.
       updateEnemy({ poisonStacks: 4 });
     });
     const playerHpBefore = await page.evaluate(() => gameState.player.hp);
-    await page.evaluate(() => { runPhase('START_OF_TURN'); }); // release round begins: tick, then the break check
+    await page.evaluate(() => { runPhase('CHECK_WIN_LOSS'); }); // the wind-up round ends: tick
+    await page.evaluate(() => { runPhase('START_OF_TURN'); }); // release round begins: the break check
     const broken = await page.evaluate(() => gameState.enemy.chargeBroken);
-    assert.strictEqual(broken, true, 'expected 6 (wind-up) + 4 (release tick) = 10 to reach breakAt 10');
+    assert.strictEqual(broken, true, 'expected 6 (wind-up) + 4 (end-of-round tick) = 10 to reach breakAt 10');
     await page.evaluate(() => { runPhase('ENEMY_ACT_PHASE'); });
     const playerHpAfter = await page.evaluate(() => gameState.player.hp);
     assert.strictEqual(playerHpAfter, playerHpBefore, 'a broken Charge must deal no release damage to the player');
     await page.close();
   });
 
-  await runTest('Item a: the mirror case — 6 (wind-up) + 3 (release tick) = 9 stays under breakAt 10, the release lands', async () => {
+  await runTest('Item a: the mirror case — 6 (wind-up) + 3 (end-of-round tick) = 9 stays under breakAt 10, the release lands', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => {
@@ -97,6 +98,7 @@ function realErrors(page) {
       updateEnemy({ poisonStacks: 3 });
     });
     const playerHpBefore = await page.evaluate(() => gameState.player.hp);
+    await page.evaluate(() => { runPhase('CHECK_WIN_LOSS'); });
     await page.evaluate(() => { runPhase('START_OF_TURN'); });
     const broken = await page.evaluate(() => gameState.enemy.chargeBroken);
     assert.strictEqual(broken, false, 'expected 6 + 3 = 9 to stay under breakAt 10');

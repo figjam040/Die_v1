@@ -911,11 +911,11 @@ function init() {
   registerListener('NAT_ONE', 'ordained_nat_one_passive', gameState.config.classes[gameState.player.classId].onNatOne, 'permanent');
 
   // ---------- POISON ANSWER ----------
-  // At START_OF_TURN, before poison ticks and before block clears, every
-  // GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK block still held removes 1
+  // At END_PLAYER_TURN, before the player's poison tick, every
+  // GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK block held removes 1
   // stack of poison. Block is read here, not spent. Enemies are
   // unaffected — they have no block field.
-  registerListener('START_OF_TURN', 'poison_answer_passive', function() {
+  registerListener('END_PLAYER_TURN', 'poison_answer_passive', function() {
     const block = gameState.player.block;
     const poison = gameState.player.poisonStacks;
     const perStack = GAME_CONFIG.POISON_ANSWER_BLOCK_PER_STACK;
