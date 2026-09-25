@@ -47,11 +47,12 @@
 // F48 (BUILD 153) Merchant's Seal prices are floor(base x 0.75); removal stays 75
 // F49 (BUILD 162) an enemy with a die shows a face row under its art; dev click forces a face (D-103)
 // F50 (BUILD 162) each die icon animates its roll (DIE_ROLL_ANIMATION) (D-107)
+// F51 (BUILD 164) face 20 weight capped at FACE_TWENTY_MAX_WEIGHT 5 on every weight path, MAX shown on its caption (D-108)
 // ============================================================
 
 const GAME_CONFIG = {
 
-  BUILD: 163,
+  BUILD: 164,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -122,6 +123,7 @@ const GAME_CONFIG = {
   ENEMY_NAT_ONE_SELF_POISON: 5,
 
   DIE_SIZE: { PLAYER: 20, ELITE: 12, BOSS: 20, NORMAL: 6 },
+  FACE_TWENTY_MAX_WEIGHT: 5,
 
   ENEMY_WRATH_AMOUNT: 2,
 

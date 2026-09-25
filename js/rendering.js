@@ -373,6 +373,7 @@ function faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount) {
   let text = null;
   if (face.modId === 'NAT_TWENTY' || face.modId === 'NAT_ONE') {
     text = NAT_DESCRIPTION[face.modId] || null;
+    if (text && face.modId === 'NAT_TWENTY') text += ' Its weight caps at ' + GAME_CONFIG.FACE_TWENTY_MAX_WEIGHT + '.';
   } else if (face.modId === 'ENEMY_NAT_TWENTY') {
     text = 'forces ' + (enemyName || 'the boss') + "'s Charge next round; loaded buff faces trigger only when rolled.";
   } else if (face.modId === 'ENEMY_NAT_ONE') {
@@ -420,7 +421,7 @@ function faceTitleText(face, showTriggerCounts, isPlayerDie) {
     parts.push(modDisplayName(face.modId));
   }
   // Enemy faces never gain weight, so their tips don't print it (D-103).
-  if (isPlayerDie) parts.push('weight ' + face.weight);
+  if (isPlayerDie) parts.push('weight ' + face.weight + (isFaceTwentyAtCap(face.number) ? ' (MAX)' : ''));
   if (showTriggerCounts && face.modId !== null) {
     const modData = face.modData || {};
     const count1 = modData.triggerCount || 0;
@@ -722,6 +723,7 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       } else if (face.modId === 'NAT_TWENTY' || face.modId === 'ENEMY_NAT_TWENTY') {
         caption.classList.add('die-face-caption-nat');
         caption.textContent = 'NAT 20' + (pctText ? '\n' + pctText : '');
+        if (isPlayerDie && isFaceTwentyAtCap(face.number)) caption.textContent += ' MAX';
       } else {
         caption.textContent = pctText;
         // ODDS_EMPHASIS (GAME_CONFIG) — a weight-above-1 face's percent
@@ -1935,6 +1937,18 @@ function dieActionChooseLoad() {
   refreshInspector();
 }
 
+// Face 20 is Strengthen-eligible until it reaches its weight cap; any other
+// loaded face always is. Face 1 never is.
+function isStrengthenEligibleFace(f) {
+  if (f.number === 1) return false;
+  if (f.number === GAME_CONFIG.DIE_SIZE.PLAYER) return !isFaceTwentyAtCap(f.number);
+  return f.modId !== null;
+}
+
+function strengthenFaceExists() {
+  return gameState.die.faces.some(isStrengthenEligibleFace);
+}
+
 function dieActionChooseStrengthen() {
   dieActionStep = 'strengthen_pick_face';
   refreshInspector();
@@ -2007,10 +2021,14 @@ function dieActionPickLoadFace(faceNumber) {
 function dieActionPickStrengthenFace(faceNumber) {
   let newWeight = strengthenFace(faceNumber);
   if (hasArtifact('leaden_face')) {
-    for (let i = 1; i < GAME_CONFIG.ARTIFACTS.LEADEN_FACE_STRENGTHEN; i++) {
-      newWeight = strengthenFace(faceNumber);
+    if (isFaceTwentyAtCap(faceNumber)) {
+      log('[ARTIFACT] Leaden Face: face 20 at the cap');
+    } else {
+      for (let i = 1; i < GAME_CONFIG.ARTIFACTS.LEADEN_FACE_STRENGTHEN; i++) {
+        newWeight = strengthenFace(faceNumber);
+      }
+      log('[ARTIFACT] Leaden Face: Strengthen added ' + GAME_CONFIG.ARTIFACTS.LEADEN_FACE_STRENGTHEN + ' weight');
     }
-    log('[ARTIFACT] Leaden Face: Strengthen added ' + GAME_CONFIG.ARTIFACTS.LEADEN_FACE_STRENGTHEN + ' weight');
   }
   log('[DIE ACTION] strengthened face ' + faceNumber + ' to weight ' + newWeight);
   playAudioEvent('die_action_strengthen');
@@ -2059,8 +2077,7 @@ function currentPlayerDiePickConfig() {
     return {
       isEligible: function(f) {
         if (f.number === 1) return false;
-        if (f.number === GAME_CONFIG.DIE_SIZE.PLAYER) return true;
-        return f.modId !== null;
+        return isStrengthenEligibleFace(f);
       },
       onPick: dieActionPickStrengthenFace,
       showBecomes: true
@@ -2111,11 +2128,12 @@ function renderDieActionPanel() {
       row.appendChild(loadBtn);
     }
 
-    const strengthenBtn = document.createElement('button');
-    strengthenBtn.textContent = 'Strengthen';
-    strengthenBtn.addEventListener('click', function() { log('[CLICK] Strengthen'); dieActionChooseStrengthen(); });
-
-    row.appendChild(strengthenBtn);
+    if (strengthenFaceExists()) {
+      const strengthenBtn = document.createElement('button');
+      strengthenBtn.textContent = 'Strengthen';
+      strengthenBtn.addEventListener('click', function() { log('[CLICK] Strengthen'); dieActionChooseStrengthen(); });
+      row.appendChild(strengthenBtn);
+    }
 
     // Purify offers only when a purifiable face exists (D-54-style hide).
     if (purifiableFaceExists()) {
@@ -2541,6 +2559,12 @@ function eventRoll() {
     eventOutcomeText = 'The water keeps what it is owed.';
     log('[EVENT] font: rolled ' + face.number + ', outcome nat one, hp ' + before + ' to ' + newHp);
     appendTranscript('EVENT font: rolled ' + face.number + ' NAT 1, hp ' + before + ' to ' + newHp);
+  } else if (face.modId !== null && isFaceTwentyAtCap(face.number)) {
+    updateRun({ gold: gameState.run.gold + GAME_CONFIG.EVENT.BLANK_GOLD });
+    updateTurn({ rolledFaceNumber: face.number, rollOutcome: 'blank' });
+    eventOutcomeText = 'Coins lie on the bottom.';
+    log('[EVENT] font: rolled ' + face.number + ', outcome blank, +' + GAME_CONFIG.EVENT.BLANK_GOLD + ' gold, face 20 at the cap');
+    appendTranscript('EVENT font: rolled ' + face.number + ' blank, +' + GAME_CONFIG.EVENT.BLANK_GOLD + ' gold, face 20 at the cap');
   } else if (face.modId !== null) {
     const newWeight = strengthenFace(face.number);
     updateTurn({ rolledFaceNumber: face.number, rollOutcome: 'mod' });
@@ -2797,7 +2821,7 @@ function renderShopPanel() {
       onClick: function() { log('[CLICK] ' + artifact.name); shopBuyArtifact(); }
     });
   }
-  if (!shop.strengthenBought) {
+  if (!shop.strengthenBought && strengthenFaceExists()) {
     const price = shopPriceWithArtifacts(GAME_CONFIG.SHOP.STRENGTHEN_PRICE);
     smallRow.push({
       label: 'Strengthen — ' + price + 'g',

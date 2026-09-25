@@ -470,7 +470,7 @@ function rollDie(faces) {
 
 Default: DIE_SIZE.PLAYER faces (20) weight 1 = 5% each. Strengthen to weight 2 = that face appears twice in pool. Only weight values change. turn.gildedFace is the one exception, the only ticket source outside face.weight: Gilded Die's paid weight, live for one roll, never written onto the face (GOLD, SHOP AND ARTIFACTS). rollOdds() (pipeline.js, BUILD 155) reads this exact bag to show the face row's own percent — see DIE COLUMN.
 
-Strengthen may target face DIE_SIZE.PLAYER (20), plus any loaded face. Face 1 is never targetable — the Strengthen picker (rendering.js) excludes number 1 explicitly. Face 20 never gains a mod; Strengthen only adds weight, raising how often Nat 20 comes up.
+Strengthen may target face DIE_SIZE.PLAYER (20), plus any loaded face. Face 1 is never targetable — the Strengthen picker (rendering.js) excludes number 1 explicitly. Face 20 never gains a mod; Strengthen only adds weight, raising how often Nat 20 comes up, and stops at FACE_TWENTY_MAX_WEIGHT (5): strengthenFace() refuses past it, the picker marks face 20 inert, and its caption reads MAX.
 
 ---
 
@@ -767,19 +767,18 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 162) — D-103/KI-42 enemy die as its own face row under the enemy art, dev click forces a face in ENEMY_ROLL_PHASE; D-107 stepped roll animation on both die icons (DIE_ROLL_ANIMATION), face row, strip and pops follow the stop.
 
 (BUILD 163) — KI-43 byte-identical standing-sections check removed, SCREEN LAYOUT records BUILD 162; KI-44 config.js header F47-F50 reconciled. No game change.
+(BUILD 164) — D-108 face 20 weight capped at 5 (FACE_TWENTY_MAX_WEIGHT) on every weight path; MAX on its caption and DIE layer; Strengthen hidden when only a capped face 20 qualifies.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.90 (BUILD 163) — two process fixes, no game change.
+Stage 2.91 (BUILD 164) — D-108 (answers OQ-18): face 20's weight is capped at GAME_CONFIG.FACE_TWENTY_MAX_WEIGHT (5).
 
-(A) KI-43 — tests/build159.test.js's byte-identical standing-sections assertion is deleted (it kept the ownership rule from working); the file keeps its KI-38 and size checks. SCREEN LAYOUT now records the previous build's items: the enemy die row and the die icons' roll animation.
+strengthenFace() refuses to raise face 20 past 5 and returns the unchanged weight, so Strengthen, Leaden Face, Ordain, Elevation and The Font all obey it. The Strengthen picker (die action and shop) marks a capped face 20 inert; with nothing else eligible the Strengthen button is not offered. Leaden Face's second step is skipped at the cap and logged. The Font gives BLANK_GOLD instead of a weight when the rolled face is a capped face 20. Face 20's caption reads MAX beside its percent at weight 5; the DIE layer and hover text name the cap.
 
-(B) KI-44 — js/config.js's header carries F47 (enemy reads) and F48 (Merchant's Seal prices); the enemy row and roll animation lines are now F49 and F50.
-
-tests/build163.test.js holds this build's assertions.
+tests/build164.test.js holds this build's assertions.
 
 Verification: see paste-back.
 

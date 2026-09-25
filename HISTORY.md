@@ -1214,3 +1214,15 @@ Standing sections not updated: tests/build159.test.js requires everything above 
 Verification: see paste-back.
 
 BUILD 163 index note: KI-43 byte-identical standing check removed, SCREEN LAYOUT records BUILD 162; KI-44 config.js header F47-F50 reconciled. No game change.
+
+Stage 2.90 (BUILD 163) — two process fixes, no game change.
+
+(A) KI-43 — tests/build159.test.js's byte-identical standing-sections assertion is deleted (it kept the ownership rule from working); the file keeps its KI-38 and size checks. SCREEN LAYOUT now records the previous build's items: the enemy die row and the die icons' roll animation.
+
+(B) KI-44 — js/config.js's header carries F47 (enemy reads) and F48 (Merchant's Seal prices); the enemy row and roll animation lines are now F49 and F50.
+
+tests/build163.test.js holds this build's assertions.
+
+Verification: see paste-back.
+
+BUILD 164 index note: D-108 (answers OQ-18) face 20 weight capped at FACE_TWENTY_MAX_WEIGHT 5 on every weight path, MAX on its caption and DIE layer, Strengthen hidden when only a capped face 20 qualifies.

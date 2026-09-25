@@ -71,10 +71,17 @@ function healPlayer(amount) {
 
 // ---------- DIE FACE HELPERS ----------
 
+function isFaceTwentyAtCap(faceNumber) {
+  if (faceNumber !== GAME_CONFIG.DIE_SIZE.PLAYER) return false;
+  return gameState.die.faces[faceNumber - 1].weight >= GAME_CONFIG.FACE_TWENTY_MAX_WEIGHT;
+}
+
 // The one place any face's weight is ever written. Player die only —
-// nothing Strengthens or Ordains the enemy's die.
+// nothing Strengthens or Ordains the enemy's die. Face 20 never rises past
+// FACE_TWENTY_MAX_WEIGHT: at the cap this returns the unchanged weight.
 function strengthenFace(faceNumber) {
   const face = gameState.die.faces[faceNumber - 1];
+  if (isFaceTwentyAtCap(faceNumber)) return face.weight;
   const newWeight = face.weight + 1;
   const newFaces = gameState.die.faces.slice();
   newFaces[faceNumber - 1] = Object.assign({}, face, { weight: newWeight });
