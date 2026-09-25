@@ -252,6 +252,9 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
     // Face 10 carries the Ordained's own anchor, Consecrate, on a fresh die.
     await page.evaluate(() => { forcePlayerRoll(10); });
     await page.waitForFunction(() => gameState.turn.rolledFaceNumber === 10);
+    // BUILD 162 (D-107): the strip and icon number land once the die
+    // icon's roll animation stops.
+    await page.waitForFunction(() => dieRollAnimationsIdle());
     const v = await page.evaluate(() => ({
       hero: document.getElementById('rollHero').textContent.replace(/\s+/g, ' ').trim(),
       // BUILD 161: the icon's own hover tip is now a sibling span inside

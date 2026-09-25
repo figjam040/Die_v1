@@ -89,6 +89,9 @@ function refreshInspector() {
   const contentEl = document.getElementById('inspectorContent');
   if (!contentEl) return;
   contentEl.textContent = JSON.stringify(gameState, null, 2);
+  // Before any face row renders, so a fresh roll is held back from the
+  // row on the very render that first sees it (D-107).
+  noteDieRollsForAnimation();
   const actStampEl = document.getElementById('actStamp');
   if (actStampEl) { actStampEl.textContent = 'ACT ' + gameState.run.actNumber; }
   const appEl = document.querySelector('.app');
@@ -113,9 +116,6 @@ function refreshInspector() {
   // so its own pickConfig disables the dev force-roll click for that render.
   const playerDiePickConfig = currentPlayerDiePickConfig();
   renderDieList('playerDieList', gameState.die.faces, playerDiePickConfig ? null : forcePlayerRoll, playerDiePickConfig);
-  // Kept rendered but never shown: the enemy's own faces read off
-  // #enemyBuffsValue and #enemyDieIcon instead.
-  document.getElementById('enemyDieList').style.display = 'none';
   const enemyTitleEl = document.getElementById('enemyPanelTitle');
   if (enemyTitleEl) {
     if (gameState.enemy.id === 'Boss') {
@@ -126,7 +126,11 @@ function refreshInspector() {
       enemyTitleEl.textContent = 'ENEMY';
     }
   }
-  renderDieList('enemyDieList', gameState.enemy.die.faces, forceEnemyRoll, null, gameState.enemy.buffPoisonStacks, gameState.enemy.name, gameState.enemy.wrathPerTrigger);
+  // D-103 — the enemy's own face row under its art; a dieless enemy's
+  // empty row collapses by CSS (:empty).
+  const enemyFaces = gameState.enemy.hasDie ? gameState.enemy.die.faces : [];
+  document.getElementById('enemyDieList').classList.toggle('enemy-face-row-d20', enemyFaces.length > GAME_CONFIG.DIE_SIZE.ELITE);
+  renderDieList('enemyDieList', enemyFaces, forceEnemyRoll, null, gameState.enemy.buffPoisonStacks, gameState.enemy.name, gameState.enemy.wrathPerTrigger);
   renderDieIcons();
   renderArtBoxes();
   renderActBackground();
@@ -250,7 +254,8 @@ function paintRollHero() {
 
   labelEl.innerHTML = '';
   numEl.textContent = '';
-  if (rollHeroSegments.length === 0) {
+  // D-107: the strip follows the icon — nothing until it stops spinning.
+  if (rollHeroSegments.length === 0 || dieRollHolding('player')) {
     hero.classList.add('roll-hero-empty');
     numEl.classList.remove('roll-hero-nat');
     labelEl.classList.remove('roll-hero-nat');
@@ -414,7 +419,8 @@ function faceTitleText(face, showTriggerCounts, isPlayerDie) {
   } else {
     parts.push(modDisplayName(face.modId));
   }
-  parts.push('weight ' + face.weight);
+  // Enemy faces never gain weight, so their tips don't print it (D-103).
+  if (isPlayerDie) parts.push('weight ' + face.weight);
   if (showTriggerCounts && face.modId !== null) {
     const modData = face.modData || {};
     const count1 = modData.triggerCount || 0;
@@ -478,8 +484,12 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
 
   const tracksRolledFace = (containerId === 'playerDieList' || containerId === 'enemyDieList');
   const isEnemyContainer = containerId === 'enemyDieList';
-  const trackedRolledFaceNumber = isEnemyContainer ? gameState.turn.enemyRolledFaceNumber : gameState.turn.rolledFaceNumber;
-  const trackedRollOutcome = isEnemyContainer ? gameState.turn.enemyRollOutcome : gameState.turn.rollOutcome;
+  // D-107: a face row lights its rolled face only once that side's die
+  // icon stops spinning; the enemy's reads its held display roll, since
+  // the state's own copy clears the instant the next round starts.
+  const shownRoll = isEnemyContainer ? shownEnemyRoll() : shownPlayerRoll();
+  const trackedRolledFaceNumber = shownRoll.faceNumber;
+  const trackedRollOutcome = shownRoll.outcome;
   let isNewRollThisRender = false;
   if (tracksRolledFace) {
     const currentRollSignature = trackedRolledFaceNumber !== null
@@ -501,7 +511,7 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
   // Bound scan, an outside-roll trigger) hops to the same rolled-face
   // look, player die only. Same flash-once-then-sustained split.
   const tracksHoppedFaces = tracksRolledFace && !isEnemyContainer;
-  const trackedHoppedFaces = tracksHoppedFaces ? gameState.turn.hoppedFaces : [];
+  const trackedHoppedFaces = (tracksHoppedFaces && !dieRollHolding('player')) ? gameState.turn.hoppedFaces : [];
   if (!lastSeenHoppedFacesByContainer[containerId]) { lastSeenHoppedFacesByContainer[containerId] = []; }
   const committedHoppedFaces = lastSeenHoppedFacesByContainer[containerId];
   const newlyHoppedThisRender = trackedHoppedFaces.filter(function(n) { return committedHoppedFaces.indexOf(n) === -1; });
@@ -1056,6 +1066,12 @@ function fxLayer() {
 }
 
 function spawnFxNumber(anchorId, kind, delta) {
+  // D-107: pops follow a spinning die icon — held, then replayed in order
+  // the moment it stops (releaseDieRollDisplay()).
+  if (dieRollHolding('player') || dieRollHolding('enemy')) {
+    heldFxNumbers.push([anchorId, kind, delta]);
+    return;
+  }
   const anchor = document.getElementById(anchorId);
   if (!anchor) { return; }
   const cfg = GAME_CONFIG.DAMAGE_NUMBERS;
@@ -1442,15 +1458,157 @@ function playerDieIconColour() {
   return 'var(--blank)';
 }
 
+// ---------- DIE ROLL ANIMATION (D-107) ----------
+// Display only: the phase machine never waits on it. refreshInspector()
+// spots a fresh roll on the render it lands; that side's icon then steps
+// through DIE_ROLL_ANIMATION's frames while its face row, the roll strip
+// and every pop hold, all released together as the icon snaps upright.
+// Frame numbers come from a display-only generator so gameplay's own
+// Math.random sequence (seeded by tests/autoplay.js) is never consumed.
+
+const dieRollAnims = { player: null, enemy: null };
+const lastSeenRollSignatures = { player: null, enemy: null };
+const heldFxNumbers = [];
+let enemyRollDisplay = null;
+let dieRollAnimSeed = (Date.now() % 2147483646) + 1;
+
+function dieRollAnimRandom(dieSize, avoid) {
+  let n;
+  do {
+    dieRollAnimSeed = (dieRollAnimSeed * 48271) % 2147483647;
+    n = 1 + (dieRollAnimSeed % dieSize);
+  } while (n === avoid && dieSize > 1);
+  return n;
+}
+
+function dieRollHolding(side) {
+  const anim = dieRollAnims[side];
+  return !!anim && anim.stage === 'spin';
+}
+
+function shownPlayerRoll() {
+  if (dieRollHolding('player')) return { faceNumber: null, outcome: null };
+  return { faceNumber: gameState.turn.rolledFaceNumber, outcome: gameState.turn.rollOutcome };
+}
+
+// The enemy rolls at a round's end and the next START_OF_TURN clears the
+// state's own copy at once, so its roll holds here through the round that
+// follows — the round its Wrath/Drain/Seal land in — until it rolls again.
+function shownEnemyRoll() {
+  if (!enemyRollDisplay || dieRollHolding('enemy')) return { faceNumber: null, outcome: null };
+  return { faceNumber: enemyRollDisplay.faceNumber, outcome: enemyRollDisplay.outcome };
+}
+
+function noteDieRollsForAnimation() {
+  const turn = gameState.turn;
+  const held = enemyRollDisplay;
+  if (turn.round === 0 || (held && (held.die !== gameState.enemy.die || turn.round > held.round + 1))) {
+    enemyRollDisplay = null;
+  }
+  const playerSig = turn.rolledFaceNumber === null ? null : turn.round + ':' + turn.rolledFaceNumber + ':' + turn.rollOutcome;
+  const enemySig = turn.enemyRolledFaceNumber === null ? null : turn.round + ':' + turn.enemyRolledFaceNumber + ':' + turn.enemyRollOutcome;
+  const inFight = gameState.run.screen === 'fight';
+  if (playerSig !== null && playerSig !== lastSeenRollSignatures.player && inFight) {
+    startDieRollAnimation('player', GAME_CONFIG.DIE_SIZE.PLAYER, turn.rolledFaceNumber);
+  }
+  if (enemySig !== null && enemySig !== lastSeenRollSignatures.enemy) {
+    enemyRollDisplay = { faceNumber: turn.enemyRolledFaceNumber, outcome: turn.enemyRollOutcome, round: turn.round, die: gameState.enemy.die };
+    if (inFight) { startDieRollAnimation('enemy', gameState.enemy.die.faces.length, turn.enemyRolledFaceNumber); }
+  }
+  lastSeenRollSignatures.player = playerSig;
+  lastSeenRollSignatures.enemy = enemySig;
+}
+
+// FRAME_COUNT frames over DURATION_MS, each a new number, rotated a step
+// further; then upright on the rolled number (the release), one flash to
+// --text for FLASH_MS, and SHAKE_CYCLES left-right shakes of SHAKE_PX.
+function startDieRollAnimation(side, dieSize, rolledNumber) {
+  const cfg = GAME_CONFIG.DIE_ROLL_ANIMATION;
+  const frameMs = cfg.DURATION_MS / cfg.FRAME_COUNT;
+  if (dieRollAnims[side]) { clearTimeout(dieRollAnims[side].timer); }
+  const anim = { stage: 'spin', frame: 1, number: dieRollAnimRandom(dieSize, rolledNumber), rotation: cfg.ROTATE_STEP_DEG, shiftX: 0, flash: false, shakeStep: 0, timer: null };
+  dieRollAnims[side] = anim;
+  function step() {
+    if (dieRollAnims[side] !== anim) return;
+    if (anim.stage === 'spin' && anim.frame < cfg.FRAME_COUNT) {
+      anim.frame++;
+      anim.number = dieRollAnimRandom(dieSize, anim.number);
+      anim.rotation = anim.frame * cfg.ROTATE_STEP_DEG;
+      anim.timer = setTimeout(step, frameMs);
+      renderDieIcons();
+    } else if (anim.stage === 'spin') {
+      Object.assign(anim, { stage: 'flash', rotation: 0, flash: true });
+      anim.timer = setTimeout(step, cfg.FLASH_MS);
+      releaseDieRollDisplay(side);
+    } else if (anim.shakeStep < cfg.SHAKE_CYCLES * 2) {
+      Object.assign(anim, { stage: 'shake', flash: false, shiftX: (anim.shakeStep % 2 === 0 ? -1 : 1) * cfg.SHAKE_PX });
+      anim.shakeStep++;
+      anim.timer = setTimeout(step, cfg.SHAKE_STEP_MS);
+      renderDieIcons();
+    } else {
+      dieRollAnims[side] = null;
+      renderDieIcons();
+    }
+  }
+  anim.timer = setTimeout(step, frameMs);
+}
+
+// The icon has stopped: the face row, roll strip and held pops catch up.
+function releaseDieRollDisplay(side) {
+  refreshInspector();
+  if (side === 'player') {
+    paintRollHero();
+    const hero = document.getElementById('rollHero');
+    if (hero) { hero.classList.remove('roll-pulse'); void hero.offsetWidth; hero.classList.add('roll-pulse'); }
+  }
+  if (!dieRollHolding('player') && !dieRollHolding('enemy')) {
+    // A pop whose readout a reward layer has since hidden is dropped, not
+    // drawn at the page corner.
+    heldFxNumbers.splice(0).forEach(function(a) {
+      const anchor = document.getElementById(a[0]);
+      if (anchor && anchor.getClientRects().length) { spawnFxNumber(a[0], a[1], a[2]); }
+    });
+  }
+}
+
+// Test/dev read: true once neither die icon is mid-animation.
+function dieRollAnimationsIdle() {
+  return !dieRollAnims.player && !dieRollAnims.enemy;
+}
+
+// One icon's current look: the spinning frame's number and turn, or the
+// resting number (null pre-roll) upright, plus any flash or shake.
+function dieIconFrame(side, restingNumber, restingColour) {
+  const anim = dieRollAnims[side];
+  if (!anim) return { number: restingNumber, colour: restingColour, stroke: null, transform: 'none', stage: 'idle' };
+  const parts = [];
+  if (anim.rotation) parts.push('rotate(' + anim.rotation + 'deg)');
+  if (anim.shiftX) parts.push('translateX(' + anim.shiftX + 'px)');
+  const spinning = anim.stage === 'spin';
+  return {
+    number: spinning ? anim.number : restingNumber,
+    colour: (spinning || anim.flash) ? 'var(--text)' : restingColour,
+    stroke: anim.flash ? 'var(--text)' : null,
+    transform: parts.length ? parts.join(' ') : 'none',
+    stage: anim.stage
+  };
+}
+
+function dieIconWrapHtml(frame, dieSize, strokeColour) {
+  return '<div class="die-icon-wrap" data-roll-anim="' + frame.stage + '" style="transform:' + frame.transform + '">' +
+    dieIconSvg(dieSize, frame.stroke || strokeColour) +
+    '<div class="die-icon-number" style="color:' + frame.colour + '">' +
+    (frame.number === null ? '' : '<span class="die-icon-number-text">' + frame.number + '</span>') + '</div></div>';
+}
+
 function renderDieIcons() {
   const playerEl = document.getElementById('playerDieIcon');
   if (playerEl) {
-    const rolled = gameState.turn.rolledFaceNumber;
-    playerEl.innerHTML = '<div class="die-icon-wrap">' + dieIconSvg(GAME_CONFIG.DIE_SIZE.PLAYER, 'var(--text)') +
-      '<div class="die-icon-number" style="color:' + playerDieIconColour() + '">' +
-      (rolled === null ? '' : '<span class="die-icon-number-text">' + rolled + '</span>') + '</div></div>';
+    const rolled = shownPlayerRoll().faceNumber;
+    const frame = dieIconFrame('player', rolled, playerDieIconColour());
+    playerEl.innerHTML = dieIconWrapHtml(frame, GAME_CONFIG.DIE_SIZE.PLAYER, 'var(--text)');
     setHoverTip(playerEl, 'Your die: d' + GAME_CONFIG.DIE_SIZE.PLAYER +
-      (rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.'));
+      (frame.stage === 'spin' ? ', rolling.' : rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.'));
   }
 
   const enemyEl = document.getElementById('enemyDieIcon');
@@ -1462,8 +1620,9 @@ function renderDieIcons() {
     return;
   }
   const size = gameState.enemy.die.faces.length;
-  const rolled = gameState.turn.enemyRolledFaceNumber;
-  const outcome = gameState.turn.enemyRollOutcome;
+  const shown = shownEnemyRoll();
+  const rolled = shown.faceNumber;
+  const outcome = shown.outcome;
   let word = '';
   let wordColour = 'var(--enemy-mod)';
   if (outcome === 'nat_twenty') { word = 'NAT 20'; wordColour = 'var(--nat)'; }
@@ -1472,11 +1631,11 @@ function renderDieIcons() {
     const face = gameState.enemy.die.faces[rolled - 1];
     if (face && face.modId !== null) word = modDisplayName(face.modId);
   }
-  enemyEl.innerHTML = '<div class="die-icon-wrap">' + dieIconSvg(size, 'var(--enemy-mod)') +
-    '<div class="die-icon-number" style="color:var(--enemy-mod)">' + (rolled === null ? '' : '<span class="die-icon-number-text">' + rolled + '</span>') + '</div></div>' +
+  const frame = dieIconFrame('enemy', rolled, 'var(--enemy-mod)');
+  enemyEl.innerHTML = dieIconWrapHtml(frame, size, 'var(--enemy-mod)') +
     '<div class="die-icon-side"><div style="color:' + wordColour + '">' + word + '</div>' +
     '<div style="color:var(--muted)">d' + size + '</div></div>';
-  setHoverTip(enemyEl, 'Enemy die: d' + size + (rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.'));
+  setHoverTip(enemyEl, 'Enemy die: d' + size + (frame.stage === 'spin' ? ', rolling.' : rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.'));
 }
 
 const CARD_EFFECT_TEXT = {

@@ -43,16 +43,29 @@
 // F44 (BUILD 151) lower lane index 3 is the event The Font: unresolved roll picks the outcome
 // F45 (BUILD 153) artifacts: 13, up to ARTIFACT_MAX (8) held, offered after an Elite/non-final-Boss win and sold at SHOP.ARTIFACT_PRICE; their amounts live in ARTIFACTS
 // F46 (BUILD 154) every HP, block, poison, soul and gold change pops a number where it happened; DAMAGE_NUMBERS holds the rise, fade, step count and the six colours
+// F47 (BUILD 162) an enemy with a die shows a face row under its art, one square per face; dev drawer open, a click forces that face (D-103)
+// F48 (BUILD 162) each die icon animates its roll, 5 frames over 400 ms (DIE_ROLL_ANIMATION); face row, strip and pops follow (D-107)
 // ============================================================
 
 const GAME_CONFIG = {
 
-  BUILD: 161,
+  BUILD: 162,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
     DROP_PX: 6,
     COLOUR: '#e8e4d0'
+  },
+
+  // F48
+  DIE_ROLL_ANIMATION: {
+    FRAME_COUNT: 5,
+    DURATION_MS: 400,
+    ROTATE_STEP_DEG: 30,
+    FLASH_MS: 100,
+    SHAKE_PX: 2,
+    SHAKE_CYCLES: 2,
+    SHAKE_STEP_MS: 40
   },
 
   // F46 — COLOURS keys are the announcement kinds state.js sends.

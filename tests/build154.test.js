@@ -311,12 +311,17 @@ async function enterPausedFight(page) {
   await runTest('Item B: a forced 16-damage hit pops one damage number, in #f87171, on the enemy art', async () => {
     const page = await freshPage(browser);
     await enterPausedFight(page);
-    const v = await page.evaluate(() => {
+    const hpBefore = await page.evaluate(() => {
       const faces = gameState.die.faces.slice();
       faces[1] = Object.assign({}, faces[1], { modId: 'smite' }); // 16 damage
       updateDie({ faces: faces });
-      const hpBefore = gameState.enemy.hp;
+      const hp = gameState.enemy.hp;
       forcePlayerRoll(2);
+      return hp;
+    });
+    // BUILD 162 (D-107): pops follow the die icon's roll animation.
+    await page.waitForFunction(() => dieRollAnimationsIdle());
+    const v = await page.evaluate((hpBefore) => {
       const pops = Array.from(document.querySelectorAll('.fx-number'));
       const art = document.getElementById('enemyArtBox').getBoundingClientRect();
       const damage = pops.filter(e => e.dataset.fxKind === 'damage');
@@ -329,7 +334,7 @@ async function enterPausedFight(page) {
         onArt: !!r && r.left >= art.left - 60 && r.right <= art.right + 60 && r.top >= art.top - 60 && r.bottom <= art.bottom + 60,
         cfg: GAME_CONFIG.DAMAGE_NUMBERS
       };
-    });
+    }, hpBefore);
     assert.strictEqual(v.dealt, 16, 'the forced roll must deal 16, got ' + v.dealt);
     assert.strictEqual(v.damageCount, 1, 'exactly one damage number must pop, got ' + v.damageCount);
     assert.strictEqual(v.text, '-16', 'the pop must read -16, got "' + v.text + '"');
