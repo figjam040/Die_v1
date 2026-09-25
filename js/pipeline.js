@@ -243,12 +243,14 @@ function resolvePlayerRoll(face) {
   }
   updateTurn({ rollOutcome: rollOutcome, rolledFaceWeight: face.weight, rolledFaceNumber: face.number });
 
+  // Held by playAudioEvent() until the die icon, spinning since the
+  // updateTurn() above, stops.
   if (rollOutcome === 'nat_twenty') {
     playAudioEvent('nat_20');
   } else if (rollOutcome === 'nat_one') {
     playAudioEvent('nat_1');
   } else {
-    playAudioEvent(rollOutcome === 'blank' ? 'roll_blank' : 'roll');
+    playAudioEvent(rollOutcome === 'blank' ? 'die_blank' : 'die_landing');
   }
 
   if (face.modId === 'NAT_TWENTY') {

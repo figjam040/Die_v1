@@ -2427,7 +2427,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       const effectEl = document.querySelector('#handRow .offer-card-text');
       return effectEl ? effectEl.textContent : null;
     });
-    assert.strictEqual(v, '30 damage', 'Gloria in hand must render its own hand text');
+    assert.strictEqual(v, 'Deal 30 damage.', 'Gloria in hand must render its own hand text');
     await liveBrowser.close();
   });
 
@@ -2447,8 +2447,8 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       const tip = card ? card.querySelector('.hover-tip') : null;
       return { text: text ? text.textContent : null, title: tip ? tip.textContent : null };
     });
-    assert.strictEqual(v.text, '30 damage', 'the reward text for a new card must not be empty');
-    assert.ok(v.title && v.title.indexOf('30 damage') !== -1, 'the reward hover for a new card must not be empty');
+    assert.strictEqual(v.text, 'Deal 30 damage.', 'the reward text for a new card must not be empty');
+    assert.ok(v.title && v.title.indexOf('Deal 30 damage.') !== -1, 'the reward hover for a new card must not be empty');
     await liveBrowser.close();
   });
 
@@ -2716,24 +2716,24 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       tithe: MOD_DESCRIPTION['tithe'],
       anathema: MOD_DESCRIPTION['anathema']
     }));
-    assert.strictEqual(texts.tenet, '6 damage, +1 for each time the rolled face has triggered this run');
-    assert.strictEqual(texts.gradual, '3 damage, +1 per weight of your heaviest face');
-    assert.strictEqual(texts.magnificat, 'Triggers your heaviest other face');
+    assert.strictEqual(texts.tenet, 'Deal 6 damage, plus 1 for each time the rolled face has triggered.');
+    assert.strictEqual(texts.gradual, "Deal 3 damage, plus 1 per weight on your heaviest face that isn't blank.");
+    assert.strictEqual(texts.magnificat, 'Trigger your heaviest other loaded face.');
     // BUILD 142: Threnody's own text assertion moved to tests/build142.test.js
     // (item F) — it now names the live, run-fixed threnodyFace number via
     // getCardEffectText() (rendering.js), not a fixed string this shared
     // batch of raw CARD_EFFECT_TEXT/MOD_DESCRIPTION lookups can check.
-    assert.strictEqual(texts.reverberation, 'The face you rolled triggers again. On a 1 or 20: 6 block instead');
-    assert.strictEqual(texts.canticle, '6 block. The face you rolled gains Bound for this fight');
-    assert.strictEqual(texts.herald, '6 damage. One other random loaded face gains Bound for this fight. Bound');
-    assert.strictEqual(texts.congregation, '8 damage. 16 if another mod on your die has Growth. Growth');
-    assert.strictEqual(texts.lauds, '4 damage, +3 per Growth mod on your die, max 13');
-    assert.strictEqual(texts.reliquary, '6 block. If you already had 10+ block, also 5 damage');
-    assert.strictEqual(texts.vindication, 'Deal damage equal to twice your block, max 24');
-    assert.strictEqual(texts.exequy, "Deal damage equal to the enemy's stacks of poison, max 12");
-    assert.strictEqual(texts.oblation, 'Spend all your soul. 7 damage per soul spent, max 42');
-    assert.strictEqual(texts.tithe, 'End of round: 5 damage per soul you have left, max 20');
-    assert.strictEqual(texts.anathema, 'End of round: deal damage equal to your block, max 16');
+    assert.strictEqual(texts.reverberation, 'Trigger the rolled face again. If you rolled a 1 or 20, gain 6 block instead.');
+    assert.strictEqual(texts.canticle, 'Gain 6 block. If the rolled face is loaded, it gains Bound for this fight.');
+    assert.strictEqual(texts.herald, 'Deal 6 damage. Another random loaded face without Bound gains Bound for this fight.');
+    assert.strictEqual(texts.congregation, 'Deal 8 damage. If another mod on your die has Growth, deal 16 instead.');
+    assert.strictEqual(texts.lauds, 'Deal 4 damage, plus 3 per Growth mod on your die, up to 13.');
+    assert.strictEqual(texts.reliquary, 'Gain 6 block. If you already had 10 or more block, deal 5 damage.');
+    assert.strictEqual(texts.vindication, 'Deal damage equal to twice your block, up to 24.');
+    assert.strictEqual(texts.exequy, "Deal damage equal to the enemy's stacks of poison, up to 12.");
+    assert.strictEqual(texts.oblation, 'Spend all your soul. Deal 7 damage per soul spent, up to 42.');
+    assert.strictEqual(texts.tithe, 'When this turn ends, deal 5 damage per soul you have left, up to 20.');
+    assert.strictEqual(texts.anathema, 'When this turn ends, deal damage equal to your block, up to 16.');
     await liveBrowser.close();
   });
 

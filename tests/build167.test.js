@@ -412,7 +412,9 @@ function stringLiterals(src) {
             if (!el.getClientRects().length || !el.textContent.trim()) return;
             const cs = getComputedStyle(el);
             if (!/hidden|auto|scroll|clip/.test(cs.overflowX + cs.overflowY)) return;
-            if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) out.push('clips: ' + (el.id || el.className));
+            // overflow: clip still paints out to its overflow-clip-margin (D-124's symbol strip).
+            const margin = cs.overflowX === 'clip' && cs.overflowY === 'clip' ? (parseFloat(cs.overflowClipMargin) || 0) : 0;
+            if (el.scrollWidth > el.clientWidth + 1 + margin || el.scrollHeight > el.clientHeight + 1 + margin) out.push('clips: ' + (el.id || el.className));
           });
           const within = (outerSel, innerSel) => {
             const o = document.querySelector(outerSel);

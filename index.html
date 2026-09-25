@@ -278,11 +278,14 @@
   /* min-height is band B's own 220px art boxes plus band C and band D:
      a panel opening below shrinks band B's slack first, and once that is
      gone .left-col scrolls rather than this box spilling over itself. */
+  /* clip, not hidden, so the D-124 symbol strip under the face row can
+     paint into the left column's bottom padding (20px at 1600x900). */
   #fightScreen {
     position: relative;
     flex: 1 1 auto;
     min-height: 546px;
-    overflow: hidden;
+    overflow: clip;
+    overflow-clip-margin: 20px;
   }
 
   /* D-97 — same footprint as .band-top below (top bar to just above the
@@ -910,6 +913,26 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+  }
+
+  /* D-124: the mod symbols under a loaded face. Absolute, so the square
+     and caption keep their place; it starts 3px below the caption, clear
+     of the emphasis drop, and hangs into #fightScreen's clip margin. */
+  .face-symbol-strip {
+    position: absolute;
+    top: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%);
+    height: 24px;
+    display: flex;
+    gap: 1px;
+    pointer-events: none;
+  }
+
+  .face-symbol-img {
+    display: block;
+    image-rendering: pixelated;
+    object-fit: contain;
   }
 
   /* ODDS_EMPHASIS (GAME_CONFIG) — one font step up; the drop
@@ -2220,6 +2243,7 @@
         <span class="dev-mod-loader-label">DEV SETUP</span>
         <label for="devPauseBeforeRollCheckbox"><input type="checkbox" id="devPauseBeforeRollCheckbox"> Pause before first roll</label>
         <label for="devMuteAudioCheckbox"><input type="checkbox" id="devMuteAudioCheckbox"> Mute sound</label>
+        <label for="devMuteRollSoundsCheckbox"><input type="checkbox" id="devMuteRollSoundsCheckbox"> Mute roll sounds</label>
       </div>
 
       <!-- DEV ONLY — single-step phase control for debugging. Remove before any real release. -->

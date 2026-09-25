@@ -232,6 +232,12 @@ document.getElementById('devMuteAudioCheckbox').addEventListener('change', funct
   log('[DEV] audio muted: ' + (audioMuted ? 'on' : 'off'));
 });
 
+// Mutes only rolling, landing, blank and trigger (ROLL_SOUND_EVENTS).
+document.getElementById('devMuteRollSoundsCheckbox').addEventListener('change', function() {
+  rollSoundsMuted = this.checked;
+  log('[DEV] roll sounds muted: ' + (rollSoundsMuted ? 'on' : 'off'));
+});
+
 // An AudioContext built before any user gesture starts 'suspended' per
 // browser autoplay policy; { once: true } resumes it on the page's first
 // pointerdown, wherever it lands.

@@ -46,12 +46,12 @@
 // F47 (BUILD 142) Lector reads a 6: +1 Drain; Hierophant a Nat 1: cancels, 5 poison; Pontifex reads the heaviest face: Wrath
 // F48 (BUILD 153) Merchant's Seal prices are floor(base x 0.75); removal stays 75
 // F49 (BUILD 162) an enemy with a die shows a face row under its art; dev click forces a face (D-103)
-// F50 (BUILD 166) DIE_ROLL_ANIMATION 3 frames over 200 ms; the ROLL_PHASE pause only with the dev drawer open (D-107, D-113)
+// F50 (BUILD 170) DIE_ROLL_ANIMATION 3 frames/200 ms, rattling, then a landing, blank or Nat sound; pause only in dev drawer (D-113)
 // F51 (BUILD 164) face 20 weight capped at FACE_TWENTY_MAX_WEIGHT 5 on every weight path, MAX shown on its caption (D-108)// ============================================================
 
 const GAME_CONFIG = {
 
-  BUILD: 169,
+  BUILD: 170,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {

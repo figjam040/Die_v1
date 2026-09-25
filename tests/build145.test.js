@@ -454,7 +454,7 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
     });
     assert.ok(title.indexOf('Blight') === 0, 'the hover tip must lead with the mod name, got: ' + title);
     assert.ok(title.indexOf('weight 1') !== -1, 'the hover tip must name the weight, got: ' + title);
-    assert.ok(title.indexOf('triggered 2 times this run') !== -1, 'the hover tip must name the run trigger count, got: ' + title);
+    assert.ok(title.indexOf('triggered 2 times') !== -1, 'the hover tip must name the run trigger count, got: ' + title);
     await page.close();
   });
 

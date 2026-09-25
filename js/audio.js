@@ -81,14 +81,30 @@ function resetSoundChains() {
 const CARD_CHAIN_EVENTS = ['card_attack', 'card_block', 'card_hybrid'];
 const MOD_CHAIN_EVENTS = ['mod_trigger'];
 
+// The Font's roll, which never animates.
 function playRollSound() {
   playTone('triangle', 620, 620, 70, 0.13, 6);
 }
 
-// Deliberately duller than a mod roll — blanks are ~70% of rolls and
-// must not read as an event.
-function playBlankRollSound() {
-  playTone('sine', 340, 340, 90, 0.05);
+// ---------- The fight roll (D-113) ----------
+// Rolling rattles under the die animation; landing, blank or a Nat sound
+// plays on the stop. Four quick ticks, each a little lower, inside 200ms.
+function playDieRollingSound() {
+  [0, 45, 90, 135].forEach(function(delay, i) {
+    setTimeout(function() { playTone('square', 700 - i * 60, 700 - i * 60, 30, 0.05); }, delay);
+  });
+}
+
+// A struck tone over a low body — the die settling on a loaded face.
+function playDieLandingSound() {
+  playTone('triangle', 620, 620, 70, 0.13, 6);
+  playTone('sine', 180, 120, 110, 0.10, 4);
+}
+
+// Deliberately duller than landing — blanks are most rolls and must not
+// read as an event.
+function playDieBlankSound() {
+  playTone('sine', 300, 260, 100, 0.07, 6);
 }
 
 // ---------- Card play sounds (Chain A) ----------
@@ -218,7 +234,9 @@ function playCardRewardRichSound() {
 
 const SOUND_TABLE = {
   roll: playRollSound,
-  roll_blank: playBlankRollSound,
+  die_rolling: playDieRollingSound,
+  die_landing: playDieLandingSound,
+  die_blank: playDieBlankSound,
   card_attack: playCardAttackSound,
   card_block: playCardBlockSound,
   card_hybrid: playCardHybridSound,
@@ -245,9 +263,27 @@ const SOUND_TABLE = {
   card_reward_rich: playCardRewardRichSound
 };
 
+// The four roll sounds the dev drawer can mute on their own; mod_trigger
+// is the trigger sound.
+const ROLL_SOUND_EVENTS = ['die_rolling', 'die_landing', 'die_blank', 'mod_trigger'];
+let rollSoundsMuted = false;
+
+// Sounds announced while the player's die icon spins wait for its stop,
+// as the pops do (D-107), so landing and triggers follow the rattle.
+const heldAudioEvents = [];
+
+function releaseHeldAudioEvents() {
+  heldAudioEvents.splice(0).forEach(playAudioEvent);
+}
+
 function playAudioEvent(eventName) {
   const fn = SOUND_TABLE[eventName];
   if (!fn) return;
+  if (rollSoundsMuted && ROLL_SOUND_EVENTS.indexOf(eventName) !== -1) return;
+  if (eventName !== 'die_rolling' && dieRollHolding('player')) {
+    heldAudioEvents.push(eventName);
+    return;
+  }
   if (CARD_CHAIN_EVENTS.indexOf(eventName) !== -1) {
     fn(cardChainStep);
     cardChainStep = Math.min(cardChainStep + 1, CHAIN_STEP_CAP);

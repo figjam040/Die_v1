@@ -395,8 +395,8 @@ function modDisplayName(modId) {
 }
 
 // Resolves a face to its hover description, or null if none exists —
-// never invents one. Blank faces return null on purpose. Appends the
-// face's own ×N when weight is above 1. buffPoisonStacks/enemyName/
+// never invents one. Blank faces return null on purpose; the weight sits
+// on faceTitleText()'s line, not here. buffPoisonStacks/enemyName/
 // wrathAmount are the calling enemy's own act-scaled/per-enemy numbers,
 // threaded through by renderDieList() rather than read from gameState
 // here, so a map preview (a different enemy object) still shows correct text.
@@ -406,42 +406,40 @@ function faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount) {
     text = NAT_DESCRIPTION[face.modId] || null;
     if (text && face.modId === 'NAT_TWENTY') text += ' Its weight caps at ' + GAME_CONFIG.FACE_TWENTY_MAX_WEIGHT + '.';
   } else if (face.modId === 'ENEMY_NAT_TWENTY') {
-    text = 'forces ' + (enemyName || 'the boss') + "'s Charge next round; loaded buff faces trigger only when rolled.";
+    text = (enemyName || 'The boss') + ' starts its Charge next round.';
   } else if (face.modId === 'ENEMY_NAT_ONE') {
     if (enemyName === 'Cardinal') {
-      text = "the player's heaviest loaded face triggers. Once per fight.";
+      text = 'Your heaviest loaded face triggers. Once per fight.';
     } else if (enemyName === 'Pontifex') {
-      text = 'it loses all its Wrath. Once per fight.';
+      text = 'It loses all its Wrath. Once per fight.';
     } else if (enemyName === 'Hierophant') {
-      text = 'Nat 1: its attack is cancelled and it takes ' + GAME_CONFIG.ENEMY_NAT_ONE_SELF_POISON + ' stacks of poison, once per fight. Also happens when the player rolls a Nat 1.';
+      text = 'Its attack is cancelled and it takes ' + GAME_CONFIG.ENEMY_NAT_ONE_SELF_POISON + ' stacks of poison, once per fight. This also happens when you roll a Nat 1.';
     } else {
-      text = 'cancels the enemy’s attack this turn (once per fight), applies ' + GAME_CONFIG.ENEMY_NAT_ONE_SELF_POISON + ' stacks of poison to itself';
+      text = 'Its attack this round is cancelled and it takes ' + GAME_CONFIG.ENEMY_NAT_ONE_SELF_POISON + ' stacks of poison. Once per fight.';
     }
   } else if (face.modId === 'enemy_buff_poison') {
-    text = 'applies ' + buffPoisonStacks + ' stacks of poison to you';
+    text = 'You take ' + buffPoisonStacks + ' stacks of poison.';
   } else if (face.modId === 'enemy_buff_wrath') {
-    text = 'Wrath: every Attack after this round deals ' + (wrathAmount || GAME_CONFIG.ENEMY_WRATH_AMOUNT) + ' more, for the rest of the fight. Each trigger adds again.';
+    text = 'From next round, every Attack deals ' + (wrathAmount || GAME_CONFIG.ENEMY_WRATH_AMOUNT) + ' more damage for the rest of the fight. Each trigger adds more.';
   } else if (face.modId === 'enemy_buff_drain') {
-    text = 'Drain: the player starts next round with 1 less soul.';
+    text = 'You start next round with 1 less soul.';
     if (enemyName === 'Lector' && face.number === 6) {
-      text += ' Also triggers when the player rolls a 6.';
+      text += ' This also triggers when you roll a 6.';
     }
   } else if (face.modId === 'enemy_buff_seal') {
-    text = "Seal: the player's heaviest loaded face, other than 1 and 20, counts as blank next round.";
+    text = 'Your heaviest loaded face counts as blank next round.';
   } else if (face.modId && MOD_DESCRIPTION[face.modId]) {
     text = MOD_DESCRIPTION[face.modId];
   }
-  // A second mod (never possible on a Nat face) appends its own description.
+  // A second mod (never possible on a Nat face) follows the first's text.
   if (face.modId2 && MOD_DESCRIPTION[face.modId2]) {
-    text = (text ? text + ' + ' : '') + MOD_DESCRIPTION[face.modId2];
+    text = (text ? text + ' / ' : '') + MOD_DESCRIPTION[face.modId2];
   }
-  if (!text) return null;
-  if (face.weight > 1) { text += ' (×' + face.weight + ')'; }
   return text;
 }
 
-// The square's own name / weight / trigger count / Bound line, in front of
-// whatever faceHoverText() already says. Reads state only.
+// The square's own name / weight / trigger count / Bound line, the hover
+// box's first line above faceHoverText()'s. Reads state only.
 function faceTitleText(face, showTriggerCounts, isPlayerDie) {
   const parts = [];
   if (face.modId === null) {
@@ -452,17 +450,26 @@ function faceTitleText(face, showTriggerCounts, isPlayerDie) {
     parts.push(modDisplayName(face.modId));
   }
   // Enemy faces never gain weight, so their tips don't print it (D-103).
-  if (isPlayerDie) parts.push('weight ' + face.weight + (isFaceTwentyAtCap(face.number) ? ' (MAX)' : ''));
+  if (isPlayerDie) parts.push('weight ' + face.weight + (isFaceTwentyAtCap(face.number) ? ' MAX' : ''));
   if (showTriggerCounts && face.modId !== null) {
     const modData = face.modData || {};
     const count1 = modData.triggerCount || 0;
     parts.push(face.modId2
-      ? 'triggered ' + count1 + ' / ' + (modData.triggerCount2 || 0) + ' times this run'
-      : 'triggered ' + count1 + ' times this run');
+      ? 'triggered ' + count1 + ' / ' + (modData.triggerCount2 || 0) + ' times'
+      : 'triggered ' + count1 + ' times');
   }
   if (isBoundFace(face)) parts.push('Bound');
   if (isPlayerDie && isFaceSealed(face.number)) parts.push('Sealed');
   return parts.join(' · ');
+}
+
+// D-124: the mod ids whose symbols sit under a face, load order. Blank and
+// Nat faces carry none.
+const FACE_SYMBOL_PX = 24;
+
+function faceSymbolModIds(face) {
+  if (face.modId === null || face.modId === 'NAT_ONE' || face.modId === 'NAT_TWENTY') return [];
+  return face.modId2 ? [face.modId, face.modId2] : [face.modId];
 }
 
 // Per-container "committed" roll signature — lets a re-render triggered
@@ -768,6 +775,15 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
         }
       }
       row.appendChild(caption);
+
+      // D-124: the loaded face's mod symbol(s) in a strip under the caption,
+      // absolutely placed so the square and caption above never move.
+      const symbolStrip = document.createElement('div');
+      symbolStrip.className = 'face-symbol-strip';
+      faceSymbolModIds(face).forEach(function(modId) {
+        attachArtIcon(symbolStrip, 'mods', modId, FACE_SYMBOL_PX, 'face-symbol-img');
+      });
+      row.appendChild(symbolStrip);
     }
 
     let pickEligible = false;
@@ -783,24 +799,32 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     // A currently-Sealed face's hover replaces its usual mod description
     // entirely — that's the one true thing about it right now.
     const hoverText = (isPlayerDie && isFaceSealed(face.number))
-      ? 'Sealed: counts as blank this round.'
+      ? 'Counts as blank this round.'
       : faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount);
     // During the Strengthen picker, an eligible row's hover also shows
     // what the face becomes.
+    // The text never names the weight, so what a face becomes is its
+    // first line again at one more weight.
     let becomesText = null;
     if (pickConfig && pickConfig.showBecomes && pickEligible) {
-      becomesText = faceHoverText(Object.assign({}, face, { weight: face.weight + 1 }), buffPoisonStacks, enemyName, wrathAmount);
+      becomesText = faceTitleText(Object.assign({}, face, { weight: face.weight + 1 }), false, isPlayerDie);
     }
     // D-104/KI-41 — no native title anywhere: this row's own .hover-tip
-    // carries everything the old title used to (name, weight, trigger
-    // count, Bound badge, then the mod's own description), on every row,
-    // blank faces included, so nothing that used to read on hover is lost.
+    // carries everything the old title used to, on every row, blank faces
+    // included. D-125: two lines — name, weight and trigger count, then
+    // the text.
     const titleText = faceTitleText(face, showTriggerBadges, isPlayerDie);
-    const baseHoverText = hoverText || ('Blank: rolls for ' + GAME_CONFIG.BLANK_ROLL_BLOCK + ' block.');
+    const blankText = isPlayerDie ? 'Gain ' + GAME_CONFIG.BLANK_ROLL_BLOCK + ' block.' : 'Nothing happens.';
+    const baseHoverText = hoverText || blankText;
     const tip = document.createElement('span');
     tip.className = 'hover-tip';
+    const titleLine = document.createElement('div');
+    titleLine.className = 'face-tip-title';
+    titleLine.textContent = titleText;
+    tip.appendChild(titleLine);
     const currentLine = document.createElement('div');
-    currentLine.textContent = titleText + ' — ' + baseHoverText;
+    currentLine.className = 'face-tip-text';
+    currentLine.textContent = baseHoverText;
     tip.appendChild(currentLine);
     if (becomesText) {
       const becomesLine = document.createElement('div');
@@ -1027,7 +1051,8 @@ function renderStatusRows(poisonTitle) {
       icon(playerRow, 'P' + gameState.player.poisonStacks, 'status-poison', poisonTitle);
     }
     if (gameState.player.penitenceActive) {
-      icon(playerRow, 'PN', 'status-penitence', NAT_DESCRIPTION.NAT_ONE + ' (' + gameState.player.penitenceTurnsRemaining + ' turn(s) left)');
+      const turnsLeft = gameState.player.penitenceTurnsRemaining;
+      icon(playerRow, 'PN', 'status-penitence', 'Penitence: lose 1 soul at the start of your turn. ' + turnsLeft + (turnsLeft === 1 ? ' turn left.' : ' turns left.'));
     }
     if (gameState.player.drainNextRound > 0) {
       icon(playerRow, 'D' + gameState.player.drainNextRound, 'status-drain', 'Drain: ' + gameState.player.drainNextRound + ' less soul at the start of next round.');
@@ -1626,6 +1651,7 @@ function startDieRollAnimation(side, dieSize, rolledNumber) {
   if (dieRollAnims[side]) { clearTimeout(dieRollAnims[side].timer); }
   const anim = { stage: 'spin', frame: 1, number: dieRollAnimRandom(dieSize, rolledNumber), rotation: cfg.ROTATE_STEP_DEG, shiftX: 0, flash: false, shakeStep: 0, timer: null };
   dieRollAnims[side] = anim;
+  if (side === 'player') { playAudioEvent('die_rolling'); }
   function step() {
     if (dieRollAnims[side] !== anim) return;
     if (anim.stage === 'spin' && anim.frame < cfg.FRAME_COUNT) {
@@ -1655,6 +1681,7 @@ function startDieRollAnimation(side, dieSize, rolledNumber) {
 function releaseDieRollDisplay(side) {
   refreshInspector();
   if (side === 'player') {
+    releaseHeldAudioEvents();
     paintRollHero();
     const hero = document.getElementById('rollHero');
     if (hero) { hero.classList.remove('roll-pulse'); void hero.offsetWidth; hero.classList.add('roll-pulse'); }
@@ -1736,60 +1763,63 @@ function renderDieIcons() {
   setHoverTip(enemyEl, 'Enemy die: d' + size + (frame.stage === 'spin' ? ', rolling.' : rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.'));
 }
 
+// D-125: every player-read text is one or two short imperative sentences —
+// a number before its noun, conditions at the front, no parentheses, never
+// 'applied' or 'this run'. Tags (Bound, Growth) live on the tag line.
 const CARD_EFFECT_TEXT = {
-  strike: '5 damage',
-  ward: '5 block',
-  rite: '6 damage 6 block',
-  rebuke: '4 damage',
-  censure: '14 damage',
-  judgement: '20 damage',
-  vestment: '13 block',
-  litany: '7 damage 7 block',
-  scripture: 'draw 2',
-  communion: '2 soul',
-  censer: '4 poison',
-  purge: '6 damage, 10 if enemy poisoned',
-  interdict: "5 block. 10 if the enemy's intent deals 12 or more damage this round.",
-  bulwark: '6 block. 16 block if the enemy is winding up or releasing this round.',
-  reckoning: '3 damage + 2 per poison stack',
-  retribution: 'damage = block, capped at 12',
-  covenant: '2 damage + 3 per face weight',
-  rapture: '12 damage, free on a mod turn',
-  orison: '5 damage, 9 on a blank roll',
-  tenet: '6 damage, +1 for each time the rolled face has triggered this run',
-  gradual: '3 damage, +1 per weight of your heaviest face',
-  vacancy: '1 damage per blank face, max 16',
-  lauds: '4 damage, +3 per Growth mod on your die, max 13',
-  chastise: '7 damage',
-  cloister: '7 block',
-  psalm: 'draw 1',
-  reliquary: '6 block. If you already had 10+ block, also 5 damage',
-  vindication: 'Deal damage equal to twice your block, max 24',
-  myrrh: '6 block, +1 per stack of poison on the enemy, max 12',
-  exequy: "Deal damage equal to the enemy's stacks of poison, max 12",
-  hosanna: "6 damage. 12 if the enemy's intent this round is not an Attack.",
-  gloria: '30 damage',
-  oblation: 'Spend all your soul. 7 damage per soul spent, max 42',
-  tabernacle: '3 block, +3 per weight of the rolled face, max 12',
-  jubilee: '4 damage, +2 per weight added to the die this run, max 24',
+  strike: 'Deal 5 damage.',
+  ward: 'Gain 5 block.',
+  rite: 'Deal 6 damage. Gain 6 block.',
+  rebuke: 'Deal 4 damage.',
+  censure: 'Deal 14 damage.',
+  judgement: 'Deal 20 damage.',
+  vestment: 'Gain 13 block.',
+  litany: 'Deal 7 damage. Gain 7 block.',
+  scripture: 'Draw 2 cards.',
+  communion: 'Gain 2 soul.',
+  censer: 'Apply 4 stacks of poison.',
+  purge: 'Deal 6 damage. If the enemy has poison, deal 10 instead.',
+  interdict: "Gain 5 block. If the enemy's intent deals 12 or more damage this round, gain 10 instead.",
+  bulwark: 'Gain 6 block. If the enemy is winding up or releasing, gain 16 instead.',
+  reckoning: 'Deal 3 damage, plus 2 per stack of poison on the enemy.',
+  retribution: 'Deal damage equal to your block, up to 12.',
+  covenant: 'Deal 2 damage, plus 3 per weight on the rolled face.',
+  rapture: 'Deal 12 damage. If a mod has triggered this turn, this costs 0 soul.',
+  orison: 'Deal 5 damage. If you rolled a blank, deal 9 instead.',
+  tenet: 'Deal 6 damage, plus 1 for each time the rolled face has triggered.',
+  gradual: "Deal 3 damage, plus 1 per weight on your heaviest face that isn't blank.",
+  vacancy: 'Deal 1 damage per blank face on your die, up to 16.',
+  lauds: 'Deal 4 damage, plus 3 per Growth mod on your die, up to 13.',
+  chastise: 'Deal 7 damage.',
+  cloister: 'Gain 7 block.',
+  psalm: 'Draw 1 card.',
+  reliquary: 'Gain 6 block. If you already had 10 or more block, deal 5 damage.',
+  vindication: 'Deal damage equal to twice your block, up to 24.',
+  myrrh: 'Gain 6 block, plus 1 per stack of poison on the enemy, up to 12.',
+  exequy: "Deal damage equal to the enemy's stacks of poison, up to 12.",
+  hosanna: "Deal 6 damage. If the enemy's intent this round is not an Attack, deal 12 instead.",
+  gloria: 'Deal 30 damage.',
+  oblation: 'Spend all your soul. Deal 7 damage per soul spent, up to 42.',
+  tabernacle: 'Gain 3 block, plus 3 per weight on the rolled face, up to 12.',
+  jubilee: 'Deal 4 damage, plus 2 per weight added to your die, up to 24.',
   // Fallback only — getCardEffectText() below overrides this with the
   // live threnodyFace number; no real caller reads this map directly.
-  threnody: 'Face triggers. The face is set once per run. A blank face gives 2 block.',
-  reverberation: 'The face you rolled triggers again. On a 1 or 20: 6 block instead',
-  kyrie: '5 damage, 10 if the rolled face has Bound',
-  novena: 'every Bound face triggers',
-  canticle: '6 block. The face you rolled gains Bound for this fight',
-  kneel: 'applied 3 stacks of awe',
-  compline: '4 block, applied 2 stacks of awe',
-  tremendum: '4 damage + 2 per stack of awe on the enemy, max 12',
-  mysterium: '3 damage per stack of awe on the enemy, max 12, stacks of awe unchanged',
-  venom: '2 stacks of poison. 4 if the enemy already has poison.',
-  ballast: "Damage 3 times your heaviest face's weight, cap 12.",
-  refrain: 'Trigger the face you rolled this round again.',
-  second_sight: 'Roll the die again now. The new face triggers as a roll.',
-  cadence: 'Damage 2 times the round number, cap 12.',
-  watchword: '5 block. 12 if a Bound face triggered this round.',
-  blight_weight: "Stacks of poison equal to twice the rolled face's weight, cap 8."
+  threnody: 'Trigger the same face every time. If it is blank, gain 2 block.',
+  reverberation: 'Trigger the rolled face again. If you rolled a 1 or 20, gain 6 block instead.',
+  kyrie: 'Deal 5 damage. If the rolled face has Bound, deal 10 instead.',
+  novena: 'Trigger every loaded Bound face.',
+  canticle: 'Gain 6 block. If the rolled face is loaded, it gains Bound for this fight.',
+  kneel: 'Apply 3 stacks of awe.',
+  compline: 'Gain 4 block. Apply 2 stacks of awe.',
+  tremendum: 'Deal 4 damage, plus 2 per stack of awe on the enemy, up to 12.',
+  mysterium: 'Deal 3 damage per stack of awe on the enemy, up to 12. The stacks of awe stay.',
+  venom: 'Apply 2 stacks of poison. If the enemy has poison, apply 4 instead.',
+  ballast: 'Deal 3 damage per weight on your heaviest face, up to 12.',
+  refrain: 'Trigger the rolled face again.',
+  second_sight: 'Roll your die again. The new face resolves as a roll.',
+  cadence: 'Deal damage equal to twice the round number, up to 12.',
+  watchword: 'Gain 5 block. If a Bound face triggered this round, gain 12 instead.',
+  blight_weight: 'Apply 2 stacks of poison per weight on the rolled face, up to 8.'
 };
 
 // Every site that draws a card's effect text calls this instead of
@@ -1797,46 +1827,45 @@ const CARD_EFFECT_TEXT = {
 // run-fixed face number shows everywhere.
 function getCardEffectText(cardId) {
   if (cardId === 'threnody' && gameState.run.threnodyFace !== null) {
-    return 'Face ' + gameState.run.threnodyFace + ' triggers. The face is set once per run. A blank face gives 2 block.';
+    return 'Trigger face ' + gameState.run.threnodyFace + ', the same face every time. If it is blank, gain 2 block.';
   }
   return CARD_EFFECT_TEXT[cardId] || '';
 }
 
-// Hover text for mods and Nat faces, derived from each mod's own log()
-// lines. No wording invented beyond what each mod's code already says.
+// Hover text for mods and Nat faces, written to what each mod's code does.
 const MOD_DESCRIPTION = {
-  consecrate: '+2 soul this turn, 3 block per card played this turn',
-  smite: '16 damage',
-  penance: '8 damage, 8 block',
-  offering: '+2 soul this turn, draw 1',
-  blight: 'applied 6 poison',
-  virulence: 'applied 3 poison, doubled',
-  sanctuary: '16 block',
-  vigil: 'block scales with cards held at end of turn (5 block per card)',
-  zeal: '10 damage, permanently gains +4 damage per trigger. Growth',
-  fervour: 'attacks double damage this turn',
-  ordain: '10 damage, +1 weight to the triggering face. Growth',
-  anthem: '6 damage, +4 per point of weight on its own face',
-  elevation: '10 damage, +1 weight to the face above (if loaded and not face 20). Growth',
-  largesse: '+2 soul, 4 block',
-  tithe: 'End of round: 5 damage per soul you have left, max 20',
-  congregation: '8 damage. 16 if another mod on your die has Growth. Growth',
-  cope: '8 block, permanently gains +2 block per trigger. Growth',
-  anathema: 'End of round: deal damage equal to your block, max 16',
-  thurible: '8 damage, applied 3 stacks of poison',
-  magnificat: 'Triggers your heaviest other face',
-  unison: '6 damage. Bound',
-  accord: '10 block. Bound',
-  kinship: 'applied 4 stacks of poison. Bound',
-  concord: '+1 soul, 3 block. Bound',
-  herald: '6 damage. One other random loaded face gains Bound for this fight. Bound',
-  dread: 'applied 4 stacks of awe',
-  genuflect: '6 block, applied 3 stacks of awe'
+  consecrate: 'Gain 2 soul. Cards you play this turn give 3 block.',
+  smite: 'Deal 16 damage.',
+  penance: 'Deal 8 damage. Gain 8 block.',
+  offering: 'Gain 2 soul. Draw 1 card.',
+  blight: 'Apply 6 stacks of poison.',
+  virulence: "Apply 3 stacks of poison. Double the enemy's stacks of poison.",
+  sanctuary: 'Gain 16 block.',
+  vigil: 'When this turn ends, gain 5 block per card in your hand.',
+  zeal: 'Deal 10 damage, plus 4 for each earlier trigger of this face.',
+  fervour: 'Double your attack damage this turn.',
+  ordain: 'Deal 10 damage. Add 1 weight to this face.',
+  anthem: 'Deal 6 damage, plus 4 per weight on the rolled face.',
+  elevation: 'Deal 10 damage. If the next face up holds a mod, add 1 weight to it.',
+  largesse: 'Gain 2 soul and 4 block.',
+  tithe: 'When this turn ends, deal 5 damage per soul you have left, up to 20.',
+  congregation: 'Deal 8 damage. If another mod on your die has Growth, deal 16 instead.',
+  cope: 'Gain 8 block, plus 2 for each earlier trigger of this face.',
+  anathema: 'When this turn ends, deal damage equal to your block, up to 16.',
+  thurible: 'Deal 8 damage. Apply 3 stacks of poison.',
+  magnificat: 'Trigger your heaviest other loaded face.',
+  unison: 'Deal 6 damage.',
+  accord: 'Gain 10 block.',
+  kinship: 'Apply 4 stacks of poison.',
+  concord: 'Gain 1 soul and 3 block.',
+  herald: 'Deal 6 damage. Another random loaded face without Bound gains Bound for this fight.',
+  dread: 'Apply 4 stacks of awe.',
+  genuflect: 'Gain 6 block. Apply 3 stacks of awe.'
 };
 
 const NAT_DESCRIPTION = {
-  NAT_TWENTY: 'fires every loaded face on the die this turn, ascending face order',
-  NAT_ONE: 'Penitence: lose 1 soul at the start of every turn for the next 3 turns'
+  NAT_TWENTY: 'Trigger every loaded face, lowest first.',
+  NAT_ONE: 'Lose 1 soul at the start of each of your next 3 turns. Once per fight, then a 1 is blank.'
   // ENEMY_NAT_ONE/ENEMY_NAT_TWENTY intentionally absent — their text needs
   // the current act's buffPoisonStacks number; faceHoverText() builds it inline.
 };

@@ -80,7 +80,7 @@ async function imagesSettled(page, selector) {
     assert.strictEqual(r.srcEnds, true);
     assert.strictEqual(r.loaded, true);
     assert.strictEqual(r.width, '48px');
-    assert.ok(r.text.includes("Merchant's Seal") && r.text.includes('Shop prices a quarter lower'), r.text);
+    assert.ok(r.text.includes("Merchant's Seal") && r.text.includes('Pay a quarter less for everything in the shop'), r.text);
     await page.close();
   });
 

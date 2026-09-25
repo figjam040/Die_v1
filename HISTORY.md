@@ -1298,3 +1298,23 @@ Verification: see paste-back.
 Full write-ups: HISTORY.md.
 
 BUILD 169 index note: D-111 five rarity tiers basic to void, every label and border in its tier colour; D-112 one card component (hand, offers, shop, CARDS layer, removal pickers); KI-45 odds by largest remainder; KI-46 hover boxes clamped to the window; D-116 HP line on the rite screen; D-121 Rite 6/6; D-122 boss heal 20 percent; D-123 act 1 lanes nine slots; KI-47 HP floored at 0; F08, F16, F42 reworded.
+
+Stage 2.96 (BUILD 169) — rarity scheme, the one card, odds to 100, hover clamp, rite HP, Rite 6/6, boss heal, act 1 ninth slot, HP floor.
+
+D-111: TIER_ORDER basic/uncommon/rare/mythic/void; the common tier is basic in every id, price key and label. TIER_SPLIT keeps each split's first three weights, 0 for mythic and void, so no offer changes; rollTier()'s float fallback lands on the last tier with weight. TIER_COLOURS are the five D-111 values; the amber artifact colour is gone and every artifact carries tier rare (a fill, colour only). The mod symbol PNGs stay as drawn.
+
+D-112: renderCard() is the one card: hand (144x216), card reward and shop (304x470, 130px apart), CARDS layer and both removal pickers (mini, one per owned id with ×N; a pick removes that id's first copy). 2px border and rarity line in the tier colour, soul cost as dots, no cost in the name. The shop's price leads the foot line.
+
+KI-45: rollOdds() hands out tenths by largest remainder, ties to the lower face, so the captions total 100.0.
+
+KI-46: clampHoverTips() shifts any showing hover box inside the window (CSS translate), on every mouseover and every render. The coin's box went from left -72 to 4.
+
+D-116 amended: the rite screen shows '20 / 70' under Rite in the HP red. D-121: Rite deals 6 damage, 6 block. D-122: a non-final boss win heals floor(20 percent of max HP), capped, before the artifact offer (grantBossHeal()); the final boss grants nothing. D-123: SLOTS_PER_LANE [9, 8, 8], RITE_SLOT_INDICES per act; buildAct() fills the lanes from them. Act 1's new index 4 is a Verger Fight at HP.OPENING on both lanes; the map shortens act 1's in-lane connectors to 14px. KI-47: shownHp() floors HP at 0 on panels, the DIE layer, the rite line, the transcript and the run record.
+
+Tests: build169.test.js. Corrected: build142 A/B-a, build145 Item 6, build149 e/f, build150 D (rite index), build151 B, build153 B, build154 A x3, build158 D-99/D-100, build166 artifact tier/fake tier, build167 C/E, facts F08, F16, F17/F18, F44 paths, the tier maps, totals and split sample, the hand text.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.
+
+BUILD 170 index note: D-124 mod symbols at 24px in a strip under each loaded face of the fight face row, the squares unmoved; D-125 every mod, card and artifact text rewritten as one or two imperative sentences, face hover in two lines; D-113 roll sounds die_rolling, die_landing, die_blank with mod_trigger, a dev mute for the four; F50 reworded.

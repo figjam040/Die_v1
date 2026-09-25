@@ -1564,19 +1564,19 @@ function init() {
   // enemy die mechanics use for "registered unconditionally, checks which
   // one applies".
   gameState.config.artifacts = {
-    third_eye: { id: 'third_eye', name: 'Third Eye', tier: 'rare', text: 'Once per act, before a roll, choose the face.' },
-    loaded_die: { id: 'loaded_die', name: 'Loaded Die', tier: 'rare', text: 'Roll twice, the higher face stands.' },
-    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', text: 'When the enemy winds up or releases, roll twice and both faces trigger.' },
-    tithe_box: { id: 'tithe_box', name: 'Tithe Box', tier: 'rare', text: 'Every Nat 20 pays 15 gold.' },
-    merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", tier: 'rare', text: 'Shop prices a quarter lower. Card removal stays at 75.' },
-    leaden_face: { id: 'leaden_face', name: 'Leaden Face', tier: 'rare', text: 'Strengthen adds 2 weight, not 1.' },
-    reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', tier: 'rare', text: 'When a Bound face is rolled, the next face above it on the die triggers too, if loaded.' },
-    plague_bell: { id: 'plague_bell', name: 'Plague Bell', tier: 'rare', text: 'Fight start: the enemy takes stacks of poison equal to half your loaded faces, rounded down.' },
-    alms: { id: 'alms', name: 'Alms', tier: 'rare', text: 'A blank roll gives 1 soul instead of 2 block.' },
-    hourglass: { id: 'hourglass', name: 'Hourglass', tier: 'rare', text: 'Round 1 of every fight, the enemy does nothing.' },
-    second_chance: { id: 'second_chance', name: 'Second Chance', tier: 'rare', text: 'Once per fight, reroll.' },
-    gilded_die: { id: 'gilded_die', name: 'Gilded Die', tier: 'rare', text: 'Before a roll, pay 10 gold: one face gets +2 weight for that roll only.' },
-    bone_counter: { id: 'bone_counter', name: 'Bone Counter', tier: 'rare', text: 'Nat 1 costs 15 gold instead of Penitence. Under 15 gold, Penitence as normal.' }
+    third_eye: { id: 'third_eye', name: 'Third Eye', tier: 'rare', text: 'Once per act, before you roll, choose the face.' },
+    loaded_die: { id: 'loaded_die', name: 'Loaded Die', tier: 'rare', text: 'Roll twice. Keep the higher face.' },
+    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', text: 'If the enemy is winding up or releasing, roll twice. Both faces resolve.' },
+    tithe_box: { id: 'tithe_box', name: 'Tithe Box', tier: 'rare', text: 'When you roll a Nat 20, gain 15 gold.' },
+    merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", tier: 'rare', text: 'Pay a quarter less for everything in the shop. Card removal stays at 75 gold.' },
+    leaden_face: { id: 'leaden_face', name: 'Leaden Face', tier: 'rare', text: 'Strengthen adds 2 weight instead of 1.' },
+    reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', tier: 'rare', text: 'When you roll a Bound face and the face above it is loaded, trigger that face too.' },
+    plague_bell: { id: 'plague_bell', name: 'Plague Bell', tier: 'rare', text: 'When a fight starts, apply 1 stack of poison to the enemy for every 2 loaded faces other than face 10.' },
+    alms: { id: 'alms', name: 'Alms', tier: 'rare', text: 'When you roll a blank, gain 1 soul instead of 2 block.' },
+    hourglass: { id: 'hourglass', name: 'Hourglass', tier: 'rare', text: "Skip the enemy's first round of every fight." },
+    second_chance: { id: 'second_chance', name: 'Second Chance', tier: 'rare', text: 'Once per fight, reroll your die.' },
+    gilded_die: { id: 'gilded_die', name: 'Gilded Die', tier: 'rare', text: 'Before you roll, pay 10 gold to add 2 weight to one face for that roll.' },
+    bone_counter: { id: 'bone_counter', name: 'Bone Counter', tier: 'rare', text: 'When you roll a Nat 1, pay 15 gold instead of starting Penitence. Without the gold, Penitence starts.' }
   };
 
   // Every artifact with a hook of its own to sit on registers here,
@@ -1641,6 +1641,8 @@ function init() {
   document.getElementById('devChrome').classList.remove('expanded');
   document.getElementById('devChromeToggleBtn').textContent = 'Dev Tools ▸';
   document.getElementById('devPauseBeforeRollCheckbox').checked = false;
+  rollSoundsMuted = false;
+  document.getElementById('devMuteRollSoundsCheckbox').checked = false;
 
   // GAME_CONFIG.BUILD is the single source of truth — no second
   // hand-typed copy of the build number left anywhere to go stale.

@@ -421,7 +421,7 @@ async function hoverEveryTip(page, label) {
     });
     assert.strictEqual(v.damage, 6);
     assert.strictEqual(v.block, 6);
-    assert.strictEqual(v.text, '6 damage 6 block');
+    assert.strictEqual(v.text, 'Deal 6 damage. Gain 6 block.');
     await page.close();
   });
 
