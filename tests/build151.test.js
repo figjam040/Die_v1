@@ -291,6 +291,23 @@ async function enterEventSlot(page) {
     await page.close();
   });
 
+  // D-123 (BUILD 169): act 1's ninth slot adds one fight to each path.
+  await runTest('BUILD 151 (F44): the upper path is 7 fights an act, 8 in act 1 (22 a run); the lower path, through the event slot, is 6, 7 in act 1 (19 a run)', async () => {
+    const page = await freshPage(browser);
+    const v = await page.evaluate(() => {
+      function fightsInPath(act, lane) {
+        return 1 /* opening */ + act[lane].filter(function(s) { return s.type === 'fight'; }).length + 1 /* boss */;
+      }
+      const acts = [1, 2, 3].map(function(n) { return buildAct(n); });
+      return { upper: acts.map(a => fightsInPath(a, 'upper')), lower: acts.map(a => fightsInPath(a, 'lower')) };
+    });
+    assert.deepStrictEqual(v.upper, [8, 7, 7]);
+    assert.deepStrictEqual(v.lower, [7, 6, 6]);
+    assert.strictEqual(v.upper.reduce((a, b) => a + b, 0), 22);
+    assert.strictEqual(v.lower.reduce((a, b) => a + b, 0), 19);
+    await page.close();
+  });
+
   const failed = results.filter(r => !r.pass);
   console.log('\n' + (results.length - failed.length) + '/' + results.length + ' build151 tests passed.');
   if (failed.length > 0) {

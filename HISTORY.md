@@ -1358,3 +1358,19 @@ Tests: build172.test.js. Corrected: build145 Titles asserts no trigger count, bu
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+Stage 3.00 (BUILD 173) — the blank face synergy (D-126, D-127).
+
+Item A: Tolling Bell pays 1 block per blank rolled earlier this fight (gameState.fight.blanksRolled, updateFight(), zeroed in clearFightScopedState()) on top of the blank payout, beside Alms; its old second roll is gone. Gilded Die pays BLANK_GOLD (3) gold on a blank roll; its gold-for-weight sale is gone with #gildedDieBtn, gildedDiePayForFace(), turn.gildedFace and the ticket code in rollDie()/rollOdds(). Both keep RARE and their price.
+
+Item B: Vigil deals 4 plus 1 per 3 blanks rolled this run (gameState.run.blanksRolled) and also triggers on every blank roll, through 'vigil_blank_trigger' on BLANK_ROLL. Tithe gains 1 block per blank face. The BLANK_ROLL order is fixed by registration: Tolling Bell, blank_roll_counter, Vigil, Gilded Die.
+
+Item C: Vacancy (now RARE) deals 1 damage and Tabernacle gains 2 block per blank face, uncapped; Reverberation triggers every blank face through triggerFaceOutsideRoll(face, { capExempt: true }). blankFaceNumbers() (pipeline.js) is the one count, a Sealed face included.
+
+Item D: Alms, Tolling Bell, Gilded Die, Vigil, Tithe, Vacancy, Tabernacle, Reverberation and Orison carry the Blank tag; Vigil and Tithe lose bastion and soul. Vigil's text keeps "this run" (D-126 over D-125's ban), exempted in build170 by that phrase alone.
+
+Tests: build173.test.js. Corrected: facts (Vacancy tier and the 24/16/8 card tiers, mod and card tags, Tithe, Vacancy, Tabernacle, three Reverberation tests, two text lines), mods (Vigil, Tithe), build150 (Tolling Bell), build153 and build155 (Gilded Die), build169 (Gilded odds line), build170 (the this-run exemption).
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.

@@ -683,6 +683,55 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.close();
   });
 
+  await runTest('BUILD 142: Hosanna — 6 damage against an Attack, 12 against anything else', async () => {
+    const liveBrowser = await chromium.launch();
+    const page = await freshPage(liveBrowser);
+    await enterOpeningFight(page);
+    await page.evaluate(() => { forcePlayerRoll(3); });
+    await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
+
+    // The opening fight's own enemy is mid-Attack by default (its pattern
+    // is a single repeating Attack entry) — base 6 damage.
+    await page.evaluate(() => { updatePlayer({ hand: ['hosanna'], soul: 5 }); });
+    const beforeAttack = await page.evaluate(() => gameState.enemy.hp);
+    await page.evaluate(() => { playCard(0); });
+    const afterAttack = await page.evaluate(() => gameState.enemy.hp);
+    assert.strictEqual(beforeAttack - afterAttack, 6, 'expected base 6 damage while the enemy intent is an Attack');
+
+    // Queue an Afflict for next round via the dev drawer, then end the
+    // round through the normal auto-advance chain so START_OF_TURN
+    // actually consumes the forced entry before the next CARD_PHASE.
+    await page.evaluate(() => { devSetNextIntent({ kind: 'afflict', stacks: 4 }); });
+    await page.evaluate(() => { autoAdvance(); });
+    await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE' && gameState.enemy.currentEntry && gameState.enemy.currentEntry.kind === 'afflict');
+    await page.evaluate(() => { updatePlayer({ hand: ['hosanna'], soul: 5 }); });
+    const beforeAfflict = await page.evaluate(() => gameState.enemy.hp);
+    await page.evaluate(() => { playCard(0); });
+    const afterAfflict = await page.evaluate(() => gameState.enemy.hp);
+    assert.strictEqual(beforeAfflict - afterAfflict, 12, 'expected empowered 12 damage while the enemy intent is an Afflict');
+    await liveBrowser.close();
+  });
+
+  await runTest('BUILD 142: Threnody — always triggers gameState.run.threnodyFace, whatever is loaded there', async () => {
+    const liveBrowser = await chromium.launch();
+    const page = await freshPage(liveBrowser);
+    await enterOpeningFight(page);
+    await page.evaluate(() => {
+      const faceNumber = gameState.run.threnodyFace;
+      const newFaces = gameState.die.faces.slice();
+      newFaces[faceNumber - 1] = Object.assign({}, newFaces[faceNumber - 1], { modId: 'smite' });
+      updateDie({ faces: newFaces });
+    });
+    await page.evaluate(() => { forcePlayerRoll(9 === gameState.run.threnodyFace ? 8 : 9); }); // roll a different face, untouched, stays blank
+    await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
+    await page.evaluate(() => { updatePlayer({ hand: ['threnody'], soul: 5 }); });
+    const before = await page.evaluate(() => gameState.enemy.hp);
+    await page.evaluate(() => { playCard(0); });
+    const after = await page.evaluate(() => gameState.enemy.hp);
+    assert.strictEqual(before - after, 16, 'expected Threnody\'s own fixed face (loaded with smite) to trigger regardless of which face was rolled');
+    await liveBrowser.close();
+  });
+
   const failed = results.filter(r => !r.pass);
   console.log('\n' + (results.length - failed.length) + '/' + results.length + ' build142 tests passed.');
   if (failed.length > 0) {

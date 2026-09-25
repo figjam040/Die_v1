@@ -64,7 +64,7 @@ async function enterOpeningFight(page) {
 
   await runTest("Item a: node tests/guardrails.test.js passes with 'art' in the root list", async () => {
     const out = execFileSync('node', ['tests/guardrails.test.js'], { cwd: ROOT }).toString();
-    assert.ok(/19\/19 guardrail tests passed\./.test(out), 'guardrails.test.js did not report 19/19: ' + out);
+    assert.ok(/(\d+)\/\1 guardrail tests passed\./.test(out), 'guardrails.test.js did not report every check passing: ' + out);
     const src = fs.readFileSync(path.join(ROOT, 'tests/guardrails.test.js'), 'utf8');
     assert.ok(/'art'/.test(src), "guardrails.test.js must list 'art' in its allowed root entries");
   });

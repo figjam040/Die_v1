@@ -357,7 +357,7 @@ function init() {
 
   // One damage per blank face on the die (blankFaceNumbers()), uncapped.
   gameState.config.cards['vacancy'] = {
-    id: 'vacancy', name: 'Vacancy', soulCost: 2, type: 'attack', classRestriction: null, tier: 'rare', tags: ['mass', 'blank'],
+    id: 'vacancy', name: 'Vacancy', soulCost: 2, type: 'attack', classRestriction: null, tier: 'rare', tags: ['blank'],
     effect: function(gameState) {
       const blanks = blankFaceNumbers().length;
       const damage = dealDamage('enemy', GAME_CONFIG.VACANCY_DAMAGE_PER_BLANK * blanks, 'attack', 'vacancy');
@@ -528,7 +528,7 @@ function init() {
 
   // Block per blank face on the die, uncapped — Vacancy's count.
   gameState.config.cards['tabernacle'] = {
-    id: 'tabernacle', name: 'Tabernacle', soulCost: 1, type: 'block', classRestriction: null, tier: 'basic', tags: ['mass', 'blank'],
+    id: 'tabernacle', name: 'Tabernacle', soulCost: 1, type: 'block', classRestriction: null, tier: 'basic', tags: ['blank'],
     effect: function(gameState) {
       const blanks = blankFaceNumbers().length;
       const block = dealBlock(GAME_CONFIG.TABERNACLE_BLOCK_PER_BLANK * blanks, 'tabernacle');
@@ -586,7 +586,7 @@ function init() {
   // exempt from the round trigger cap. A face already triggered outside a
   // roll this round is skipped.
   gameState.config.cards['reverberation'] = {
-    id: 'reverberation', name: 'Reverberation', soulCost: 2, type: 'utility', classRestriction: null, tier: 'rare', tags: ['mass', 'blank'],
+    id: 'reverberation', name: 'Reverberation', soulCost: 2, type: 'utility', classRestriction: null, tier: 'rare', tags: ['blank'],
     effect: function(gameState) {
       const blankNumbers = blankFaceNumbers();
       let triggered = 0;

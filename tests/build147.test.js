@@ -116,7 +116,7 @@ function extractArtFailurePredicate(filePath) {
 
   const FILTER_FILES = [
     'tests/autoplay.js',
-    'tests/mods.test.js',
+    'tests/shared-constants.js',
     'tests/screenshots.js',
     'tests/build146.test.js'
   ];

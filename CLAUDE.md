@@ -18,11 +18,11 @@ All eleven files share one global lexical scope, as one giant inline `<script>` 
 File: C:\Users\figja\Die_v1\index.html (loads the eleven js/ files above).
 Open in browser to test. Double-click index.html only — never through a local server. /audio/ and /art/ are empty asset folders; nothing populates them — see AUDIO MODULE. /fonts/ holds the game's two self-hosted OFL font files (Press Start 2P, VT323), loaded by index.html's @font-face rules.
 
-tests/facts.test.js — plain Node script (no test runner installed, only raw `playwright`), `node tests/facts.test.js`. Asserts every F-number against GAME_CONFIG and the running gameState/DOM after a fresh New Run, entering the opening fight or dev-jumping to elite/boss where a fact needs live combat state. A mismatch is a failing test.
+tests/facts.test.js — plain Node script (no test runner installed, only raw `playwright`), `node tests/facts.test.js`. Asserts every F-number against GAME_CONFIG and the running gameState/DOM after a fresh New Run, entering the opening fight or dev-jumping to elite/boss where a fact needs live combat state. A mismatch is a failing test. It keeps the F-number tests and the tests carrying no BUILD label; a test labelled with a BUILD number lives in that build's own file.
 
 tests/mods.test.js — same shape, `node tests/mods.test.js`. For each of config.mods' reward-eligible entries, dev-loads it onto a face and forces that roll through the real forcePlayerRoll()/MOD_TRIGGER dispatch, asserting the exact numeric effect on gameState.
 
-tests/build141.test.js, tests/build142.test.js, etc. — same shape, one file per build shipping new mechanics, asserting that build's own items.
+tests/build141.test.js, tests/build142.test.js, etc. — same shape, one file per build shipping new mechanics, asserting that build's own items; build108 to build139 hold the tests split out of facts.test.js and mods.test.js by BUILD label.
 
 tests/autoplay.js — headless autoplayer, `node tests/autoplay.js`. Plays complete runs against real gameplay only (New Run, map node clicks, playCard(), nextPhase()'s natural rolls, the real die-action/rite/card-reward panels) — never forcePlayerRoll()/forceEnemyRoll()/devJumpToSlot()/devLoadMod() — seeded Math.random so every roll/shuffle is reproducible. Fixed, documented-in-file policy (lane, card priority, die/card rewards, rite choice). Appends one CSV row per run to tests/autoplay_results.csv. A measurement tool, not a floor/ceiling for a human. Never run except when explicitly asked (D-70). None of these tests/ files are loaded by index.html.
 
@@ -376,7 +376,7 @@ Rite — 2 soul, attack, Ordained-only — 6 damage + 6 block (D-121).
 
 Pool (config.cardPool) carries a tier ('basic'/'uncommon'/'rare'; D-111's 'mythic'/'void' hold no pieces yet, offer weight 0) and a tags list per card; the Ring 0 cards carry none and read basic (cardTier()). See CARD_EFFECT_TEXT (rendering.js) for the live, plain-text description of every reward-pool card — that table, not this file, is the source a player reads from, and getCardEffectText() is the one place code should read a card's text from (Threnody's own entry is live-numbered, see THE HOP/rendering.js).
 
-Tags in use: poison, soul, bastion, mass, growth, bound, awe, die, blank (D-126). BLANK PIECES (D-126, D-127): a blank face is a face on the die with no mod, or Sealed this round, never face 1 or 20 nor a removed face (blankFaceNumbers(), pipeline.js). Rolling a blank is any resolved player roll landing on one, a spent Nat 1 and a Second Sight or Loaded Die roll included; a blank a card triggers is not a roll. Vacancy (rare, 2 soul) deals 1 damage per blank face, Tabernacle (basic, 1 soul) gains 2 block per blank face, both uncapped; Reverberation (rare, 2 soul) triggers every blank face, ascending, through triggerFaceOutsideRoll(face, { capExempt: true }) — each pays the blank payout as an outside-roll blank, so Alms, Vigil, Gilded Die and the blank counters do not react, and none counts toward ROUND_TRIGGER_CAP. Orison is unchanged. Each carries the Blank tag with its old ones (Vigil and Tithe drop bastion and soul). Every number is in GAME_CONFIG (BLANK_GOLD, VIGIL_BASE_DAMAGE, VIGIL_BLANKS_PER_POINT, TITHE_BLOCK_PER_BLANK, VACANCY_DAMAGE_PER_BLANK, TABERNACLE_BLOCK_PER_BLANK, ARTIFACTS.TOLLING_BELL_BLOCK_PER_BLANK).
+Tags in use: poison, soul, bastion, mass, growth, bound, awe, die, blank (D-126). BLANK PIECES (D-126, D-127): a blank face is a face on the die with no mod, or Sealed this round, never face 1 or 20 nor a removed face (blankFaceNumbers(), pipeline.js). Rolling a blank is any resolved player roll landing on one, a spent Nat 1 and a Second Sight or Loaded Die roll included; a blank a card triggers is not a roll. Vacancy (rare, 2 soul) deals 1 damage per blank face, Tabernacle (basic, 1 soul) gains 2 block per blank face, both uncapped; Reverberation (rare, 2 soul) triggers every blank face, ascending, through triggerFaceOutsideRoll(face, { capExempt: true }) — each pays the blank payout as an outside-roll blank, so Alms, Vigil, Gilded Die and the blank counters do not react, and none counts toward ROUND_TRIGGER_CAP. Orison is unchanged. Each carries the Blank tag with its old ones (Vigil and Tithe drop bastion and soul; Vacancy, Tabernacle and Reverberation drop mass). Every number is in GAME_CONFIG (BLANK_GOLD, VIGIL_BASE_DAMAGE, VIGIL_BLANKS_PER_POINT, TITHE_BLOCK_PER_BLANK, VACANCY_DAMAGE_PER_BLANK, TABERNACLE_BLOCK_PER_BLANK, ARTIFACTS.TOLLING_BELL_BLOCK_PER_BLANK).
 
 ---
 
@@ -681,7 +681,7 @@ Never skip a failing substage. Never advance on partial verification.
 
 COMMENT RULE (BUILD 143): a comment says what the code does now, or why it must be this way (a law, a trap, an order it depends on). At most 8 lines in a row; a file's opening header may run to 12. No build numbers, stage numbers, dates, test results, or the story of what the code used to do; git and HISTORY.md hold that. Rule/decision IDs (LAW-A2, ARCH-CF1, D-66, KI-8) allowed when the ID is the reason. js/config.js's FACTS block is exempt.
 
-TESTS (BUILD 143): npm test runs every test file in tests/, one at a time, guardrails first. New assertions for a build go in tests/buildNNN.test.js. tests/ holds test files and their helpers only; screenshots and one-off scripts go in backups/.
+TESTS (BUILD 143): npm test runs every test file in tests/, one at a time, guardrails first. New assertions for a build go in tests/buildNNN.test.js. tests/ holds test files and their helpers only; screenshots and one-off scripts go in backups/. tests/shared-constants.js holds the page helpers every test file shares and the size caps (KI-51): no test file over TEST_FILE_MAX_LINES (800), no js/ file over JS_FILE_MAX_LINES (3500, a ceiling to be lowered); guardrails.test.js asserts both.
 
 ---
 
@@ -802,23 +802,22 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 171) — KI-48 Anthem reads the weight of its own face, KI-49 Jubilee counts weight added (run.weightAdded, set only in strengthenFace()), Remove no longer lowers it.
 (BUILD 172) — face hover carries no trigger count (DIE layer shows it), each mod symbol opens its own mod's hover box, die_rolling quieter and lower, die_blank louder.
 (BUILD 173) — D-126/D-127 blank synergy: Vacancy, Tabernacle, Tithe count blank faces, Vigil grows with blanks rolled and triggers on a blank, Reverberation triggers every blank, Tolling Bell and Gilded Die reworked, Blank tag on nine pieces.
+(BUILD 174) — KI-51: facts/mods tests split by BUILD label, 34 test files to 54; TEST_FILE_MAX_LINES 800 and JS_FILE_MAX_LINES 3500 asserted by guardrails; Vacancy, Tabernacle, Reverberation drop the mass tag. No game change.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 3.00 (BUILD 173) — the blank face synergy (D-126, D-127).
+Stage 3.01 (BUILD 174) — tests and guardrails only (KI-51).
 
-Item A: Tolling Bell pays 1 block per blank rolled earlier this fight (gameState.fight.blanksRolled, updateFight(), zeroed in clearFightScopedState()) on top of the blank payout, beside Alms; its old second roll is gone. Gilded Die pays BLANK_GOLD (3) gold on a blank roll; its gold-for-weight sale is gone with #gildedDieBtn, gildedDiePayForFace(), turn.gildedFace and the ticket code in rollDie()/rollOdds(). Both keep RARE and their price.
+Item A: facts.test.js and mods.test.js are split by BUILD label into twenty new files, build108 to build139: 34 test files became 54, the 111 facts tests became 28 in facts.test.js plus 83 in build files (four appended to existing ones), the 42 mod tests 34 plus 8. The page helpers, createRunner() and the mod suites' freshFightPage()/triggerMod()/assertNoErrors() live once, in tests/shared-constants.js.
 
-Item B: Vigil deals 4 plus 1 per 3 blanks rolled this run (gameState.run.blanksRolled) and also triggers on every blank roll, through 'vigil_blank_trigger' on BLANK_ROLL. Tithe gains 1 block per blank face. The BLANK_ROLL order is fixed by registration: Tolling Bell, blank_roll_counter, Vigil, Gilded Die.
+Item B: guardrails.test.js fails when a test file exceeds TEST_FILE_MAX_LINES (800) or a js/ file exceeds JS_FILE_MAX_LINES (3500, to be lowered); both constants sit in shared-constants.js beside CLAUDE_MD_MAX_BYTES.
 
-Item C: Vacancy (now RARE) deals 1 damage and Tabernacle gains 2 block per blank face, uncapped; Reverberation triggers every blank face through triggerFaceOutsideRoll(face, { capExempt: true }). blankFaceNumbers() (pipeline.js) is the one count, a Sealed face included.
+Item C: Vacancy, Tabernacle and Reverberation carry only the Blank tag; the mass tag is gone from them.
 
-Item D: Alms, Tolling Bell, Gilded Die, Vigil, Tithe, Vacancy, Tabernacle, Reverberation and Orison carry the Blank tag; Vigil and Tithe lose bastion and soul. Vigil's text keeps "this run" (D-126 over D-125's ban), exempted in build170 by that phrase alone.
-
-Tests: build173.test.js. Corrected: facts (Vacancy tier and the 24/16/8 card tiers, mod and card tags, Tithe, Vacancy, Tabernacle, three Reverberation tests, two text lines), mods (Vigil, Tithe), build150 (Tolling Bell), build153 and build155 (Gilded Die), build169 (Gilded odds line), build170 (the this-run exemption).
+Tests: corrected build130 (the two tag lines), build146 (the guardrail count is no longer hard-coded), build147 (the art-failure filter is read from shared-constants.js).
 
 Verification: see paste-back.
 

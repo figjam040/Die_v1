@@ -8,7 +8,11 @@ const assert = require('assert');
 const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const { CLAUDE_MD_MAX_BYTES } = require('./shared-constants');
+const { CLAUDE_MD_MAX_BYTES, TEST_FILE_MAX_LINES, JS_FILE_MAX_LINES } = require('./shared-constants');
+
+function countLines(file) {
+  return fs.readFileSync(file, 'utf8').split('\n').length - 1;
+}
 
 // True if git itself would ignore this root-level entry (.gitignore, a
 // global ignore, etc). Session/tool scratch folders like .claude/ are never
@@ -260,6 +264,22 @@ function factsBlockLineRange(src) {
     const entries = fs.readdirSync(ROOT);
     const offenders = entries.filter(function(f) { return allowed.indexOf(f) === -1 && !isGitIgnored(f); });
     assert.strictEqual(offenders.length, 0, 'unexpected entries in repo root: ' + offenders.join(', '));
+  });
+
+  await runTest('No test file under tests/ is longer than ' + TEST_FILE_MAX_LINES + ' lines (KI-51)', async () => {
+    const testsDir = path.join(ROOT, 'tests');
+    const offenders = fs.readdirSync(testsDir)
+      .filter(function(f) { return f.endsWith('.test.js'); })
+      .map(function(f) { return { file: 'tests/' + f, lines: countLines(path.join(testsDir, f)) }; })
+      .filter(function(e) { return e.lines > TEST_FILE_MAX_LINES; });
+    assert.strictEqual(offenders.length, 0, 'over ' + TEST_FILE_MAX_LINES + ' lines: ' + offenders.map(function(e) { return e.file + ' (' + e.lines + ')'; }).join(', '));
+  });
+
+  await runTest('No file under js/ is longer than ' + JS_FILE_MAX_LINES + ' lines', async () => {
+    const offenders = jsFiles
+      .map(function(f) { return { file: 'js/' + f, lines: countLines(path.join(jsDir, f)) }; })
+      .filter(function(e) { return e.lines > JS_FILE_MAX_LINES; });
+    assert.strictEqual(offenders.length, 0, 'over ' + JS_FILE_MAX_LINES + ' lines: ' + offenders.map(function(e) { return e.file + ' (' + e.lines + ')'; }).join(', '));
   });
 
   if (notYetTrimmed.length > 0) {

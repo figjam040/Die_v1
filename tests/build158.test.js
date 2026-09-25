@@ -189,6 +189,25 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.close();
   });
 
+  await runTest('F22 (BUILD 158) enemy Nat 20 forces the boss\'s Charge next round; loaded buff faces trigger only when rolled', async () => {
+    const page = await freshPage(browser);
+    await page.click('#startGameBtn');
+    await page.evaluate(() => { devJumpToSlot('boss', null); });
+    await advanceUntilPhase(page, 'ENEMY_ROLL_PHASE');
+    const before = await page.evaluate(() => gameState.player.poisonStacks);
+    const chargeEntry = await page.evaluate(() => gameState.enemy.pattern.filter(function(e) { return e.kind === 'charge'; })[0]);
+    await page.evaluate(() => { forceEnemyRoll(20); }); // boss face 20 = ENEMY_NAT_TWENTY
+    const after = await page.evaluate(() => ({ poison: gameState.player.poisonStacks, forced: gameState.enemy.forcedNextIntent }));
+    assert.strictEqual(after.poison, before, 'a boss Nat 20 must no longer trigger its loaded buff faces');
+    assert.deepStrictEqual(after.forced, { kind: 'charge', release: chargeEntry.release, breakAt: chargeEntry.breakAt }, 'a boss Nat 20 must force its next intent to its own pattern\'s charge entry');
+
+    await page.evaluate(() => { nextPhase(); }); // ENEMY_ROLL_PHASE -> ENEMY_ACT_PHASE
+    await advanceUntilPhase(page, 'ENEMY_ROLL_PHASE'); // next round's own roll phase, forced charge now live
+    const stage = await page.evaluate(() => gameState.enemy.chargeStage);
+    assert.strictEqual(stage, 'windup', 'the forced Charge must begin its wind-up the round after the Nat 20');
+    await page.close();
+  });
+
   await browser.close();
 
   const failed = results.filter(function(r) { return !r.pass; });
