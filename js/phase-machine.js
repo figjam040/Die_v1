@@ -1,7 +1,7 @@
 // Phase sequencing: PHASE_ORDER, runPhase(), nextPhase(), the roll-pause
 // auto-advance chain, and the two roll-resolved flags both this file and
 // dev-tools.js's force-roll functions read/write. Forward-references
-// rendering.js's openDieActionScreen()/dieActionsRemaining — safe per
+// render-layers.js's openDieActionScreen()/dieActionsRemaining — safe per
 // state.js's header note.
 
 // Whether this turn's roll has already resolved (naturally or forced),

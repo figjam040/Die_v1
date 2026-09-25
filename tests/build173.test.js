@@ -401,15 +401,15 @@ function snapshot(page) {
       return {
         cardTexts: cardTexts, artifactTexts: artifactTexts,
         dev: document.getElementById('devModDescription').textContent.trim(),
-        tips: [2, 3].map(n => [...row(n).querySelector('.hover-tip').children].map(d => d.textContent.trim())),
+        tips: [2, 3].map(n => [...row(n).querySelectorAll('.hover-tip > .face-mod-box > div')].map(d => d.textContent.trim())),
         rows: [...document.querySelectorAll('#dieInfoContent .info-list-row')].map(r => r.textContent.trim())
       };
     });
     v.cardTexts.concat(v.artifactTexts, [v.dev]).forEach(text => assert.ok(text.length > 0));
     assert.strictEqual(v.dev, 'Deal 4 damage, plus 1 for every 3 blanks you have rolled this run. Also triggers whenever you roll a blank.');
-    v.tips.forEach(lines => { assert.strictEqual(lines.length, 2); lines.forEach(l => assert.ok(l.length > 0)); });
-    assert.strictEqual(v.tips[0][1], 'Deal 4 damage, plus 1 for every 3 blanks you have rolled this run. Also triggers whenever you roll a blank.');
-    assert.strictEqual(v.tips[1][1], 'Gain 1 block per blank face on your die.');
+    v.tips.forEach(lines => { assert.strictEqual(lines.length, 5); lines.forEach(l => assert.ok(l.length > 0)); });
+    assert.strictEqual(v.tips[0][3], 'Deal 4 damage, plus 1 for every 3 blanks you have rolled this run. Also triggers whenever you roll a blank.');
+    assert.strictEqual(v.tips[1][3], 'Gain 1 block per blank face on your die.');
     v.rows.forEach(t => assert.ok(t.length > 0));
     await page.close();
   });

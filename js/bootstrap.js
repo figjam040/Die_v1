@@ -81,6 +81,21 @@ document.getElementById('devSkipToCardRewardBtn').addEventListener('click', func
   openCardRewardScreen();
 });
 
+// DEV ONLY — ends the fight as a win and opens the artifact offer.
+document.getElementById('devSkipToArtifactRewardBtn').addEventListener('click', function() {
+  devSkipToArtifactReward();
+});
+
+// DEV ONLY — choosing an entry acts at once, then the dropdown resets.
+document.getElementById('devAddCardSelect').addEventListener('change', function() {
+  devAddCard(this.value);
+  this.value = '';
+});
+document.getElementById('devRemoveCardSelect').addEventListener('change', function() {
+  if (this.value !== '') { devRemoveCard(parseInt(this.value, 10)); }
+  this.value = '';
+});
+
 // DEV ONLY — the master toggle; also sets devChromeOpen, read by the two
 // out-of-container dev inputs.
 document.getElementById('devChromeToggleBtn').addEventListener('click', function() {

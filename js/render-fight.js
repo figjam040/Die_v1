@@ -147,6 +147,7 @@ function renderResultBanner() {
 // D-124: the mod ids whose symbols sit under a face, load order. Blank and
 // Nat faces carry none.
 const FACE_SYMBOL_PX = 24;
+const WEIGHT_LINE_PX_PER_POINT = 2;
 
 function faceSymbolModIds(face) {
   if (face.modId === null || face.modId === 'NAT_ONE' || face.modId === 'NAT_TWENTY') return [];
@@ -286,17 +287,6 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     const btn = document.createElement('button');
     btn.className = 'face-btn';
 
-    // A weight-2+ face gets a fill bar inside its own face-btn,
-    // bottom-anchored, height scaled to weight, capped at weight 5.
-    // Uses `background: currentColor` — reuses face-btn's own per-row
-    // identity colour rather than introducing a new one.
-    if (face.weight > 1) {
-      const fill = document.createElement('div');
-      fill.className = 'face-weight-fill';
-      const fillPct = Math.min(100, 40 + (face.weight - 2) * 20);
-      fill.style.height = fillPct + '%';
-      btn.appendChild(fill);
-    }
     const numSpan = document.createElement('span');
     numSpan.className = 'face-num';
     numSpan.textContent = face.number;
@@ -408,6 +398,17 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     row.appendChild(btn);
     row.appendChild(modWrap);
 
+    // D-130: weight shows as a line under the square, 2 px per weight above
+    // 1 (none at weight 1), in the row's identity colour via CSS. The line
+    // adds no layout height, so no square moves; the odds and the symbols
+    // below are offset down by --weight-px instead.
+    if (isHorizontal && face.weight > 1) {
+      row.style.setProperty('--weight-px', (face.weight - 1) * WEIGHT_LINE_PX_PER_POINT + 'px');
+      const weightLine = document.createElement('div');
+      weightLine.className = 'face-weight-line';
+      row.appendChild(weightLine);
+    }
+
     // The horizontal face row's own one-line caption under each square.
     // this roll's odds replace the bare weight number; the
     // weight itself moved into the square's own title (faceTitleText()
@@ -492,18 +493,27 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     const baseHoverText = hoverText || blankText;
     const tip = document.createElement('span');
     tip.className = 'hover-tip';
-    const titleLine = document.createElement('div');
-    titleLine.className = 'face-tip-title';
-    titleLine.textContent = titleText;
-    tip.appendChild(titleLine);
-    const currentLine = document.createElement('div');
-    currentLine.className = 'face-tip-text';
-    currentLine.textContent = baseHoverText;
-    tip.appendChild(currentLine);
+    // D-128: a loaded, unsealed player face opens one box per mod, load
+    // order left to right; every other face keeps the two-line hover.
+    const modIds = (isPlayerDie && !isFaceSealed(face.number)) ? faceSymbolModIds(face).filter(function(id) { return gameState.config.mods[id]; }) : [];
+    let becomesParent = tip;
+    if (modIds.length) {
+      tip.classList.add('face-tip-boxes');
+      modIds.forEach(function(modId) { becomesParent = tip.appendChild(faceModBox(face, modId)); });
+    } else {
+      const titleLine = document.createElement('div');
+      titleLine.className = 'face-tip-title';
+      titleLine.textContent = titleText;
+      tip.appendChild(titleLine);
+      const currentLine = document.createElement('div');
+      currentLine.className = 'face-tip-text';
+      currentLine.textContent = baseHoverText;
+      tip.appendChild(currentLine);
+    }
     if (becomesText) {
       const becomesLine = document.createElement('div');
       becomesLine.textContent = 'Becomes: ' + becomesText;
-      tip.appendChild(becomesLine);
+      becomesParent.appendChild(becomesLine);
     }
     row.appendChild(tip);
     if (symbolStrip) row.appendChild(symbolStrip);

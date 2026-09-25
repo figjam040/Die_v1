@@ -285,7 +285,8 @@ function resetRunRecord() {
     arrivalHpAtBoss: null,
     outcome: null,
     fightRounds: [],
-    dieActionEvents: []
+    dieActionEvents: [],
+    blanksRolled: 0
   });
 }
 
@@ -350,11 +351,12 @@ function buildRunRecordLine() {
     totalRounds,
     eventsCol,
     triggerCountsCol,
+    r.blanksRolled,
     GAME_CONFIG.BUILD
   ].join(',');
 }
 
-const RUN_RECORD_CSV_HEADER = 'source,node,arrivalHpAtBoss,outcome,fightRounds,totalRounds,dieActionEvents,triggerCounts,build';
+const RUN_RECORD_CSV_HEADER = 'source,node,arrivalHpAtBoss,outcome,fightRounds,totalRounds,dieActionEvents,triggerCounts,blanksRolled,build';
 
 const RUN_RECORD_STORAGE_KEY = 'dieRunRecordLines';
 

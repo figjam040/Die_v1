@@ -144,6 +144,34 @@ function faceSymbolTipLines(face, modId) {
   return [modDisplayName(modId) + ' · weight ' + face.weight, text];
 }
 
+// D-128: one mod's box in a loaded face's hover — the Load offer's box:
+// symbol, name, rarity in its tier colour, tags, text. A foot line keeps the
+// face's weight and Bound, which the box replaced from the old title line.
+const FACE_TIP_SYMBOL_PX = 48;
+
+function faceModBox(face, modId) {
+  const mod = gameState.config.mods[modId];
+  const box = document.createElement('div');
+  box.className = 'face-mod-box';
+  attachArtIcon(box, 'mods', modId, FACE_TIP_SYMBOL_PX, 'face-tip-symbol');
+  const tier = (mod.tier || '').toLowerCase();
+  const rows = [
+    ['face-tip-title', mod.name],
+    ['face-tip-rarity', (tier || 'mod').toUpperCase()],
+    ['face-tip-tags', offerTagText(mod.tags)],
+    ['face-tip-text', MOD_DESCRIPTION[modId] || ''],
+    ['face-tip-foot', 'weight ' + face.weight + (isFaceTwentyAtCap(face.number) ? ' MAX' : '') + (isBoundFace(face) ? ' · Bound' : '')]
+  ];
+  rows.forEach(function(r) {
+    const line = document.createElement('div');
+    line.className = r[0];
+    line.textContent = r[1];
+    box.appendChild(line);
+  });
+  box.querySelector('.face-tip-rarity').style.color = GAME_CONFIG.TIER_COLOURS[tier] || GAME_CONFIG.TIER_COLOURS.basic;
+  return box;
+}
+
 // Placeholders for art that does not exist yet — /art/ is empty.
 // A loaded image hides its box's text label; a failed load (onerror —
 // no art files ship in this build) hides the image and shows the label.
@@ -315,7 +343,7 @@ function noteDieRollsForAnimation() {
 }
 
 // FRAME_COUNT frames over DURATION_MS, each a new number, rotated a step
-// further; then upright on the rolled number (the release), one flash to
+// further (the player's icon then holds for the landing gap); then upright on the rolled number (the release), one flash to
 // --text for FLASH_MS, and SHAKE_CYCLES left-right shakes of SHAKE_PX.
 function startDieRollAnimation(side, dieSize, rolledNumber) {
   const cfg = GAME_CONFIG.DIE_ROLL_ANIMATION;
@@ -332,6 +360,11 @@ function startDieRollAnimation(side, dieSize, rolledNumber) {
       anim.rotation = anim.frame * cfg.ROTATE_STEP_DEG;
       anim.timer = setTimeout(step, frameMs);
       renderDieIcons();
+    } else if (anim.stage === 'spin' && !anim.landing && side === 'player') {
+      // The frames are done and the rattle stops; the player's icon holds its
+      // last frame until ROLL_LAND_GAP_MS after the rattle's end.
+      anim.landing = true;
+      anim.timer = setTimeout(step, Math.max(0, DIE_RATTLE_END_MS + GAME_CONFIG.ROLL_LAND_GAP_MS - cfg.DURATION_MS));
     } else if (anim.stage === 'spin') {
       Object.assign(anim, { stage: 'flash', rotation: 0, flash: true });
       anim.timer = setTimeout(step, cfg.FLASH_MS);

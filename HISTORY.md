@@ -1388,3 +1388,17 @@ Tests: corrected build130 (the two tag lines), build146 (the guardrail count is 
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+Stage 3.02 (BUILD 175) — rendering.js split into four files, collision and script-tag guardrails, tighter line caps. No game change.
+
+Item A: js/rendering.js (3244 lines) is split by what it renders, every function moved whole and unchanged, into render-fight.js, render-map.js, render-layers.js and render-text.js (contents: PROJECT). index.html loads them right after rendering.js; F26 is fifteen files.
+
+Item B: guardrails.test.js fails on any top-level function, class, const, let or var declared twice across js/ (topLevelNames(), shared-constants.js), and unless every js/ file has exactly one script tag naming a real file.
+
+Item C: JS_FILE_MAX_LINES is 1700, just above cards-mods.js (1657), and drops to 1500 once that file is split. TEST_FILE_MAX_LINES covers every .js under tests/; autoplay.js's constants and base helpers moved to tests/autoplay-lib.js. tests/autoplay_results.csv was already git-ignored and untracked.
+
+Tests: build175.test.js (file sizes, load order, no duplicate names, map and fight pixel-identical to commit 519abc3 with the stamp hidden, face hover, DIE layer, a Load offer and the map without errors). Corrected: facts F26 (fifteen files), build167 and build169 read the render files, build147 reads autoplay-lib.js.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.

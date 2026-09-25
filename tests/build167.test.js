@@ -522,7 +522,7 @@ function stringLiterals(src) {
       const pcts = Object.keys(odds).map((k) => (odds[k].tickets / odds[k].total) * 100);
       gameState.ui.dieInfoOpen = true;
       renderInfoLayers();
-      const layerRows = Array.from(document.querySelectorAll('#dieInfoContent .info-list-row')).map((r) => r.textContent);
+      const layerRows = Array.from(document.querySelectorAll('#dieInfoContent .info-table-row')).map((r) => r.cells[0].textContent);
       gameState.ui.dieInfoOpen = false;
       const logLines = Array.from(document.querySelectorAll('#log div')).map((d) => d.textContent);
       rollDie(gameState.die.faces);
@@ -534,7 +534,7 @@ function stringLiterals(src) {
         tickets: odds[2].total,
         sum: pcts.reduce((a, b) => a + b, 0),
         pool: pool,
-        faceRowsInLayer: layerRows.filter((t) => t.indexOf('Face ') === 0),
+        faceRowsInLayer: layerRows,
         record: buildRunRecordLine(),
         transcript: gameState.run.transcript.slice(-1)[0],
         logged: logLines.some((t) => t.indexOf('[DIE] Removed face 7') === 0),
@@ -549,7 +549,7 @@ function stringLiterals(src) {
     assert.strictEqual(v.pool, '[ROLL] pool size: 19');
     assert.ok(Math.abs(v.sum - 100) <= 0.1, 'odds sum ' + v.sum);
     assert.strictEqual(v.faceRowsInLayer.length, 19, 'the DIE layer lists 19 faces');
-    assert.ok(!v.faceRowsInLayer.some((t) => t.indexOf('Face 7 ') === 0), 'the DIE layer drops face 7');
+    assert.ok(v.faceRowsInLayer.indexOf('7') === -1, 'the DIE layer drops face 7');
     assert.ok(v.record.indexOf('remove:7') !== -1, 'run record: ' + v.record);
     assert.strictEqual(v.transcript, 'Removed face 7');
     assert.ok(v.logged, 'log line');

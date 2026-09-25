@@ -121,7 +121,8 @@ const gameState = {
     arrivalHpAtBoss: null,
     outcome: null,
     fightRounds: [],
-    dieActionEvents: []
+    dieActionEvents: [],
+    blanksRolled: 0
   },
 
   registry: {

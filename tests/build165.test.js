@@ -94,8 +94,8 @@ async function imagesSettled(page, selector) {
     });
     await imagesSettled(page, '#dieInfoContent img');
     const r = await page.evaluate(() => {
-      const rows = Array.from(document.querySelectorAll('#dieInfoContent .info-list-row'));
-      const find = (n) => rows.find((x) => x.textContent.indexOf('Face ' + n + ' —') !== -1);
+      const rows = Array.from(document.querySelectorAll('#dieInfoContent .info-table-row'));
+      const find = (n) => rows.find((x) => x.cells[0].textContent === String(n));
       const row3 = find(3);
       const img = row3.querySelector('img');
       return {
@@ -103,7 +103,8 @@ async function imagesSettled(page, selector) {
         loaded: img.naturalWidth > 0,
         width: img.style.width,
         imgCountFace3: row3.querySelectorAll('img').length,
-        text: row3.textContent,
+        text: row3.cells[2].textContent,
+        weight: row3.cells[1].textContent,
         face1Imgs: find(1).querySelectorAll('img').length,
         face20Imgs: find(20).querySelectorAll('img').length,
         blankImgs: find(4).querySelectorAll('img').length
@@ -113,7 +114,7 @@ async function imagesSettled(page, selector) {
     assert.strictEqual(r.loaded, true);
     assert.strictEqual(r.width, '32px');
     assert.strictEqual(r.imgCountFace3, 1);
-    assert.ok(r.text.includes('Smite') && r.text.includes('weight 1'), r.text);
+    assert.ok(r.text.includes('Smite') && r.weight === '1', r.text + ' / ' + r.weight);
     assert.strictEqual(r.face1Imgs, 0, 'face 1 has no img');
     assert.strictEqual(r.face20Imgs, 0, 'face 20 has no img');
     assert.strictEqual(r.blankImgs, 0, 'blank face has no img');
@@ -132,7 +133,7 @@ async function imagesSettled(page, selector) {
     });
     await imagesSettled(page, '#dieInfoContent img');
     const srcs = await page.evaluate(() => {
-      const row = Array.from(document.querySelectorAll('#dieInfoContent .info-list-row')).find((x) => x.textContent.indexOf('Face 3 —') !== -1);
+      const row = Array.from(document.querySelectorAll('#dieInfoContent .info-table-row')).find((x) => x.cells[0].textContent === '3');
       return Array.from(row.querySelectorAll('img')).map((i) => i.src.split('/').pop());
     });
     assert.deepStrictEqual(srcs, ['smite.png', 'unison.png']);

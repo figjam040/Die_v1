@@ -1207,6 +1207,45 @@ function renderShopPanel() {
 // gameState (KI-3), every refreshInspector() call, gated only on the
 // matching gameState.ui.*InfoOpen flag.
 
+// D-129: the DIE layer's one table — face, weight, mod(s), trigger count —
+// a row per face still on the die, under a header row printed once.
+function buildDieInfoTable() {
+  const table = document.createElement('table');
+  table.className = 'info-table';
+  const cols = document.createElement('colgroup');
+  ['info-col-face', 'info-col-weight', '', 'info-col-triggers'].forEach(function(cls) {
+    const col = document.createElement('col');
+    if (cls) col.className = cls;
+    cols.appendChild(col);
+  });
+  table.appendChild(cols);
+  const headRow = table.createTHead().insertRow();
+  ['Face', 'Weight', 'Mod', 'Triggered'].forEach(function(label) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    headRow.appendChild(th);
+  });
+  const body = table.createTBody();
+  gameState.die.faces.forEach(function(face) {
+    const row = body.insertRow();
+    row.className = 'info-table-row';
+    const modData = face.modData || {};
+    const modCell = document.createElement('td');
+    [face.modId, face.modId2].forEach(function(modId) {
+      if (modId && gameState.config.mods[modId]) attachArtIcon(modCell, 'mods', modId, 32, 'info-row-icon');
+    });
+    const names = face.modId === null ? 'BLANK' : (face.modId2 ? modDisplayName(face.modId) + ' / ' + modDisplayName(face.modId2) : modDisplayName(face.modId));
+    modCell.appendChild(document.createTextNode(names + (isBoundFace(face) ? ' · Bound' : '') + (isFaceSealed(face.number) ? ' · Sealed' : '')));
+    const triggers = face.modId === null ? '' : (face.modId2 ? (modData.triggerCount || 0) + ' / ' + (modData.triggerCount2 || 0) : String(modData.triggerCount || 0));
+    [String(face.number), face.weight + (isFaceTwentyAtCap(face.number) ? ' MAX' : '')].forEach(function(text) {
+      row.insertCell().textContent = text;
+    });
+    row.appendChild(modCell);
+    row.insertCell().textContent = triggers;
+  });
+  return table;
+}
+
 function renderInfoLayers() {
   const dieLayer = document.getElementById('dieInfoLayer');
   const artifactsLayer = document.getElementById('artifactsInfoLayer');
@@ -1219,27 +1258,15 @@ function renderInfoLayers() {
 
   if (gameState.ui.dieInfoOpen) {
     const content = document.getElementById('dieInfoContent');
-    let html = '<div class="info-list-row">HP ' + shownHp(gameState.player.hp) + ' / ' + gameState.player.maxHp + '</div>';
-    content.innerHTML = html;
-    gameState.die.faces.forEach(function(face) {
-      const row = document.createElement('div');
-      row.className = 'info-list-row';
-      [face.modId, face.modId2].forEach(function(modId) {
-        if (modId && gameState.config.mods[modId]) attachArtIcon(row, 'mods', modId, 32, 'info-row-icon');
-      });
-      row.appendChild(document.createTextNode('Face ' + face.number + ' — ' + faceTitleText(face, true)));
-      if (face.modId !== null) {
-        const modData = face.modData || {};
-        const count1 = modData.triggerCount || 0;
-        const counts = document.createElement('div');
-        counts.className = 'info-row-triggers';
-        counts.textContent = face.modId2
-          ? 'triggered ' + count1 + ' / ' + (modData.triggerCount2 || 0) + ' times'
-          : 'triggered ' + count1 + ' times';
-        row.appendChild(counts);
-      }
-      content.appendChild(row);
+    content.innerHTML = '';
+    ['HP ' + shownHp(gameState.player.hp) + ' / ' + gameState.player.maxHp,
+      'Blanks rolled ' + gameState.runRecord.blanksRolled].forEach(function(text) {
+      const line = document.createElement('div');
+      line.className = 'info-list-row info-die-line';
+      line.textContent = text;
+      content.appendChild(line);
     });
+    content.appendChild(buildDieInfoTable());
   }
 
   if (gameState.ui.artifactsInfoOpen) {

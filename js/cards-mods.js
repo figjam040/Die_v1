@@ -1276,7 +1276,7 @@ function init() {
 
   // Congregation — pool mod (uncommon). 8 damage, 16 if another loaded mod
   // (anywhere on the die, either slot) carries the Growth tag — never
-  // counts itself. Since eligibleLoadModIds() (rendering.js) already refuses
+  // counts itself. Since eligibleLoadModIds() (render-layers.js) already refuses
   // to offer a mod already loaded anywhere on the die, at most one
   // Congregation can ever be loaded at once, so excluding modId/modId2 ===
   // 'congregation' from the scan is sufficient to satisfy "never counts
@@ -1578,6 +1578,7 @@ function init() {
     if (data && data.outsideRoll) { return; }
     updateFight({ blanksRolled: gameState.fight.blanksRolled + 1 });
     updateRun({ blanksRolled: gameState.run.blanksRolled + 1 });
+    updateRunRecord({ blanksRolled: gameState.runRecord.blanksRolled + 1 });
   }, 'permanent');
 
   registerListener('BLANK_ROLL', 'vigil_blank_trigger', function(data) {

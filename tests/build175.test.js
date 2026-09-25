@@ -59,9 +59,10 @@ function watchErrors(page) {
   return errors;
 }
 
-// The map on load, then the opening fight paused in ROLL_PHASE with face 10
-// strengthened, the same steps tests/screenshots.js takes. The build stamp
-// is hidden in both shots, the one place the two builds may differ.
+// The map on load, then the opening fight paused in ROLL_PHASE, the same
+// steps tests/screenshots.js takes. No face is strengthened: BUILD 176
+// replaced the weight fill with a line. The build stamp is hidden in both
+// shots, the one place the two builds may differ.
 async function shootMapAndFight(browser, url, label) {
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   const errors = watchErrors(page);
@@ -79,7 +80,6 @@ async function shootMapAndFight(browser, url, label) {
   await page.waitForFunction(() => gameState.turn.phase === 'START_OF_TURN');
   await page.evaluate(() => { nextPhase(); });
   await page.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
-  await page.evaluate(() => { strengthenFace(10); });
   await page.evaluate(hideStamp);
   await page.waitForTimeout(300);
   const fightPath = path.join(SHOT_DIR, label + '_fight.png');
@@ -151,8 +151,8 @@ async function shootMapAndFight(browser, url, label) {
 
     await page.click('#dieInfoBtn');
     const dieRows = await page.evaluate(() => getComputedStyle(document.getElementById('dieInfoLayer')).display !== 'none' &&
-      document.querySelectorAll('#dieInfoContent .info-list-row').length);
-    assert.strictEqual(dieRows, 21, 'DIE layer shows the HP row and 20 faces');
+      document.querySelectorAll('#dieInfoContent .info-table-row').length);
+    assert.strictEqual(dieRows, 20, 'DIE layer shows a table row for each of the 20 faces');
     await page.click('#dieInfoCloseBtn');
 
     await page.evaluate(() => { updateEnemy({ hp: 0 }); nextPhase(); });

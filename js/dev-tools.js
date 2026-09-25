@@ -136,6 +136,72 @@ function devClearFace() {
   log('[DEV] cleared face ' + faceNumber);
 }
 
+// ---------- DEV ONLY — REWARD SHORTCUT, ADD/REMOVE CARD ----------
+// None of these writes the run record, the transcript or gold: a dev
+// shortcut never counts toward the run.
+
+// Ends the fight as a win and opens the artifact offer; closing it walks
+// the same die action and card reward a real win does.
+function devSkipToArtifactReward() {
+  if (gameState.run.status !== 'active' || gameState.run.outcome !== 'active') { return; }
+  log('[DEV] skip to artifact reward');
+  updateEnemy({ hp: 0 });
+  updateRun({ status: 'win' });
+  dieActionsRemaining = GAME_CONFIG.DIE_REWARDS.SINGLE;
+  openArtifactRewardScreen();
+}
+
+function devAddCard(cardId) {
+  if (!cardId || !gameState.config.cards[cardId]) return;
+  updatePlayer({
+    deck: gameState.player.deck.concat([cardId]),
+    ownedCards: gameState.player.ownedCards.concat([cardId])
+  });
+  log('[DEV] added ' + getCard(cardId).name + ' to the deck, ' + gameState.player.ownedCards.length + ' cards owned');
+}
+
+// Removes the owned copy at index, and one copy of it from whichever pile
+// (draw, hand, discard) holds one.
+function devRemoveCard(index) {
+  const cardId = gameState.player.ownedCards[index];
+  if (cardId === undefined) return;
+  const owned = gameState.player.ownedCards.slice();
+  owned.splice(index, 1);
+  const changes = { ownedCards: owned };
+  ['deck', 'hand', 'discard'].some(function(pile) {
+    const cards = gameState.player[pile].slice();
+    const at = cards.indexOf(cardId);
+    if (at === -1) return false;
+    cards.splice(at, 1);
+    changes[pile] = cards;
+    return true;
+  });
+  updatePlayer(changes);
+  log('[DEV] removed ' + getCard(cardId).name + ' from the deck, ' + owned.length + ' cards owned');
+}
+
+// Both dropdowns render from gameState (KI-3). Rebuilt only when their
+// contents change, so an open dropdown is never torn down mid-pick.
+function renderDevCardOptions() {
+  const fill = function(id, placeholder, entries) {
+    const select = document.getElementById(id);
+    if (!select) return;
+    const signature = entries.map(function(e) { return e[0] + ':' + e[1]; }).join('|');
+    if (select.dataset.signature === signature) return;
+    select.dataset.signature = signature;
+    select.innerHTML = '';
+    [['', placeholder]].concat(entries).forEach(function(e) {
+      const option = document.createElement('option');
+      option.value = e[0];
+      option.textContent = e[1];
+      select.appendChild(option);
+    });
+  };
+  const cards = gameState.config.cards;
+  fill('devAddCardSelect', 'Add card…', Object.keys(cards).map(function(id) { return [id, cards[id].name]; }));
+  fill('devRemoveCardSelect', 'Remove card…', gameState.player.ownedCards.map(function(id, i) { return [String(i), cards[id] ? cards[id].name : id]; }));
+}
+
 // ---------- DEV ONLY — SET NEXT INTENT ----------
 // Replaces the NEXT round's intent exactly once; advanceEnemyIntentForRound()
 // (pipeline.js) reads this first, if set, then clears it. intent is one of:

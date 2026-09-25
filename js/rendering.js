@@ -135,6 +135,8 @@ function refreshInspector() {
   document.getElementById('devBeginRollBtn').disabled = !(gameState.run.screen === 'fight' && gameState.run.status === 'active' && gameState.turn.phase === 'START_OF_TURN');
   document.getElementById('devRestartFightBtn').disabled = !(gameState.run.screen === 'fight' && gameState.run.status === 'active' && gameState.run.outcome === 'active');
   document.getElementById('devSkipToDieActionBtn').disabled = !(gameState.run.status === 'active' && gameState.run.outcome === 'active');
+  document.getElementById('devSkipToArtifactRewardBtn').disabled = !(gameState.run.status === 'active' && gameState.run.outcome === 'active');
+  renderDevCardOptions();
   document.getElementById('endTurnBtn').disabled = !(gameState.run.status === 'active' && gameState.turn.phase === 'CARD_PHASE' && dieActionStep === null && cardRewardStep === null && riteStep === null && artifactRewardStep === null && shopStep === null);
   // End Turn belongs to the fight screen only — hidden entirely on the
   // map, not just disabled-but-visible.

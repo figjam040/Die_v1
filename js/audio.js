@@ -87,12 +87,17 @@ function playRollSound() {
 }
 
 // ---------- The fight roll (D-113) ----------
-// Rolling rattles under the die animation; landing, blank or a Nat sound
-// plays on the stop. Four quick ticks, each a little lower, inside 200ms.
+// Rolling rattles under the die animation, then goes quiet for
+// GAME_CONFIG.ROLL_LAND_GAP_MS before the landing, blank or Nat sound plays
+// on the stop. Four flat ticks at one pitch, ending inside 200ms.
+const DIE_RATTLE_HZ = 644;
+const DIE_RATTLE_TICK_MS = 30;
+const DIE_RATTLE_DELAYS_MS = [0, 45, 90, 135];
+const DIE_RATTLE_END_MS = DIE_RATTLE_DELAYS_MS[DIE_RATTLE_DELAYS_MS.length - 1] + DIE_RATTLE_TICK_MS;
+
 function playDieRollingSound() {
-  [0, 45, 90, 135].forEach(function(delay, i) {
-    const freq = (700 - i * 60) * 0.92;
-    setTimeout(function() { playTone('square', freq, freq, 30, 0.04); }, delay);
+  DIE_RATTLE_DELAYS_MS.forEach(function(delay) {
+    setTimeout(function() { playTone('square', DIE_RATTLE_HZ, DIE_RATTLE_HZ, DIE_RATTLE_TICK_MS, 0.04); }, delay);
   });
 }
 

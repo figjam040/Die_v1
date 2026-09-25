@@ -166,20 +166,20 @@ const BANNED = [/applied/i, /applies/i, /this run/i, /[()]/];
     await page.close();
   });
 
-  await runTest('Item B: the face hover box reads two lines — name and weight, then the text', async () => {
+  await runTest('Item B: a blank face hover reads two lines; a loaded face opens one box per mod, ending in the text and the weight', async () => {
     const page = await freshFight(browser);
     await loadTwoModFace(page);
     await page.evaluate(() => { forcePlayerRoll(10); });
     await page.waitForFunction(() => dieRollAnimationsIdle());
     const v = await page.evaluate(() => {
-      const tipFor = n => {
-        const row = [...document.querySelectorAll('#playerDieList .die-row')].find(r => r.querySelector('.face-num').textContent === String(n));
-        return [...row.querySelector('.hover-tip').children].map(d => d.textContent);
-      };
-      return { ten: tipFor(10), two: tipFor(2), three: tipFor(3), smite: MOD_DESCRIPTION.smite, blight: MOD_DESCRIPTION.blight, consecrate: MOD_DESCRIPTION.consecrate };
+      const rowFor = n => [...document.querySelectorAll('#playerDieList .die-row')].find(r => r.querySelector('.face-num').textContent === String(n));
+      const tipFor = n => [...rowFor(n).querySelector('.hover-tip').children].map(d => d.textContent);
+      const boxesFor = n => [...rowFor(n).querySelectorAll('.hover-tip > .face-mod-box')].map(b => [...b.querySelectorAll('div')].map(d => d.textContent));
+      return { ten: boxesFor(10), two: boxesFor(2), three: tipFor(3), smite: MOD_DESCRIPTION.smite, blight: MOD_DESCRIPTION.blight, consecrate: MOD_DESCRIPTION.consecrate };
     });
-    assert.deepStrictEqual(v.ten, ['Consecrate · weight 1', v.consecrate]);
-    assert.deepStrictEqual(v.two, ['Smite / Blight · weight 1', v.smite + ' / ' + v.blight]);
+    assert.strictEqual(v.ten.length, 1);
+    assert.deepStrictEqual([v.ten[0][0], v.ten[0][3], v.ten[0][4]], ['Consecrate', v.consecrate, 'weight 1']);
+    assert.deepStrictEqual(v.two.map(b => [b[0], b[3], b[4]]), [['Smite', v.smite, 'weight 1'], ['Blight', v.blight, 'weight 1']]);
     assert.deepStrictEqual(v.three, ['BLANK · weight 1', 'Gain 2 block.']);
     await page.close();
   });

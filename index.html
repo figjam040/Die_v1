@@ -174,12 +174,30 @@
     padding: 6px 0;
   }
 
-  .info-row-triggers {
+  .info-die-line { border-bottom: none; }
+
+  .info-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin-top: 8px;
     font-family: var(--game-font-2);
-    font-size: calc(17px * var(--ui-scale));
-    color: var(--blank);
-    margin-top: 2px;
+    font-size: calc(20px * var(--ui-scale));
+    color: var(--text);
   }
+
+  .info-table col.info-col-face { width: 80px; }
+  .info-table col.info-col-weight { width: 120px; }
+  .info-table col.info-col-triggers { width: 140px; }
+
+  .info-table th, .info-table td {
+    border: none;
+    padding: 4px 12px 4px 0;
+    text-align: left;
+    vertical-align: middle;
+  }
+
+  .info-table th { color: var(--muted); font-weight: normal; }
 
   .info-row-icon {
     vertical-align: middle;
@@ -743,17 +761,19 @@
     background: #1a1a1a;
   }
 
-  /* `background: currentColor` reuses this row's own identity colour. */
-  .face-weight-fill {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: currentColor;
-    opacity: 0.5;
-    z-index: 0;
-    pointer-events: none;
+  /* D-130: the weight line takes the row's identity colour. */
+  .face-weight-line {
+    background: var(--blank);
+    width: 100%;
+    flex-shrink: 0;
+    height: var(--weight-px);
+    margin-bottom: calc(-1 * (var(--weight-px) + 3px));
   }
+
+  .face-weight-line ~ .die-face-caption { position: relative; top: var(--weight-px); }
+  .face-weight-line ~ .face-symbol-strip { margin-top: var(--weight-px); }
+  .die-row.loaded .face-weight-line { background: var(--player-mod); }
+  .die-row.nat-one .face-weight-line, .die-row.nat-twenty .face-weight-line { background: var(--nat); }
 
   .face-num {
     position: relative;
@@ -1542,6 +1562,29 @@
     visibility: visible;
   }
 
+  /* D-128: a loaded face's hover is one box per mod, side by side. */
+  .hover-tip.face-tip-boxes {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    max-width: none;
+    padding: 0;
+    background: none;
+    border: none;
+  }
+
+  .face-mod-box {
+    width: 200px;
+    padding: 6px 10px;
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    text-align: left;
+  }
+
+  .face-tip-symbol { display: block; margin: 0 auto 4px; image-rendering: pixelated; object-fit: contain; }
+  .face-tip-tags { color: var(--muted); }
+  .face-tip-foot { color: var(--blank); margin-top: 4px; }
+
   /* D-104/KI-41 — the one generic hover trigger: any element carrying a
      .hover-tip child gets `hover-parent` too (setHoverTip(), rendering.js)
      so it shows without needing its own :hover rule. Redundant, and
@@ -1969,7 +2012,8 @@
     width: 52px;
   }
 
-  #devPoisonApplier {
+  #devPoisonApplier,
+  #devCardTools {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -1982,7 +2026,8 @@
 
   #devPoisonApplier select,
   #devPoisonApplier input,
-  #devPoisonApplier button {
+  #devPoisonApplier button,
+  #devCardTools select {
     font-size: calc(12px * var(--ui-scale));
     padding: 5px 8px;
   }
@@ -2283,6 +2328,7 @@
         <button id="devBeginRollBtn">Begin Roll</button>
         <button id="devSkipToDieActionBtn">Skip to Die Action</button>
         <button id="devSkipToCardRewardBtn">Skip to Card Reward</button>
+        <button id="devSkipToArtifactRewardBtn">Skip to Artifact Reward</button>
         <!-- Dev-only single-fight reset (full HP heal), for testing the
              current fight in isolation — never a player-facing way to undo a loss. -->
         <button id="devRestartFightBtn">Restart Fight</button>
@@ -2300,6 +2346,14 @@
         <!-- Fills every available slot with the selected mod — a stress
              tool for the "same mod on many faces" shape the real Load flow can't produce. -->
         <button id="devLoadAllBtn">Load All</button>
+      </div>
+
+      <!-- DEV ONLY — add a card to the deck, or remove an owned one. Remove before any real release. -->
+      <div id="devCardTools">
+        <span class="dev-mod-loader-label">ADD CARD</span>
+        <select id="devAddCardSelect"></select>
+        <span class="dev-mod-loader-label">REMOVE CARD</span>
+        <select id="devRemoveCardSelect"></select>
       </div>
 
       <!-- DEV ONLY — apply poison stacks at runtime. Remove before any real release. -->

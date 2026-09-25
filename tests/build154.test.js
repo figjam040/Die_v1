@@ -371,7 +371,8 @@ async function enterPausedFight(page) {
       updateEnemy({ hp: 999, maxHp: 999 }); // no win mid-sweep
       forcePlayerRoll(20);
     });
-    await page.waitForFunction(() => gameState.enemy.hp <= 999 - 32);
+    // Pops are held until the die icon stops, which now waits out ROLL_LAND_GAP_MS.
+    await page.waitForFunction(() => gameState.enemy.hp <= 999 - 32 && !dieRollHolding('player'));
     const v = await page.evaluate(() => {
       const damage = Array.from(document.querySelectorAll('.fx-number')).filter(e => e.dataset.fxKind === 'damage');
       return {

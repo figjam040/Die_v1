@@ -54,6 +54,14 @@ function rowTip(page, faceNumber) {
   }, faceNumber);
 }
 
+// D-128: a loaded face's hover is one box per mod; each box's line texts.
+function faceBoxes(page, faceNumber) {
+  return page.evaluate((n) => {
+    const row = [...document.querySelectorAll('#playerDieList .die-row')].find(r => r.querySelector('.face-num').textContent === String(n));
+    return [...row.querySelectorAll(':scope > .hover-tip > .face-mod-box')].map(b => [...b.children].filter(c => c.tagName === 'DIV').map(d => d.textContent));
+  }, faceNumber);
+}
+
 // Hovers the nth symbol under a face with the real mouse and returns the
 // lines of the one hover box showing, plus how many boxes show at all.
 async function hoverSymbol(page, faceNumber, index) {
@@ -80,10 +88,13 @@ async function hoverSymbol(page, faceNumber, index) {
       faces[4] = Object.assign({}, faces[4], { modId: 'blight', modData: { triggerCount: 3 } });
       updateDie({ faces });
     });
-    const tip = await rowTip(page, 5);
+    const boxes = await faceBoxes(page, 5);
     const desc = await page.evaluate(() => MOD_DESCRIPTION.blight);
-    assert.deepStrictEqual(tip, ['Blight · weight 1', desc]);
-    assert.ok(tip.join(' ').indexOf('triggered') === -1, tip.join(' '));
+    assert.strictEqual(boxes.length, 1);
+    assert.strictEqual(boxes[0][0], 'Blight');
+    assert.strictEqual(boxes[0][3], desc);
+    assert.strictEqual(boxes[0][4], 'weight 1');
+    assert.ok(boxes[0].join(' ').indexOf('triggered') === -1, boxes[0].join(' '));
     await page.close();
   });
 
@@ -99,10 +110,11 @@ async function hoverSymbol(page, faceNumber, index) {
     await page.close();
   });
 
-  await runTest('Item A: a two-mod face names both mods split by a slash on line 1', async () => {
+  await runTest('Item A: a two-mod face opens two boxes, its mods in load order', async () => {
     const page = await freshFight(browser);
     await loadTwoModFace(page);
-    assert.strictEqual((await rowTip(page, 2))[0], 'Smite / Blight · weight 1');
+    const boxes = await faceBoxes(page, 2);
+    assert.deepStrictEqual(boxes.map(b => b[0]), ['Smite', 'Blight']);
     await page.close();
   });
 
@@ -118,7 +130,7 @@ async function hoverSymbol(page, faceNumber, index) {
     await page.close();
   });
 
-  await runTest('Item A: the DIE layer shows triggered N times for a face that has triggered N times', async () => {
+  await runTest('Item A: the DIE layer shows the trigger count in its own column for a face that has triggered', async () => {
     const page = await freshFight(browser);
     await loadTwoModFace(page);
     await page.evaluate(() => {
@@ -129,22 +141,22 @@ async function hoverSymbol(page, faceNumber, index) {
     });
     await page.click('#dieInfoBtn');
     const v = await page.evaluate(() => {
-      const rowFor = n => [...document.querySelectorAll('#dieInfoContent .info-list-row')].find(r => r.textContent.indexOf('Face ' + n + ' —') === 0);
+      const rowFor = n => [...document.querySelectorAll('#dieInfoContent .info-table-row')].find(r => r.cells[0].textContent === String(n));
       const five = rowFor(5);
       const two = rowFor(2);
       const three = rowFor(3);
       return {
-        five: five.querySelector('.info-row-triggers').textContent,
-        fiveMain: five.firstChild.textContent,
-        two: two.querySelector('.info-row-triggers').textContent,
-        three: three.querySelector('.info-row-triggers'),
-        font: getComputedStyle(five.querySelector('.info-row-triggers')).fontFamily === getComputedStyle(document.querySelector('.die-face-caption')).fontFamily
+        five: five.cells[3].textContent,
+        fiveMod: five.cells[2].textContent,
+        two: two.cells[3].textContent,
+        three: three.cells[3].textContent,
+        font: getComputedStyle(five.cells[3]).fontFamily === getComputedStyle(document.querySelector('.die-face-caption')).fontFamily
       };
     });
-    assert.strictEqual(v.five, 'triggered 4 times');
-    assert.ok(v.fiveMain.indexOf('triggered') === -1, v.fiveMain);
-    assert.strictEqual(v.two, 'triggered 2 / 1 times');
-    assert.strictEqual(v.three, null, 'a blank face shows no count');
+    assert.strictEqual(v.five, '4');
+    assert.ok(v.fiveMod.indexOf('triggered') === -1, v.fiveMod);
+    assert.strictEqual(v.two, '2 / 1');
+    assert.strictEqual(v.three, '', 'a blank face shows no count');
     assert.ok(v.font, 'the count uses the odds font');
     await page.close();
   });
@@ -183,7 +195,7 @@ async function hoverSymbol(page, faceNumber, index) {
     await page.close();
   });
 
-  await runTest('Item C: die_rolling is 0.04 gain at 92 percent of its old frequencies, die_blank 0.084, the rest unchanged', async () => {
+  await runTest('Item C: die_rolling is 0.04 gain at one flat 644 Hz, die_blank 0.084, the rest unchanged', async () => {
     const page = await freshFight(browser);
     const v = await page.evaluate(() => {
       const realTimeout = window.setTimeout;
@@ -199,8 +211,8 @@ async function hoverSymbol(page, faceNumber, index) {
     });
     const near = (x, y) => Math.abs(x - y) < 1e-9;
     assert.strictEqual(v.rolling.length, 4);
-    [700, 640, 580, 520].forEach((old, i) => {
-      assert.ok(near(v.rolling[i].a, old * 0.92) && near(v.rolling[i].b, old * 0.92), 'tick ' + i + ' freq ' + v.rolling[i].a);
+    [644, 644, 644, 644].forEach((hz, i) => {
+      assert.ok(near(v.rolling[i].a, hz) && near(v.rolling[i].b, hz), 'tick ' + i + ' freq ' + v.rolling[i].a);
       assert.ok(near(v.rolling[i].gain, 0.04), 'tick ' + i + ' gain ' + v.rolling[i].gain);
       assert.strictEqual(v.rolling[i].ms, 30);
     });
@@ -238,13 +250,15 @@ async function hoverSymbol(page, faceNumber, index) {
     await loadTwoModFace(page);
     await page.click('#dieInfoBtn');
     const v = await page.evaluate(() => ({
-      tips: [...document.querySelectorAll('#playerDieList .hover-tip')].map(t => [...t.children].map(d => d.textContent.trim())),
+      tips: [...document.querySelectorAll('#playerDieList .hover-tip')].map(t => t.classList.contains('face-tip-boxes')
+        ? [...t.querySelectorAll('.face-mod-box > div')].map(d => d.textContent.trim())
+        : [...t.children].map(d => d.textContent.trim())),
       rows: [...document.querySelectorAll('#dieInfoContent .info-list-row')].map(r => r.textContent.trim()),
-      counts: [...document.querySelectorAll('#dieInfoContent .info-row-triggers')].map(r => r.textContent.trim())
+      heads: [...document.querySelectorAll('#dieInfoContent th')].map(r => r.textContent.trim())
     }));
     assert.ok(v.tips.length >= 23, 'twenty face boxes plus three symbol boxes, got ' + v.tips.length);
-    v.tips.forEach(lines => { assert.strictEqual(lines.length, 2); lines.forEach(l => assert.ok(l.length > 0)); });
-    v.rows.concat(v.counts).forEach(t => assert.ok(t.length > 0));
+    v.tips.forEach(lines => { assert.ok(lines.length >= 2); lines.forEach(l => assert.ok(l.length > 0)); });
+    v.rows.concat(v.heads).forEach(t => assert.ok(t.length > 0));
     await page.close();
   });
 
