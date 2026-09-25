@@ -271,16 +271,18 @@ function stringLiterals(src) {
     assert.strictEqual(after.riteStep, null, 'clicking the entered node opens nothing');
     assert.strictEqual(after.current, map.current, 'the run did not move');
 
-    await page.evaluate(() => { devJumpToSlot('upper', 4); riteChooseRemoveCard(); });
+    // D-123 (BUILD 169): act 1's second rite is index 5; D-112: the removal
+    // picker draws one card per owned id (Strike, Ward, Rite on a fresh deck).
+    await page.evaluate(() => { devJumpToSlot('upper', 5); riteChooseRemoveCard(); });
     const rm = await page.evaluate(() => ({
       title: document.querySelector('#riteScreenPanel .die-action-title').textContent,
       instruction: (document.querySelector('#riteScreenPanel .offer-instruction') || {}).textContent,
-      buttons: document.querySelectorAll('#riteScreenPanel .die-action-row button').length,
+      buttons: document.querySelectorAll('#riteScreenPanel .offer-card').length,
       faceRowShown: document.getElementById('playerDieList').offsetParent !== null
     }));
     assert.strictEqual(rm.title, 'Rite');
     assert.strictEqual(rm.instruction, 'CHOOSE A CARD TO REMOVE');
-    assert.ok(rm.buttons >= 10 && rm.faceRowShown, JSON.stringify(rm));
+    assert.ok(rm.buttons === 3 && rm.faceRowShown, JSON.stringify(rm));
     await page.close();
   });
 
@@ -367,14 +369,16 @@ function stringLiterals(src) {
       const w = (sel) => getComputedStyle(document.querySelector(sel)).fontWeight;
       const b = (sel) => getComputedStyle(document.querySelector(sel)).borderTopWidth;
       return {
-        statLabel: w('.stat-label'), sideTitle: w('.side-title'), cardName: w('.hand-card-name'), endTurn: w('#endTurnBtn'),
+        statLabel: w('.stat-label'), sideTitle: w('.side-title'), cardName: w('#handRow .offer-card-name'), endTurn: w('#endTurnBtn'),
         phase: w('#phaseBadge'), rollNumber: w('#rollResultNumber'),
         hand: b('.hand-card-el'), slot: b('.artifact-slot'), button: b('#startGameBtn'), tip: b('.hover-tip'), art: b('.art-box')
       };
     });
     ['statLabel', 'sideTitle', 'cardName', 'endTurn', 'phase'].forEach((k) => assert.strictEqual(v[k], '400', k));
     assert.strictEqual(v.rollNumber, '700', 'the rolled result stays bold');
-    ['hand', 'slot', 'button', 'tip', 'art'].forEach((k) => assert.strictEqual(v[k], '1px', k));
+    // D-112 (BUILD 169): a card's rarity border is 2px, the one card exception.
+    ['slot', 'button', 'tip', 'art'].forEach((k) => assert.strictEqual(v[k], '1px', k));
+    assert.strictEqual(v.hand, '2px', 'hand card rarity border');
     await page.evaluate(() => { updateEnemy({ hp: 0 }); nextPhase(); });
     await page.waitForFunction(() => dieActionStep !== null);
     const d = await page.evaluate(() => ({
@@ -386,7 +390,7 @@ function stringLiterals(src) {
     assert.strictEqual(d.buttonBorder, '1px');
     await page.evaluate(() => { dieActionChooseSkip(); });
     await page.waitForFunction(() => cardRewardStep !== null);
-    assert.strictEqual(await page.evaluate(() => { document.documentElement.style.zoom = '1'; return getComputedStyle(document.querySelector('.offer-card')).borderTopWidth; }), '1px', 'card reward card');
+    assert.strictEqual(await page.evaluate(() => { document.documentElement.style.zoom = '1'; return getComputedStyle(document.querySelector('#cardRewardPanel .offer-card')).borderTopWidth; }), '2px', 'card reward card (D-112 rarity border)');
     await page.close();
   });
 

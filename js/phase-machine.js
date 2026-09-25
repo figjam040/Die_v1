@@ -52,13 +52,23 @@ function tickEnemyPoison() {
   }
 }
 
+// D-122: a non-final boss win heals BOSS_HEAL_PERCENT of max HP, rounded
+// down (the item's own rounding, not Math.ceil), capped at max by healPlayer().
+function grantBossHeal() {
+  const before = gameState.player.hp;
+  const healed = healPlayer(Math.floor(gameState.player.maxHp * GAME_CONFIG.BOSS_HEAL_PERCENT / 100));
+  const after = gameState.player.hp;
+  log('[HEAL] boss heal ' + healed + ': HP ' + before + ' to ' + after);
+  appendTranscript('BOSS HEAL ' + healed + ' | you ' + shownHp(after) + '/' + gameState.player.maxHp);
+}
+
 function runPhase(phase) {
   if (gameState.run.status === 'active') {
     if (gameState.enemy.hp <= 0) {
       updateRun({ status: 'win' });
       log('[WIN] enemy defeated');
       recordFightRoundEnd(gameState.enemy.id);
-      appendTranscript('WON r' + gameState.turn.round + ' | you ' + gameState.player.hp + '/' + gameState.player.maxHp);
+      appendTranscript('WON r' + gameState.turn.round + ' | you ' + shownHp(gameState.player.hp) + '/' + gameState.player.maxHp);
       // A boss win only ends the run (VICTORY, D-22) on the FINAL act.
       // Every earlier act's boss grants the usual reward flow first.
       if (gameState.run.currentSlot === 'boss') {
@@ -70,6 +80,7 @@ function runPhase(phase) {
           return;
         }
         log('[RUN] act ' + gameState.run.actNumber + ' boss defeated');
+        grantBossHeal();
         grantGoldForWin('Boss');
         dieActionsRemaining = GAME_CONFIG.DIE_REWARDS.SINGLE;
         openArtifactRewardScreen();
@@ -93,7 +104,7 @@ function runPhase(phase) {
       log('[RUN] run over');
       playAudioEvent('fight_lost');
       recordFightRoundEnd(gameState.enemy.id);
-      appendTranscript('LOST r' + gameState.turn.round + ' | you ' + gameState.player.hp + '/' + gameState.player.maxHp);
+      appendTranscript('LOST r' + gameState.turn.round + ' | you ' + shownHp(gameState.player.hp) + '/' + gameState.player.maxHp);
       flushRunRecord('lost');
       return;
     }

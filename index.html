@@ -542,35 +542,17 @@
     min-width: 0;
   }
 
+  /* The one card (D-112) at hand size; its look is .offer-card's. */
   .hand-card-el {
-    position: relative;
     width: 144px;
     height: 216px;
     flex: 0 1 144px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    background: #000;
-    border: 1px solid var(--player-mod);
-    color: var(--player-mod);
-    font-family: var(--game-font);
-    padding: 8px 6px;
-    cursor: pointer;
-    transition: transform 150ms steps(3), border-color 150ms steps(3);
+    transition: transform 150ms steps(3);
   }
 
   .hand-card-el:hover:not(:disabled) { transform: translateY(-3px); }
   .hand-card-el:disabled { cursor: not-allowed; }
   .hand-card-el.unaffordable { opacity: 0.4; }
-
-  .hand-card-art {
-    width: 100%;
-    height: 100px;
-    flex-shrink: 0;
-    border: 1px solid #1a1a1a;
-    display: block;
-  }
 
   .card-art-img, .card-reward-art img {
     width: 100%;
@@ -584,38 +566,6 @@
     display: block;
     width: 100%;
     height: 60px;
-  }
-
-  .hand-card-cost {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #000;
-    border: 1px solid var(--player-mod);
-    color: var(--text);
-    font-size: calc(11px * var(--ui-scale));
-    z-index: 1;
-  }
-
-  .hand-card-name {
-    font-size: calc(12px * var(--ui-scale));
-    line-height: 1.4;
-    text-align: center;
-  }
-
-  .hand-card-effect {
-    font-family: var(--game-font-2);
-    font-size: calc(20px * var(--ui-scale));
-    line-height: 1.05;
-    color: var(--blank);
-    text-align: center;
-    margin-top: auto;
-    overflow: hidden;
   }
 
   /* ---------- BAND D — DIE ICONS, ROLL STAGE, FACE ROW ---------- */
@@ -1172,6 +1122,14 @@
     text-align: center;
   }
 
+  /* D-116 — the rite screen's HP line, the same red as the HP readouts. */
+  .rite-hp {
+    font-family: var(--game-font);
+    font-size: calc(15px * var(--ui-scale));
+    color: var(--enemy-mod);
+    text-align: center;
+  }
+
   .die-action-row {
     display: flex;
     flex-wrap: wrap;
@@ -1219,29 +1177,84 @@
     width: 100%;
   }
 
+  /* D-112 — three cards 20 percent narrower than the old 380px offer card,
+     the freed width spent as gap between them. */
   .offer-cards {
     display: flex;
     justify-content: center;
-    gap: 16px;
+    gap: 130px;
   }
 
+  /* D-112 — the one card: 2px border in its tier colour (set inline from
+     GAME_CONFIG.TIER_COLOURS), sized by .offer-card-offer/-hand/-mini. */
   .offer-card {
-    width: 380px;
-    height: 470px;
-    flex: 0 1 380px;
+    position: relative;
     min-width: 0;
     box-sizing: border-box;
-    padding: 20px;
-    border: 1px solid var(--player-mod);
+    border: 2px solid var(--line);
     background: #000000;
+    color: var(--white);
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
+    padding: 12px 16px 16px;
     cursor: pointer;
+    text-align: left;
+    font-family: var(--game-font);
+  }
+
+  .offer-card-offer {
+    width: 304px;
+    height: 470px;
+    flex: 0 1 304px;
+  }
+
+  .offer-card-hand {
+    gap: 3px;
+    padding: 5px 6px 6px;
+    text-align: center;
+  }
+
+  .offer-card-mini {
+    width: 116px;
+    height: 172px;
+    flex: 0 0 116px;
+    gap: 3px;
+    padding: 4px 6px 6px;
+    text-align: center;
   }
 
   .offer-card-chosen { border-color: var(--nat); }
   .offer-card-disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Soul cost: one filled dot per soul, top right, none at zero cost. */
+  .offer-card-cost {
+    align-self: flex-end;
+    display: flex;
+    gap: 4px;
+    height: 10px;
+    flex-shrink: 0;
+  }
+
+  .offer-card-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--nat);
+  }
+
+  .offer-card-hand .offer-card-cost, .offer-card-mini .offer-card-cost { height: 7px; gap: 3px; }
+  .offer-card-hand .offer-card-dot, .offer-card-mini .offer-card-dot { width: 7px; height: 7px; }
+
+  .offer-card-count {
+    position: absolute;
+    top: 3px;
+    left: 6px;
+    font-family: var(--game-font-2);
+    font-size: calc(18px * var(--ui-scale));
+    line-height: 1;
+    color: var(--text);
+  }
 
   .offer-card-name {
     font-family: var(--game-font);
@@ -1249,10 +1262,19 @@
     color: var(--white);
   }
 
+  .offer-card-hand .offer-card-name, .offer-card-mini .offer-card-name {
+    font-size: calc(12px * var(--ui-scale));
+    line-height: 1.3;
+  }
+
   .offer-card-tier {
     font-family: var(--game-font);
     font-size: calc(11px * var(--ui-scale));
-    color: var(--nat);
+  }
+
+  .offer-card-hand .offer-card-tier, .offer-card-mini .offer-card-tier,
+  .offer-card-hand .offer-card-tag, .offer-card-mini .offer-card-tag {
+    font-size: calc(9px * var(--ui-scale));
   }
 
   .offer-card-art {
@@ -1266,6 +1288,30 @@
     justify-content: center;
     overflow: hidden;
   }
+
+  .offer-card-hand .offer-card-art { height: 84px; flex-basis: 84px; }
+  .offer-card-mini .offer-card-art { height: 54px; flex-basis: 54px; }
+
+  .offer-card-hand .offer-card-text, .offer-card-mini .offer-card-text {
+    font-size: calc(20px * var(--ui-scale));
+    line-height: 1.05;
+    color: var(--blank);
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .offer-card-mini .offer-card-text { font-size: calc(17px * var(--ui-scale)); }
+
+  /* The owned deck as small cards: removal pickers and the CARDS layer. */
+  .card-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    max-width: 1500px;
+  }
+
+  .info-layer .card-grid { margin-top: 12px; }
 
   .offer-card-art-label {
     font-family: var(--game-font);
@@ -1610,6 +1656,9 @@
     background: var(--line);
     flex-shrink: 0;
   }
+  /* D-123 — act 1's nine-slot lanes: in-lane connectors 20px to 14px, so
+     the map keeps its margin inside the panel at 1600px. */
+  .map-composition-long .map-lane .map-connector { width: 14px; }
   .map-connector-committed { background: var(--nat); }
   .map-connector-abandoned { background: var(--muted); opacity: 0.6; }
 

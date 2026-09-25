@@ -143,8 +143,10 @@ function rollDie(faces) {
 // the exact bag rollDie() builds, read without consuming a
 // roll. Gilded Die's extra tickets on one face count here the same way
 // they count in the real pool, so the face row's own odds match what a
-// roll actually draws from. Keyed by face number; pct is rounded to one
-// decimal place, nearest, not floored (D-99).
+// roll actually draws from. Keyed by face number; pct is one decimal place
+// (D-99), by largest remainder so the shown numbers total exactly 100.0
+// (KI-45): every face takes its floored tenths, then the faces with the
+// largest leftover take one tenth each, ties to the lower face number.
 function rollOdds(faces) {
   const gilded = gameState.turn.gildedFace;
   const tickets = faces.map(function(face) {
@@ -152,9 +154,18 @@ function rollOdds(faces) {
     return face.weight + extra;
   });
   const total = tickets.reduce(function(a, b) { return a + b; }, 0);
+  // Integer tenths of a percent: exact, so equal weights tie exactly.
+  const tenths = tickets.map(function(t) { return total > 0 ? Math.floor(t * 1000 / total) : 0; });
+  const leftover = total > 0 ? 1000 - tenths.reduce(function(a, b) { return a + b; }, 0) : 0;
+  const byRemainder = faces.map(function(face, i) { return i; }).sort(function(a, b) {
+    const ra = (tickets[a] * 1000) % total;
+    const rb = (tickets[b] * 1000) % total;
+    return rb !== ra ? rb - ra : faces[a].number - faces[b].number;
+  });
+  for (let k = 0; k < leftover; k++) { tenths[byRemainder[k]]++; }
   const odds = {};
   faces.forEach(function(face, i) {
-    odds[face.number] = { tickets: tickets[i], total: total, pct: total > 0 ? Math.round((tickets[i] / total) * 1000) / 10 : 0 };
+    odds[face.number] = { tickets: tickets[i], total: total, pct: tenths[i] / 10 };
   });
   return odds;
 }

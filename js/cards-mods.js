@@ -148,20 +148,20 @@ function init() {
   gameState.config.cards['rite'] = {
     id: 'rite', name: 'Rite', soulCost: 2, type: 'attack', classRestriction: 'ordained', tags: [],
     effect: function(gameState) {
-      const damage = dealDamage('enemy', 5, 'attack', 'rite');
+      const damage = dealDamage('enemy', 6, 'attack', 'rite');
       const block = dealBlock(6, 'rite');
     }
   };
 
   gameState.config.cards['rebuke'] = {
-    id: 'rebuke', name: 'Rebuke', soulCost: 0, type: 'attack', classRestriction: null, tier: 'common', tags: [],
+    id: 'rebuke', name: 'Rebuke', soulCost: 0, type: 'attack', classRestriction: null, tier: 'basic', tags: [],
     effect: function(gameState) {
       const damage = dealDamage('enemy', 4, 'attack', 'rebuke');
     }
   };
 
   gameState.config.cards['censure'] = {
-    id: 'censure', name: 'Censure', soulCost: 2, type: 'attack', classRestriction: null, tier: 'common', tags: [],
+    id: 'censure', name: 'Censure', soulCost: 2, type: 'attack', classRestriction: null, tier: 'basic', tags: [],
     effect: function(gameState) {
       const damage = dealDamage('enemy', 14, 'attack', 'censure');
     }
@@ -175,14 +175,14 @@ function init() {
   };
 
   gameState.config.cards['vestment'] = {
-    id: 'vestment', name: 'Vestment', soulCost: 2, type: 'block', classRestriction: null, tier: 'common', tags: [],
+    id: 'vestment', name: 'Vestment', soulCost: 2, type: 'block', classRestriction: null, tier: 'basic', tags: [],
     effect: function(gameState) {
       const block = dealBlock(13, 'vestment');
     }
   };
 
   gameState.config.cards['litany'] = {
-    id: 'litany', name: 'Litany', soulCost: 2, type: 'attack', classRestriction: null, tier: 'common', tags: [],
+    id: 'litany', name: 'Litany', soulCost: 2, type: 'attack', classRestriction: null, tier: 'basic', tags: [],
     effect: function(gameState) {
       const damage = dealDamage('enemy', 7, 'attack', 'litany');
       const block = dealBlock(7, 'litany');
@@ -192,7 +192,7 @@ function init() {
   // Draws through the existing drawCards() path unchanged — same call
   // Offering's mod effect already uses.
   gameState.config.cards['scripture'] = {
-    id: 'scripture', name: 'Scripture', soulCost: 1, type: 'utility', classRestriction: null, tier: 'common', tags: [],
+    id: 'scripture', name: 'Scripture', soulCost: 1, type: 'utility', classRestriction: null, tier: 'basic', tags: [],
     effect: function(gameState) {
       drawCards(2);
     }
@@ -206,14 +206,14 @@ function init() {
   };
 
   gameState.config.cards['censer'] = {
-    id: 'censer', name: 'Censer', soulCost: 1, type: 'utility', classRestriction: null, tier: 'common', tags: ['poison'],
+    id: 'censer', name: 'Censer', soulCost: 1, type: 'utility', classRestriction: null, tier: 'basic', tags: ['poison'],
     effect: function(gameState) {
       updateEnemy({ poisonStacks: gameState.enemy.poisonStacks + 4 });
     }
   };
 
   gameState.config.cards['purge'] = {
-    id: 'purge', name: 'Purge', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['poison'],
+    id: 'purge', name: 'Purge', soulCost: 1, type: 'attack', classRestriction: null, tier: 'basic', tags: ['poison'],
     effect: function(gameState) {
       const poisoned = gameState.enemy.poisonStacks > 0;
       const damage = dealDamage('enemy', poisoned ? 10 : 6, 'attack', 'purge');
@@ -226,7 +226,7 @@ function init() {
   };
 
   gameState.config.cards['interdict'] = {
-    id: 'interdict', name: 'Interdict', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: [],
+    id: 'interdict', name: 'Interdict', soulCost: 1, type: 'block', classRestriction: null, tier: 'basic', tags: [],
     // Reads getIncomingIntentDamage(), not the raw intent — a wind-up or
     // broken release deals 0 real damage this round even with a big pattern number.
     effect: function(gameState) {
@@ -244,7 +244,7 @@ function init() {
   // cares about the enemy being mid-Charge at all, wind-up or release,
   // not about how much that Charge is about to deal.
   gameState.config.cards['bulwark'] = {
-    id: 'bulwark', name: 'Bulwark', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: [],
+    id: 'bulwark', name: 'Bulwark', soulCost: 1, type: 'block', classRestriction: null, tier: 'basic', tags: [],
     effect: function(gameState) {
       const charging = gameState.enemy.chargeStage === 'windup' || gameState.enemy.chargeStage === 'release';
       const block = dealBlock(charging ? 16 : 6, 'bulwark');
@@ -317,7 +317,7 @@ function init() {
   // Reads rollOutcome directly — excludes NAT_ONE/NAT_TWENTY, which carry
   // no loaded mod but aren't 'blank' either, from the 9-damage branch.
   gameState.config.cards['orison'] = {
-    id: 'orison', name: 'Orison', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: [],
+    id: 'orison', name: 'Orison', soulCost: 1, type: 'attack', classRestriction: null, tier: 'basic', tags: [],
     effect: function(gameState) {
       const isBlank = gameState.turn.rollOutcome === 'blank';
       const damage = dealDamage('enemy', isBlank ? 9 : 5, 'attack', 'orison');
@@ -358,7 +358,7 @@ function init() {
   // Counts blank (modId null)
   // faces among faces 2-19 (index 1-18), excluding the two Nat faces.
   gameState.config.cards['vacancy'] = {
-    id: 'vacancy', name: 'Vacancy', soulCost: 2, type: 'attack', classRestriction: null, tier: 'common', tags: ['mass'],
+    id: 'vacancy', name: 'Vacancy', soulCost: 2, type: 'attack', classRestriction: null, tier: 'basic', tags: ['mass'],
     effect: function(gameState) {
       const blanks = gameState.die.faces.filter(function(f) {
         return f.number >= 2 && f.number <= 19 && f.modId === null;
@@ -379,7 +379,7 @@ function init() {
   // counts twice, same modId/modId2 scan Congregation already uses, just
   // tallied instead of booleaned.
   gameState.config.cards['lauds'] = {
-    id: 'lauds', name: 'Lauds', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['growth'],
+    id: 'lauds', name: 'Lauds', soulCost: 1, type: 'attack', classRestriction: null, tier: 'basic', tags: ['growth'],
     effect: function(gameState) {
       function hasGrowthTag(modId) {
         const mod = gameState.config.mods[modId];
@@ -403,7 +403,7 @@ function init() {
 
   // Flat damage, same shape as Rebuke.
   gameState.config.cards['chastise'] = {
-    id: 'chastise', name: 'Chastise', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: [],
+    id: 'chastise', name: 'Chastise', soulCost: 1, type: 'attack', classRestriction: null, tier: 'basic', tags: [],
     effect: function(gameState) {
       const damage = dealDamage('enemy', 7, 'attack', 'chastise');
     }
@@ -411,7 +411,7 @@ function init() {
 
   // Flat block, same shape as Ward.
   gameState.config.cards['cloister'] = {
-    id: 'cloister', name: 'Cloister', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: [],
+    id: 'cloister', name: 'Cloister', soulCost: 1, type: 'block', classRestriction: null, tier: 'basic', tags: [],
     effect: function(gameState) {
       const block = dealBlock(7, 'cloister');
     }
@@ -419,7 +419,7 @@ function init() {
 
   // Draws through the same drawCards() path Scripture already uses.
   gameState.config.cards['psalm'] = {
-    id: 'psalm', name: 'Psalm', soulCost: 0, type: 'utility', classRestriction: null, tier: 'common', tags: [],
+    id: 'psalm', name: 'Psalm', soulCost: 0, type: 'utility', classRestriction: null, tier: 'basic', tags: [],
     effect: function(gameState) {
       drawCards(1);
     }
@@ -427,7 +427,7 @@ function init() {
 
   // Reads block BEFORE its own dealBlock() call adds to it.
   gameState.config.cards['reliquary'] = {
-    id: 'reliquary', name: 'Reliquary', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: ['bastion'],
+    id: 'reliquary', name: 'Reliquary', soulCost: 1, type: 'block', classRestriction: null, tier: 'basic', tags: ['bastion'],
     effect: function(gameState) {
       const blockBefore = gameState.player.block;
       const block = dealBlock(6, 'reliquary');
@@ -492,7 +492,7 @@ function init() {
   // Afflict all count as "not an Attack" — only a literal {kind:'attack'}
   // entry gets the base 6.
   gameState.config.cards['hosanna'] = {
-    id: 'hosanna', name: 'Hosanna', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: [],
+    id: 'hosanna', name: 'Hosanna', soulCost: 1, type: 'attack', classRestriction: null, tier: 'basic', tags: [],
     effect: function(gameState) {
       const entry = gameState.enemy.currentEntry;
       const notAttack = !entry || entry.kind !== 'attack';
@@ -538,7 +538,7 @@ function init() {
   // Reads gameState.turn.
   // rolledFaceWeight, the exact field Covenant already reads.
   gameState.config.cards['tabernacle'] = {
-    id: 'tabernacle', name: 'Tabernacle', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: ['mass'],
+    id: 'tabernacle', name: 'Tabernacle', soulCost: 1, type: 'block', classRestriction: null, tier: 'basic', tags: ['mass'],
     effect: function(gameState) {
       const weight = gameState.turn.rolledFaceWeight;
       const raw = 3 + (3 * weight);
@@ -631,7 +631,7 @@ function init() {
 
   // 10 damage if the rolled face is itself Bound (isBoundFace()).
   gameState.config.cards['kyrie'] = {
-    id: 'kyrie', name: 'Kyrie', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['bound'],
+    id: 'kyrie', name: 'Kyrie', soulCost: 1, type: 'attack', classRestriction: null, tier: 'basic', tags: ['bound'],
     effect: function(gameState) {
       const faceNumber = gameState.turn.rolledFaceNumber;
       const face = getPlayerFace(faceNumber);
@@ -684,14 +684,14 @@ function init() {
   // gameState.enemy.aweStacks via applyAwe() (cards-mods.js).
 
   gameState.config.cards['kneel'] = {
-    id: 'kneel', name: 'Kneel', soulCost: 1, type: 'utility', classRestriction: null, tier: 'common', tags: ['awe'],
+    id: 'kneel', name: 'Kneel', soulCost: 1, type: 'utility', classRestriction: null, tier: 'basic', tags: ['awe'],
     effect: function(gameState) {
       applyAwe(3);
     }
   };
 
   gameState.config.cards['compline'] = {
-    id: 'compline', name: 'Compline', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: ['awe'],
+    id: 'compline', name: 'Compline', soulCost: 1, type: 'block', classRestriction: null, tier: 'basic', tags: ['awe'],
     effect: function(gameState) {
       const block = dealBlock(4, 'compline');
       applyAwe(2);
@@ -718,7 +718,7 @@ function init() {
   };
 
   gameState.config.cards['venom'] = {
-    id: 'venom', name: 'Venom', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['poison'],
+    id: 'venom', name: 'Venom', soulCost: 1, type: 'attack', classRestriction: null, tier: 'basic', tags: ['poison'],
     effect: function(gameState) {
       const stacks = gameState.enemy.poisonStacks > 0 ? 4 : 2;
       updateEnemy({ poisonStacks: gameState.enemy.poisonStacks + stacks });
@@ -727,7 +727,7 @@ function init() {
   };
 
   gameState.config.cards['ballast'] = {
-    id: 'ballast', name: 'Ballast', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['mass'],
+    id: 'ballast', name: 'Ballast', soulCost: 1, type: 'attack', classRestriction: null, tier: 'basic', tags: ['mass'],
     effect: function(gameState) {
       const heaviest = gameState.die.faces.reduce(function(max, f) {
         return f.weight > max ? f.weight : max;
@@ -764,7 +764,7 @@ function init() {
   };
 
   gameState.config.cards['cadence'] = {
-    id: 'cadence', name: 'Cadence', soulCost: 1, type: 'attack', classRestriction: null, tier: 'common', tags: ['growth'],
+    id: 'cadence', name: 'Cadence', soulCost: 1, type: 'attack', classRestriction: null, tier: 'basic', tags: ['growth'],
     effect: function(gameState) {
       const damage = dealDamage('enemy', Math.min(12, 2 * gameState.turn.round), 'attack', 'cadence');
       log('[CARD] cadence: ' + damage + ' damage (round ' + gameState.turn.round + ')');
@@ -772,7 +772,7 @@ function init() {
   };
 
   gameState.config.cards['watchword'] = {
-    id: 'watchword', name: 'Watchword', soulCost: 1, type: 'block', classRestriction: null, tier: 'common', tags: ['bound'],
+    id: 'watchword', name: 'Watchword', soulCost: 1, type: 'block', classRestriction: null, tier: 'basic', tags: ['bound'],
     effect: function(gameState) {
       const bound = gameState.turn.boundTriggeredThisRound;
       const block = dealBlock(bound ? 12 : 5, 'watchword');
@@ -1080,7 +1080,7 @@ function init() {
   gameState.config.mods['smite'] = {
     id: 'smite',
     name: 'Smite',
-    tier: 'common',
+    tier: 'basic',
     tags: [],
     effect: function() {
       const damage = dealDamage('enemy', 16, 'attack', 'smite');
@@ -1092,7 +1092,7 @@ function init() {
   gameState.config.mods['penance'] = {
     id: 'penance',
     name: 'Penance',
-    tier: 'common',
+    tier: 'basic',
     tags: ['bastion'],
     effect: function() {
       const damage = dealDamage('enemy', 8, 'attack', 'penance');
@@ -1111,7 +1111,7 @@ function init() {
   gameState.config.mods['offering'] = {
     id: 'offering',
     name: 'Offering',
-    tier: 'common',
+    tier: 'basic',
     tags: ['soul'],
     effect: function() {
       updatePlayer({ soul: gameState.player.soul + 2 });
@@ -1123,7 +1123,7 @@ function init() {
   gameState.config.mods['blight'] = {
     id: 'blight',
     name: 'Blight',
-    tier: 'common',
+    tier: 'basic',
     tags: ['poison'],
     effect: function() {
       updateEnemy({ poisonStacks: gameState.enemy.poisonStacks + 6 });
@@ -1151,7 +1151,7 @@ function init() {
   gameState.config.mods['sanctuary'] = {
     id: 'sanctuary',
     name: 'Sanctuary',
-    tier: 'common',
+    tier: 'basic',
     tags: ['bastion'],
     effect: function() {
       const block = dealBlock(16, 'sanctuary');
@@ -1246,7 +1246,7 @@ function init() {
   gameState.config.mods['anthem'] = {
     id: 'anthem',
     name: 'Anthem',
-    tier: 'common',
+    tier: 'basic',
     tags: ['mass'],
     effect: function() {
       const weight = gameState.turn.rolledFaceWeight;
@@ -1279,7 +1279,7 @@ function init() {
   gameState.config.mods['largesse'] = {
     id: 'largesse',
     name: 'Largesse',
-    tier: 'common',
+    tier: 'basic',
     tags: ['soul'],
     effect: function() {
       updatePlayer({ soul: gameState.player.soul + 2 });
@@ -1338,7 +1338,7 @@ function init() {
     }
   };
 
-  // Cope — pool mod (common). 8 block, permanently +2 per trigger — same
+  // Cope — pool mod (basic). 8 block, permanently +2 per trigger — same
   // per-face modData growth pattern Zeal already uses (merge into the
   // face's existing modData rather than replace it wholesale, since
   // mod_dispatch already wrote this trigger's own triggerCount into modData
@@ -1347,7 +1347,7 @@ function init() {
   gameState.config.mods['cope'] = {
     id: 'cope',
     name: 'Cope',
-    tier: 'common',
+    tier: 'basic',
     tags: ['growth', 'bastion'],
     effect: function(data) {
       const faceNumber = data.faceNumber;
@@ -1393,14 +1393,14 @@ function init() {
     }
   };
 
-  // Thurible — pool mod (common). 8 damage, applies 3 stacks of poison —
+  // Thurible — pool mod (basic). 8 damage, applies 3 stacks of poison —
   // same poisonStacks field Blight/Virulence/Censer/the dev poison applier
   // already write to. Log line reads "stacks of poison" from the start
   // (KI-25's wording), never a bare "N poison" amount.
   gameState.config.mods['thurible'] = {
     id: 'thurible',
     name: 'Thurible',
-    tier: 'common',
+    tier: 'basic',
     tags: ['poison'],
     effect: function() {
       const damage = dealDamage('enemy', 8, 'attack', 'thurible');
@@ -1449,14 +1449,14 @@ function init() {
   // the die-wide Bound scan — every other loaded Bound face triggers too,
   // through triggerFaceOutsideRoll(), the same round this face rolled.
 
-  // Unison — pool mod (common). 6 damage, flat, no conditions — the plainest
+  // Unison — pool mod (basic). 6 damage, flat, no conditions — the plainest
   // possible Bound mod, so two Unisons (or a Unison and any other Bound
   // face) firing together is easy to read off gameState with no other
   // mechanic in the way.
   gameState.config.mods['unison'] = {
     id: 'unison',
     name: 'Unison',
-    tier: 'common',
+    tier: 'basic',
     tags: ['bound'],
     effect: function() {
       const damage = dealDamage('enemy', 6, 'attack', 'unison');
@@ -1464,11 +1464,11 @@ function init() {
     }
   };
 
-  // Accord — pool mod (common). 10 block, flat, no conditions.
+  // Accord — pool mod (basic). 10 block, flat, no conditions.
   gameState.config.mods['accord'] = {
     id: 'accord',
     name: 'Accord',
-    tier: 'common',
+    tier: 'basic',
     tags: ['bound'],
     effect: function() {
       const block = dealBlock(10, 'accord');
@@ -1476,13 +1476,13 @@ function init() {
     }
   };
 
-  // Kinship — pool mod (common). Applies 4 stacks of poison to the enemy —
+  // Kinship — pool mod (basic). Applies 4 stacks of poison to the enemy —
   // same poisonStacks field Blight/Virulence/Thurible/the dev poison
   // applier already write to, no second poison system.
   gameState.config.mods['kinship'] = {
     id: 'kinship',
     name: 'Kinship',
-    tier: 'common',
+    tier: 'basic',
     tags: ['bound', 'poison'],
     effect: function() {
       updateEnemy({ poisonStacks: gameState.enemy.poisonStacks + 4 });
@@ -1536,7 +1536,7 @@ function init() {
   gameState.config.mods['dread'] = {
     id: 'dread',
     name: 'Dread',
-    tier: 'common',
+    tier: 'basic',
     tags: ['awe'],
     effect: function() {
       applyAwe(4);
@@ -1564,19 +1564,19 @@ function init() {
   // enemy die mechanics use for "registered unconditionally, checks which
   // one applies".
   gameState.config.artifacts = {
-    third_eye: { id: 'third_eye', name: 'Third Eye', text: 'Once per act, before a roll, choose the face.' },
-    loaded_die: { id: 'loaded_die', name: 'Loaded Die', text: 'Roll twice, the higher face stands.' },
-    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', text: 'When the enemy winds up or releases, roll twice and both faces trigger.' },
-    tithe_box: { id: 'tithe_box', name: 'Tithe Box', text: 'Every Nat 20 pays 15 gold.' },
-    merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", text: 'Shop prices a quarter lower. Card removal stays at 75.' },
-    leaden_face: { id: 'leaden_face', name: 'Leaden Face', text: 'Strengthen adds 2 weight, not 1.' },
-    reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', text: 'When a Bound face is rolled, the next face above it on the die triggers too, if loaded.' },
-    plague_bell: { id: 'plague_bell', name: 'Plague Bell', text: 'Fight start: the enemy takes stacks of poison equal to half your loaded faces, rounded down.' },
-    alms: { id: 'alms', name: 'Alms', text: 'A blank roll gives 1 soul instead of 2 block.' },
-    hourglass: { id: 'hourglass', name: 'Hourglass', text: 'Round 1 of every fight, the enemy does nothing.' },
-    second_chance: { id: 'second_chance', name: 'Second Chance', text: 'Once per fight, reroll.' },
-    gilded_die: { id: 'gilded_die', name: 'Gilded Die', text: 'Before a roll, pay 10 gold: one face gets +2 weight for that roll only.' },
-    bone_counter: { id: 'bone_counter', name: 'Bone Counter', text: 'Nat 1 costs 15 gold instead of Penitence. Under 15 gold, Penitence as normal.' }
+    third_eye: { id: 'third_eye', name: 'Third Eye', tier: 'rare', text:'Once per act, before a roll, choose the face.' },
+    loaded_die: { id: 'loaded_die', name: 'Loaded Die', tier: 'rare', text:'Roll twice, the higher face stands.' },
+    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', text:'When the enemy winds up or releases, roll twice and both faces trigger.' },
+    tithe_box: { id: 'tithe_box', name: 'Tithe Box', tier: 'rare', text:'Every Nat 20 pays 15 gold.' },
+    merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", tier: 'rare', text:'Shop prices a quarter lower. Card removal stays at 75.' },
+    leaden_face: { id: 'leaden_face', name: 'Leaden Face', tier: 'rare', text:'Strengthen adds 2 weight, not 1.' },
+    reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', tier: 'rare', text:'When a Bound face is rolled, the next face above it on the die triggers too, if loaded.' },
+    plague_bell: { id: 'plague_bell', name: 'Plague Bell', tier: 'rare', text:'Fight start: the enemy takes stacks of poison equal to half your loaded faces, rounded down.' },
+    alms: { id: 'alms', name: 'Alms', tier: 'rare', text:'A blank roll gives 1 soul instead of 2 block.' },
+    hourglass: { id: 'hourglass', name: 'Hourglass', tier: 'rare', text:'Round 1 of every fight, the enemy does nothing.' },
+    second_chance: { id: 'second_chance', name: 'Second Chance', tier: 'rare', text:'Once per fight, reroll.' },
+    gilded_die: { id: 'gilded_die', name: 'Gilded Die', tier: 'rare', text:'Before a roll, pay 10 gold: one face gets +2 weight for that roll only.' },
+    bone_counter: { id: 'bone_counter', name: 'Bone Counter', tier: 'rare', text:'Nat 1 costs 15 gold instead of Penitence. Under 15 gold, Penitence as normal.' }
   };
 
   // Every artifact with a hook of its own to sit on registers here,

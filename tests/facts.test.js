@@ -130,7 +130,8 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.close();
   });
 
-  await runTest('F16 lanes 2, slots per lane 8, three rites per lane, elite at slot 4 of the upper lane', async () => {
+  // D-123 (BUILD 169): SLOTS_PER_LANE and RITE_SLOT_INDICES are per act; act 1 has nine slots.
+  await runTest('F16 lanes 2, slots per lane 9/8/8, three rites per lane, elite at slot 4 of the upper lane', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => ({
       laneCount: GAME_CONFIG.LANE_COUNT,
@@ -142,8 +143,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       lowerLen: gameState.run.act.lower.length,
       upperEliteLabel: gameState.run.act.upper[GAME_CONFIG.ELITE_SLOT_INDEX].label,
       lowerHasElite: gameState.run.act.lower.some(function(s) { return s.label === 'Elite'; }),
-      upperRiteLabels: GAME_CONFIG.RITE_SLOT_INDICES.map(function(i) { return gameState.run.act.upper[i].label; }),
-      lowerRiteLabels: GAME_CONFIG.RITE_SLOT_INDICES.map(function(i) { return gameState.run.act.lower[i].label; }),
+      upperRiteLabels: GAME_CONFIG.RITE_SLOT_INDICES[0].map(function(i) { return gameState.run.act.upper[i].label; }),
+      lowerRiteLabels: GAME_CONFIG.RITE_SLOT_INDICES[0].map(function(i) { return gameState.run.act.lower[i].label; }),
+      act2Len: buildAct(2).upper.length,
       upperFightCount: gameState.run.act.upper.filter(function(s) { return s.type === 'fight'; }).length,
       lowerFightCount: gameState.run.act.lower.filter(function(s) { return s.type === 'fight'; }).length,
       lowerEventCount: gameState.run.act.lower.filter(function(s) { return s.type === 'event'; }).length,
@@ -151,26 +153,25 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       lowerLabels: gameState.run.act.lower.map(function(s) { return s.label; })
     }));
     specOnlyEqual(v.laneCount, 2, 'F16: GAME_CONFIG.LANE_COUNT === 2 (documented fact, no independent oracle)');
-    specOnlyEqual(v.slotsPerLane, 8, 'F16: GAME_CONFIG.SLOTS_PER_LANE === 8 (documented fact, no independent oracle)');
-    assert.strictEqual(v.upperLen, 8);
-    assert.strictEqual(v.lowerLen, 8);
+    specOnlyDeepEqual(v.slotsPerLane, [9, 8, 8], 'F16: GAME_CONFIG.SLOTS_PER_LANE === [9,8,8] (documented fact, no independent oracle)');
+    assert.strictEqual(v.upperLen, 9);
+    assert.strictEqual(v.lowerLen, 9);
+    assert.strictEqual(v.act2Len, 8);
     assert.deepStrictEqual(v.allowed, [3], 'F16: the elite is slot 4 of the upper lane (0-based index 3), not a range');
     assert.strictEqual(v.eliteIndex, 3);
     assert.strictEqual(v.upperEliteLabel, 'Elite');
     assert.strictEqual(v.lowerHasElite, false, 'the elite sits on one lane only, per D-23');
-    assert.deepStrictEqual(v.riteIndices, [1, 4, 7], 'F16: three rites per lane, at slots 2, 5 and 8 (1-based)');
+    assert.deepStrictEqual(v.riteIndices, [[1, 5, 8], [1, 4, 7], [1, 4, 7]], 'F16: three rites per lane, act 1 at slots 2, 6 and 9, acts 2-3 at 2, 5 and 8 (1-based)');
     assert.deepStrictEqual(v.upperRiteLabels, ['Rite', 'Rite', 'Rite']);
     assert.deepStrictEqual(v.lowerRiteLabels, ['Rite', 'Rite', 'Rite']);
-    // BUILD 151 (F44): the upper lane is still 7 fights — the opening
-    // fight, 5 fights/elite in the lane (8 slots minus 3 rites), the boss.
-    // The lower lane's slot index 3 is now the event (The Font), so its
-    // lane holds 4 fights, 6 through that lane's own path.
-    assert.strictEqual(v.upperFightCount, 5);
-    assert.strictEqual(v.lowerFightCount, 4);
+    // Act 1's upper lane holds 6 fights (9 slots minus 3 rites, the elite
+    // included); the lower lane's slot index 3 is the Anomaly, so 5.
+    assert.strictEqual(v.upperFightCount, 6);
+    assert.strictEqual(v.lowerFightCount, 5);
     assert.strictEqual(v.lowerEventCount, 1);
-    assert.deepStrictEqual(v.upperLabels, ['Fight', 'Rite', 'Fight', 'Elite', 'Rite', 'Fight', 'Fight', 'Rite']);
+    assert.deepStrictEqual(v.upperLabels, ['Fight', 'Rite', 'Fight', 'Elite', 'Fight', 'Rite', 'Fight', 'Fight', 'Rite']);
     // D-117: the event slot reads Anomaly to the player.
-    assert.deepStrictEqual(v.lowerLabels, ['Fight', 'Rite', 'Fight', 'Anomaly', 'Rite', 'Fight', 'Fight', 'Rite']);
+    assert.deepStrictEqual(v.lowerLabels, ['Fight', 'Rite', 'Fight', 'Anomaly', 'Fight', 'Rite', 'Fight', 'Fight', 'Rite']);
     await page.close();
   });
 
@@ -196,18 +197,20 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.close();
   });
 
-  await runTest('BUILD 151 (F44): the upper path is still 7 fights an act (21 a run); the lower path, through the event slot, is 6 (18 a run)', async () => {
+  // D-123 (BUILD 169): act 1's ninth slot adds one fight to each path.
+  await runTest('BUILD 151 (F44): the upper path is 7 fights an act, 8 in act 1 (22 a run); the lower path, through the event slot, is 6, 7 in act 1 (19 a run)', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
-      function fightsInPath(lane) {
-        return 1 /* opening */ + gameState.run.act[lane].filter(function(s) { return s.type === 'fight'; }).length + 1 /* boss */;
+      function fightsInPath(act, lane) {
+        return 1 /* opening */ + act[lane].filter(function(s) { return s.type === 'fight'; }).length + 1 /* boss */;
       }
-      return { upper: fightsInPath('upper'), lower: fightsInPath('lower'), acts: GAME_CONFIG.ACTS };
+      const acts = [1, 2, 3].map(function(n) { return buildAct(n); });
+      return { upper: acts.map(a => fightsInPath(a, 'upper')), lower: acts.map(a => fightsInPath(a, 'lower')) };
     });
-    assert.strictEqual(v.upper, 7);
-    assert.strictEqual(v.lower, 6);
-    assert.strictEqual(v.upper * v.acts, 21);
-    assert.strictEqual(v.lower * v.acts, 18);
+    assert.deepStrictEqual(v.upper, [8, 7, 7]);
+    assert.deepStrictEqual(v.lower, [7, 6, 6]);
+    assert.strictEqual(v.upper.reduce((a, b) => a + b, 0), 22);
+    assert.strictEqual(v.lower.reduce((a, b) => a + b, 0), 19);
     await page.close();
   });
 
@@ -423,7 +426,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     });
     specOnlyEqual(v.strikeCost, 1, 'F06: strike soulCost === 1 (documented fact, no independent oracle)'); assert.strictEqual(v.strikeDamage, 5, 'strike.effect() must actually deal 5 damage');
     specOnlyEqual(v.wardCost, 1, 'F07: ward soulCost === 1 (documented fact, no independent oracle)'); assert.strictEqual(v.wardBlock, 5, 'ward.effect() must actually grant 5 block');
-    specOnlyEqual(v.riteCost, 2, 'F08: rite soulCost === 2 (documented fact, no independent oracle)'); assert.strictEqual(v.riteDamage, 5, 'rite.effect() must actually deal 5 damage'); assert.strictEqual(v.riteBlock, 6, 'rite.effect() must actually grant 6 block');
+    specOnlyEqual(v.riteCost, 2, 'F08: rite soulCost === 2 (documented fact, no independent oracle)'); assert.strictEqual(v.riteDamage, 6, 'rite.effect() must actually deal 6 damage (D-121)'); assert.strictEqual(v.riteBlock, 6, 'rite.effect() must actually grant 6 block');
     await page.close();
   });
 
@@ -1174,8 +1177,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.strictEqual(acts.act1.opening.enemy.hp, 50, 'act 1 opening HP must be unchanged');
     assert.strictEqual(acts.act1.upper[0].enemy.hp, 58, 'act 1 lane position 1 HP must be ACT1_LANE_FIGHT_HP[0] (58)');
     assert.strictEqual(acts.act1.upper[2].enemy.hp, 65, 'act 1 lane position 2 HP must be ACT1_LANE_FIGHT_HP[1] (65)');
-    assert.strictEqual(acts.act1.upper[5].enemy.hp, 78, 'act 1 lane position 3 HP must be ACT1_LANE_FIGHT_HP[2] (78)');
-    assert.strictEqual(acts.act1.upper[6].enemy.hp, 85, 'act 1 lane position 4 HP must be ACT1_LANE_FIGHT_HP[3] (85)');
+    // D-123 (BUILD 169): act 1's ninth slot at index 4 moves positions 3/4 to indices 6/7.
+    assert.strictEqual(acts.act1.upper[6].enemy.hp, 78, 'act 1 lane position 3 HP must be ACT1_LANE_FIGHT_HP[2] (78)');
+    assert.strictEqual(acts.act1.upper[7].enemy.hp, 85, 'act 1 lane position 4 HP must be ACT1_LANE_FIGHT_HP[3] (85)');
     assert.strictEqual(acts.act1.upper[3].enemy.hp, 100, 'act 1 elite HP must be unchanged');
     assert.strictEqual(acts.act1.boss.enemy.hp, 100, 'act 1 boss HP must be unchanged');
     assert.strictEqual(acts.act1.boss.enemy.name, 'Hierophant', 'act 1 boss must be the Hierophant');
@@ -1334,21 +1338,21 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     });
     assert.deepStrictEqual(tiers, {
       consecrate: null,
-      smite: 'common', sanctuary: 'common', penance: 'common', blight: 'common', offering: 'common', anthem: 'common',
+      smite: 'basic', sanctuary: 'basic', penance: 'basic', blight: 'basic', offering: 'basic', anthem: 'basic',
       vigil: 'uncommon', ordain: 'uncommon', zeal: 'uncommon', elevation: 'uncommon',
       virulence: 'rare', fervour: 'rare',
       // Checkpoint 3 tags/mods build — six new mods, added after prompt A's
       // tier map was written.
-      largesse: 'common', cope: 'common', thurible: 'common',
+      largesse: 'basic', cope: 'basic', thurible: 'basic',
       tithe: 'uncommon', congregation: 'uncommon', anathema: 'uncommon',
       // BUILD 132 — checkpoint 3, trigger a face outside a roll (prompt D).
       magnificat: 'rare',
       // BUILD 133 — checkpoint 3, Bound engine.
-      unison: 'common', accord: 'common', kinship: 'common',
+      unison: 'basic', accord: 'basic', kinship: 'basic',
       // BUILD 134 — checkpoint 3, the remaining Bound pieces.
       concord: 'uncommon', herald: 'rare',
       // BUILD 149 — the awe cluster.
-      dread: 'common', genuflect: 'uncommon'
+      dread: 'basic', genuflect: 'uncommon'
     });
     await liveBrowser.close();
   });
@@ -1362,25 +1366,25 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       return out;
     });
     assert.deepStrictEqual(tiers, {
-      rebuke: 'common', censure: 'common', vestment: 'common', litany: 'common', scripture: 'common',
-      interdict: 'common', orison: 'common', censer: 'common', purge: 'common',
+      rebuke: 'basic', censure: 'basic', vestment: 'basic', litany: 'basic', scripture: 'basic',
+      interdict: 'basic', orison: 'basic', censer: 'basic', purge: 'basic',
       judgement: 'uncommon', reckoning: 'uncommon', communion: 'uncommon', rapture: 'uncommon',
       covenant: 'uncommon', retribution: 'uncommon',
       // BUILD 131 — checkpoint 3 cards, sixteen new cards.
-      chastise: 'common', cloister: 'common', psalm: 'common', reliquary: 'common',
-      vacancy: 'common', lauds: 'common', hosanna: 'common', tabernacle: 'common',
+      chastise: 'basic', cloister: 'basic', psalm: 'basic', reliquary: 'basic',
+      vacancy: 'basic', lauds: 'basic', hosanna: 'basic', tabernacle: 'basic',
       tenet: 'uncommon', gradual: 'uncommon', myrrh: 'uncommon', gloria: 'uncommon',
       vindication: 'rare', exequy: 'rare', oblation: 'rare', jubilee: 'rare',
       // BUILD 132 — checkpoint 3, trigger a face outside a roll (prompt D).
       threnody: 'uncommon', reverberation: 'rare',
       // BUILD 134 — checkpoint 3, the remaining Bound pieces.
-      kyrie: 'common', canticle: 'uncommon', novena: 'rare',
+      kyrie: 'basic', canticle: 'uncommon', novena: 'rare',
       // BUILD 149 — the awe cluster.
-      kneel: 'common', compline: 'common', tremendum: 'uncommon', mysterium: 'rare',
+      kneel: 'basic', compline: 'basic', tremendum: 'uncommon', mysterium: 'rare',
       // BUILD 150 — Bulwark.
-      bulwark: 'common',
+      bulwark: 'basic',
       // BUILD 153 — seven cards beside the artifact pass.
-      venom: 'common', ballast: 'common', cadence: 'common', watchword: 'common',
+      venom: 'basic', ballast: 'basic', cadence: 'basic', watchword: 'basic',
       refrain: 'uncommon', second_sight: 'uncommon', blight_weight: 'uncommon'
     });
     await liveBrowser.close();
@@ -1398,7 +1402,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     const page = await freshPage(liveBrowser);
     const totals = await page.evaluate(() => {
       function tally(ids, getTier) {
-        const out = { common: 0, uncommon: 0, rare: 0 };
+        const out = { basic: 0, uncommon: 0, rare: 0 };
         ids.forEach(function(id) {
           const tier = getTier(id);
           if (tier) out[tier] += 1;
@@ -1409,8 +1413,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       const cardTotals = tally(Object.keys(gameState.config.cardPool), function(id) { return gameState.config.cardPool[id].tier || null; });
       return { modTotals: modTotals, cardTotals: cardTotals };
     });
-    assert.deepStrictEqual(totals.modTotals, { common: 13, uncommon: 9, rare: 4 }, 'offerable mods must be 13 common, 9 uncommon, 4 rare (Consecrate excluded, it carries no tier)');
-    assert.deepStrictEqual(totals.cardTotals, { common: 25, uncommon: 16, rare: 7 }, 'reward cards must be 25 common, 16 uncommon, 7 rare');
+    // D-111 (BUILD 169): the common tier is named basic.
+    assert.deepStrictEqual(totals.modTotals, { basic: 13, uncommon: 9, rare: 4 }, 'offerable mods must be 13 basic, 9 uncommon, 4 rare (Consecrate excluded, it carries no tier)');
+    assert.deepStrictEqual(totals.cardTotals, { basic: 25, uncommon: 16, rare: 7 }, 'reward cards must be 25 basic, 16 uncommon, 7 rare');
     await liveBrowser.close();
   });
 
@@ -1465,7 +1470,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       const pool = Object.keys(gameState.config.mods)
         .filter(function(id) { return gameState.config.mods[id].tier != null; })
         .map(function(id) { return { id: id, tier: gameState.config.mods[id].tier }; });
-      const tally = { common: 0, uncommon: 0, rare: 0 };
+      const tally = { basic: 0, uncommon: 0, rare: 0, mythic: 0, void: 0 };
       let fallbacks = 0;
       let rolls = 0;
       for (let i = 0; i < 10000; i++) {
@@ -1478,7 +1483,8 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       }
       return { tally: tally, rolls: rolls, fallbacks: fallbacks };
     });
-    const pctCommon = v.tally.common / v.rolls;
+    assert.strictEqual(v.tally.mythic + v.tally.void, 0, 'mythic and void carry weight 0 and are never rolled (D-111)');
+    const pctCommon = v.tally.basic / v.rolls;
     const pctUncommon = v.tally.uncommon / v.rolls;
     const pctRare = v.tally.rare / v.rolls;
     assert.ok(Math.abs(pctCommon - 0.65) <= 0.02, 'common ' + pctCommon.toFixed(4) + ' not within 2 points of 0.65');
@@ -2417,7 +2423,8 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await enterOpeningFight(page);
     const v = await page.evaluate(() => {
       updatePlayer({ hand: ['gloria'] });
-      const effectEl = document.querySelector('#handRow .hand-card-effect');
+      // D-112 (BUILD 169): the hand card is the one card; its text is .offer-card-text.
+      const effectEl = document.querySelector('#handRow .offer-card-text');
       return effectEl ? effectEl.textContent : null;
     });
     assert.strictEqual(v, '30 damage', 'Gloria in hand must render its own hand text');

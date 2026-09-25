@@ -112,7 +112,7 @@ async function hoverFirst(page, selector) {
   await runTest('Load offer: a missing art file falls back to the mod name in the same place', async () => {
     const page = await freshPage(browser);
     const r = await page.evaluate(() => {
-      const el = renderOfferSymbol({ id: 'fake_mod', name: 'Fake Mod', tierText: 'COMMON', artPath: 'art/mods/fake_mod.png', tagText: 'NONE', text: 'Nothing.', onClick: function() {} });
+      const el = renderOfferSymbol({ id: 'fake_mod', name: 'Fake Mod', tierText: 'BASIC', artPath: 'art/mods/fake_mod.png', tagText: 'NONE', text: 'Nothing.', onClick: function() {} });
       document.body.appendChild(el);
       return new Promise((res) => setTimeout(() => {
         res({ imgHidden: el.querySelector('img').style.display === 'none', label: el.querySelector('.offer-symbol-label').textContent, labelShown: el.querySelector('.offer-symbol-label').style.display !== 'none' });
@@ -125,7 +125,7 @@ async function hoverFirst(page, selector) {
     await page.close();
   });
 
-  await runTest('Artifact offer: three symbol elements each holding an art/artifacts img, and hovering shows the name and ARTIFACT', async () => {
+  await runTest('Artifact offer: three symbol elements each holding an art/artifacts img, and hovering shows the name and its tier', async () => {
     const page = await freshPage(browser);
     await openArtifactOffer(page);
     const r = await page.evaluate(() => ({
@@ -139,7 +139,9 @@ async function hoverFirst(page, selector) {
     const name = await page.evaluate((id) => gameState.config.artifacts[id].name, h.id);
     assert.strictEqual(h.opacity, 1, 'tip visible on hover');
     assert.strictEqual(h.lines[0], name, 'first line is the name');
-    assert.strictEqual(h.lines[1], 'ARTIFACT', 'second line is the rarity word');
+    // D-111 (BUILD 169): artifacts carry a tier; the line reads it.
+    const tier = await page.evaluate((id) => gameState.config.artifacts[id].tier, h.id);
+    assert.strictEqual(h.lines[1], tier.toUpperCase(), 'second line is the rarity word');
     await page.close();
   });
 

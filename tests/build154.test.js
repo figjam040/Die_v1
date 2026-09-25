@@ -72,7 +72,8 @@ async function enterPausedFight(page) {
         assert.ok(s.length > 0, 'card ' + i + ' has an empty ' + field);
       });
     });
-    assert.deepStrictEqual(v.tiers.map(t => ['COMMON', 'UNCOMMON', 'RARE'].indexOf(t) !== -1), [true, true, true],
+    // D-111 (BUILD 169): the common tier reads BASIC.
+    assert.deepStrictEqual(v.tiers.map(t => ['BASIC', 'UNCOMMON', 'RARE'].indexOf(t) !== -1), [true, true, true],
       'every card reward tier line must read a real tier: ' + JSON.stringify(v.tiers));
     assert.strictEqual(v.rows, 0, 'the card reward must show no face row');
     assert.strictEqual(v.skip, 'SKIP', 'the card reward must keep a SKIP button');
@@ -173,16 +174,17 @@ async function enterPausedFight(page) {
       updateRun({ gold: 500 });
       openShopScreen();
       const cards = Array.from(document.querySelectorAll('#shopPanel .offer-card'));
+      // D-112 (BUILD 169): the rarity line keeps the tier; the price leads the foot line.
       return {
         count: cards.length,
-        tiers: cards.map(c => c.querySelector('.offer-card-tier').textContent),
+        tiers: cards.map(c => c.querySelector('.offer-card-foot').textContent.split(' — ')[0]),
         small: Array.from(document.querySelectorAll('#shopPanel .offer-small')).map(b => b.textContent),
         leave: (document.querySelector('#shopPanel .offer-skip') || {}).textContent || ''
       };
     });
     assert.strictEqual(v.count, 3, 'the shop must show three cards, got ' + v.count);
     v.tiers.forEach(function(t) {
-      assert.ok(/^\d+g$/.test(t), 'the shop must show a price in place of the tier, got "' + t + '"');
+      assert.ok(/^\d+g$/.test(t), 'the shop must show a price on each card, got "' + t + '"');
     });
     assert.strictEqual(v.small.length, 3, 'the shop must show a second row of three entries, got ' + v.small.length);
     v.small.forEach(function(label) {
@@ -249,6 +251,7 @@ async function enterPausedFight(page) {
       const out = {
         rewardName: rewardCard.querySelector('.offer-card-name').textContent,
         rewardCost: getCardCost(gameState.config.cardPool[rewardId]),
+        rewardDots: rewardCard.querySelectorAll('.offer-card-cost .offer-card-dot').length,
         rewardText: rewardCard.querySelector('.offer-card-text').textContent,
         rewardEffect: getCardEffectText(rewardId),
         rewardTitle: (rewardCard.querySelector('.hover-tip') || {}).textContent || ''
@@ -291,7 +294,9 @@ async function enterPausedFight(page) {
         .map(b => (b.querySelector('.hover-tip') || {}).textContent || '');
       return out;
     });
-    assert.ok(v.rewardName.indexOf('(' + v.rewardCost + ')') !== -1, 'a reward card must still show its soul cost: ' + v.rewardName);
+    // D-112 (BUILD 169): the soul cost shows as dots, never in the name.
+    assert.strictEqual(v.rewardDots, v.rewardCost, 'a reward card must still show its soul cost as dots: ' + v.rewardName);
+    assert.ok(v.rewardName.indexOf('(') === -1, 'no cost in the name: ' + v.rewardName);
     assert.strictEqual(v.rewardText, v.rewardEffect, 'a reward card must show its full effect text');
     assert.ok(v.rewardTitle.indexOf(v.rewardEffect) !== -1, 'a reward card must keep its effect text on hover');
     assert.ok(v.modText.length > 0, 'a mod card must show its description');

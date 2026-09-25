@@ -12,12 +12,12 @@
 // THIS FILE / ownership rule).
 //
 // F01 player HP 70 · F02 soul 3 · F03 draw 5 · F04 starting deck 5 Strike 4 Ward 1 Rite · F05 blank roll 2 block
-// F06 Strike 1 soul 5 dmg · F07 Ward 1 soul 5 block · F08 Rite 2 soul 5 dmg 6 block
+// F06 Strike 1 soul 5 dmg · F07 Ward 1 soul 5 block · F08 Rite 2 soul 6 dmg 6 block (D-121)
 // F09 poison decays N, N−1 … 0, ticks at the end of its holder's turn
 // F10 Penitence 3 rounds, once per fight · F11 Nat 20 every loaded face triggers, ascending, repeatable
 // F12 Strengthen targets face 20, never face 1 · F13 Load offer is 3 mods, excluding the anchor and loaded mods
 // F14 die rewards as built: every fight win grants 1, an elite win 2, a rite 1 (or heal or removal); the boss grants none (D-22) · F15 rite heal 20
-// F16 (checkpoint 3 map) lanes 2, slots per lane 8, three rites per lane (slots 2, 5, 8), the elite is slot 4 of the upper lane
+// F16 lanes 2; slots per lane by act: act 1 9 (rites 2, 6, 9; slot 5 a Verger Fight, D-123), acts 2-3 8 (rites 2, 5, 8); the elite is slot 4 of the upper lane
 // F17 act 1 HP: opening 50, lane fights by position 58/65/78/85, elite 100, boss 100
 // F18 (BUILD 142) intent: opening 4–12, normals 6–18, elite 10–18, boss 10–20 — every enemy acts from a pattern (F36, F37)
 // F19 enemy buff applies 3 stacks of poison (act 1), scaled per act to 4 (act 2) and 5 (act 3) · F20 act 1 elite (Lector) buff faces 3 and 9, both poison, 12-sided, no Nat faces · F21 act 1 boss (Hierophant) buff faces 5, 10, 15, all poison, plus Nat 20 and Nat 1
@@ -38,7 +38,7 @@
 // F32 (BUILD 125) beating the act 1 or act 2 boss grants a card reward and one die reward, exactly like any other fight win; the act 3 boss is VICTORY with no reward (D-22)
 // F40 (BUILD 143) npm test runs every test file; guardrails.test.js fails on CLAUDE.md size, CONFIRMED WORKING line length, stale CURRENT SUBSTAGE, comment share, a build number in a comment, or a stray file
 // F41 (BUILD 149) stacks of awe lower an Attack's damage to no less than 0, after Wrath, then decay by 1 at START_OF_TURN
-// F42 (BUILD 150) break numbers lowered by 4; gold (GOLD_REWARDS) from a fight win spends in the shop (SHOP) after every rite; three artifacts offered after an Elite/non-final-Boss win
+// F42 (BUILD 150) break numbers lowered by 4; gold (GOLD_REWARDS) from a fight win spends in the shop (SHOP) after every rite; a non-final Boss win heals BOSS_HEAL_PERCENT of max HP, rounded down (D-122); three artifacts offered after an Elite/non-final-Boss win
 // F43 (BUILD 151, 167) Purify: third die action, clears mods off a face (never 1/10/20), weight kept; Remove (D-119) deletes a blank face, not 1/10/20, above DIE_MIN_FACES 12
 // F44 (BUILD 151) lower lane index 3 is the event The Font: unresolved roll picks the outcome
 // F45 (BUILD 153) artifacts: 13, up to ARTIFACT_MAX (8) held, offered after an Elite/non-final-Boss win and sold at SHOP.ARTIFACT_PRICE; their amounts live in ARTIFACTS
@@ -51,7 +51,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 168,
+  BUILD: 169,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -59,12 +59,13 @@ const GAME_CONFIG = {
     COLOUR: '#e8e4d0'
   },
 
-  // rarity word -> the colour it shows in an offer symbol's hover box
+  // D-111; mythic and void hold no pieces and weigh 0 in TIER_SPLIT.
   TIER_COLOURS: {
-    common: '#9ca3af',
-    uncommon: '#4ade80',
-    rare: '#c084fc',
-    none: '#fbbf24'
+    basic: '#4a4a4a',
+    uncommon: '#b8b8b8',
+    rare: '#60a5fa',
+    mythic: '#fbbf24',
+    void: '#8b5cf6'
   },
 
   // F50
@@ -100,14 +101,16 @@ const GAME_CONFIG = {
   BLANK_ROLL_BLOCK: 2,
   PENITENCE_TURNS: 3,
   RITE_HEAL: 20,
+  BOSS_HEAL_PERCENT: 20,
 
   DIE_REWARDS: { ELITE: 2, SINGLE: 1 },
 
   LANE_COUNT: 2,
-  SLOTS_PER_LANE: 8,
+  // F16 — indexed actNumber-1
+  SLOTS_PER_LANE: [9, 8, 8],
   ELITE_SLOT_INDEX: 3,
   ELITE_ALLOWED_SLOT_INDICES: [3],
-  RITE_SLOT_INDICES: [1, 4, 7],
+  RITE_SLOT_INDICES: [[1, 5, 8], [1, 4, 7], [1, 4, 7]],
 
   NORMAL_FIGHT_HP: [70, 78, 85],
   HP: {
@@ -237,17 +240,17 @@ const GAME_CONFIG = {
   ACT_HP_MULTIPLIER: [1.0, 1.4, 1.9],
   ACT_INTENT_MULTIPLIER: [1.0, 1.2, 1.45],
 
-  TIER_ORDER: ['common', 'uncommon', 'rare'],
+  TIER_ORDER: ['basic', 'uncommon', 'rare', 'mythic', 'void'],
   TIER_SPLIT: {
-    fight: [0.65, 0.30, 0.05],
-    elite: [0.40, 0.40, 0.20],
-    boss: [0.0, 0.70, 0.30]
+    fight: [0.65, 0.30, 0.05, 0, 0],
+    elite: [0.40, 0.40, 0.20, 0, 0],
+    boss: [0.0, 0.70, 0.30, 0, 0]
   },
 
   GOLD_REWARDS: { FIGHT: [12, 20], ELITE: [30, 40], BOSS: 60 },
 
   SHOP: {
-    CARD_PRICE: { common: 50, uncommon: 75, rare: 120 },
+    CARD_PRICE: { basic: 50, uncommon: 75, rare: 120 },
     STRENGTHEN_PRICE: 100,
     REMOVAL_BASE_PRICE: 75,
     REMOVAL_PRICE_STEP: 25,

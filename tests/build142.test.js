@@ -107,14 +107,15 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     // Since BUILD 151, lower[3] is the event slot (The Font), not a fight.
     assert.strictEqual(act.lower[3].type, 'event');
     assert.strictEqual(act.lower[3].id, 'font');
-    assert.strictEqual(act.lower[5].enemy.hp, 78);
-    assert.strictEqual(act.lower[6].enemy.hp, 85);
+    // D-123 (BUILD 169): act 1's ninth slot at index 4 moves positions 3/4 to indices 6/7.
+    assert.strictEqual(act.lower[6].enemy.hp, 78);
+    assert.strictEqual(act.lower[7].enemy.hp, 85);
     assert.strictEqual(act.upper[0].enemy.hp, 58);
     assert.strictEqual(act.upper[2].enemy.hp, 65);
     assert.strictEqual(act.upper[3].enemy.hp, 100, 'position 3 on the upper lane is the Elite, at its own flat 100 HP');
     assert.strictEqual(act.upper[3].label, 'Elite');
-    assert.strictEqual(act.upper[5].enemy.hp, 78);
-    assert.strictEqual(act.upper[6].enemy.hp, 85);
+    assert.strictEqual(act.upper[6].enemy.hp, 78);
+    assert.strictEqual(act.upper[7].enemy.hp, 85);
     await page.close();
   });
 
@@ -131,11 +132,13 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     // Since BUILD 151, lower[3] is the event slot (The Font), not a second Verger fight.
     assert.strictEqual(act.lower[3].type, 'event');
     assert.strictEqual(act.lower[3].id, 'font');
-    [act.upper[0], act.upper[5], act.lower[0], act.lower[5]].forEach(function(s) {
+    // D-123 (BUILD 169): indices 6/7 now; index 4 is the ninth slot's Verger.
+    [act.upper[4], act.lower[4]].forEach(function(s) { assert.strictEqual(s.enemy.name, 'Verger'); });
+    [act.upper[0], act.upper[6], act.lower[0], act.lower[6]].forEach(function(s) {
       assert.strictEqual(s.enemy.name, 'Thurifer');
       assert.deepStrictEqual(s.enemy.pattern, [{ kind: 'attack', min: 10, max: 14 }, { kind: 'charge', release: 24, breakAt: 11 }]);
     });
-    [act.upper[2], act.upper[6], act.lower[2], act.lower[6]].forEach(function(s) {
+    [act.upper[2], act.upper[7], act.lower[2], act.lower[7]].forEach(function(s) {
       assert.strictEqual(s.enemy.name, 'Asperser');
       assert.deepStrictEqual(s.enemy.pattern, [{ kind: 'attack', min: 11, max: 15 }, { kind: 'attack', min: 11, max: 15 }, { kind: 'afflict', stacks: 4 }]);
     });

@@ -337,7 +337,8 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
   // ITEM 6 — the map screen
   // ---------------------------------------------------------------
 
-  await runTest('Item 6: after New Run the map shows sixteen lane nodes plus Start, the opening Fight and Boss', async () => {
+  // D-123 (BUILD 169): act 1's lanes hold nine slots each, eighteen in all.
+  await runTest('Item 6: after New Run the map shows eighteen lane nodes plus Start, the opening Fight and Boss', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
       // D-98 (BUILD 156): a map node's own label text is its first child
@@ -353,8 +354,8 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
         opening: gameState.run.act.opening.label
       };
     });
-    assert.strictEqual(v.lane, 16, 'both lanes together must hold sixteen slots');
-    assert.strictEqual(v.total, 19, 'the map must draw sixteen lane nodes plus Start, the opening fight and Boss');
+    assert.strictEqual(v.lane, 18, 'both lanes together must hold eighteen slots');
+    assert.strictEqual(v.total, 21, 'the map must draw eighteen lane nodes plus Start, the opening fight and Boss');
     assert.strictEqual(v.hasStart, true, 'the map must draw a Start node');
     assert.strictEqual(v.hasBoss, true, 'the map must draw a Boss node');
     assert.strictEqual(v.opening, 'Fight', "the opening slot's own label must read Fight");

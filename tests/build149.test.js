@@ -278,12 +278,13 @@ async function triggerMod(page, modId) {
     assert.deepStrictEqual(v.cardTags.tremendum, ['awe']);
     assert.deepStrictEqual(v.cardTags.mysterium, ['awe']);
 
-    // Every other common-tier mod already loaded leaves Dread the only
-    // common candidate — a fixed roll of 0 (always 'common', always the
-    // first remaining match) then deterministically offers it.
+    // Every other basic-tier mod already loaded leaves Dread the only
+    // basic candidate — a fixed roll of 0 (always 'basic', always the
+    // first remaining match) then deterministically offers it. D-111
+    // (BUILD 169) renamed the common tier basic.
     const offer = await page.evaluate(() => {
       const commonModIds = Object.keys(gameState.config.mods).filter(function(id) {
-        return gameState.config.mods[id].tier === 'common' && id !== 'dread';
+        return gameState.config.mods[id].tier === 'basic' && id !== 'dread';
       });
       const blankFaces = gameState.die.faces.filter(function(f) { return f.modId === null; });
       const newFaces = gameState.die.faces.slice();
@@ -316,12 +317,13 @@ async function triggerMod(page, modId) {
       updatePlayer({ hand: ['fake_card'].concat(gameState.player.hand.slice(1)) });
     });
     await page.waitForFunction(() => {
-      const img = document.querySelector('#handRow .hand-card-el .hand-card-art img');
+      // D-112 (BUILD 169): the hand card is the one card; its art box is .offer-card-art.
+      const img = document.querySelector('#handRow .hand-card-el .offer-card-art img');
       return img && getComputedStyle(img).display === 'none';
     }, null, { timeout: 3000 }).catch(() => {});
     const v = await page.evaluate(() => {
       const firstCard = document.querySelector('#handRow .hand-card-el');
-      const artBox = firstCard.querySelector('.hand-card-art');
+      const artBox = firstCard.querySelector('.offer-card-art');
       const img = artBox.querySelector('img');
       const cardId = gameState.player.hand[0];
       return {

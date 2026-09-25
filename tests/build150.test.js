@@ -179,7 +179,7 @@ async function enterOpeningFight(page) {
 
     // Unaffordable item cannot be bought.
     await page.evaluate(() => { closeShopScreen(); });
-    await page.evaluate(() => { devJumpToSlot('upper', 4); }); // the second rite slot
+    await page.evaluate(() => { devJumpToSlot('upper', 5); }); // the second rite slot (index 5 in act 1 since D-123, BUILD 169)
     await page.waitForTimeout(50);
     await page.evaluate(() => { updateRun({ gold: 0 }); riteChooseHeal(); });
     const cardId2 = await page.evaluate(() => gameState.run.shop.cards[0]);

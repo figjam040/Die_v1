@@ -83,6 +83,35 @@ function setHoverTip(el, text) {
   });
 }
 
+// KI-46 — every showing hover box is shifted inward until it sits fully
+// inside the window, via the CSS `translate` property so each tip's own
+// `transform` placement is untouched. The pixel ratio between a translate
+// and the box's on-screen move is measured, not assumed: <html> is zoomed
+// (applyScale()) and the map composition zooms again on top of that.
+const HOVER_TIP_EDGE_PX = 4;
+
+function clampHoverTips() {
+  const tips = document.querySelectorAll('.hover-tip');
+  for (let i = 0; i < tips.length; i++) {
+    const tip = tips[i];
+    tip.style.translate = '';
+    if (getComputedStyle(tip).visibility !== 'visible') continue;
+    const r = tip.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let dx = 0;
+    let dy = 0;
+    if (r.left < HOVER_TIP_EDGE_PX) dx = HOVER_TIP_EDGE_PX - r.left;
+    else if (r.right > vw - HOVER_TIP_EDGE_PX) dx = vw - HOVER_TIP_EDGE_PX - r.right;
+    if (r.top < HOVER_TIP_EDGE_PX) dy = HOVER_TIP_EDGE_PX - r.top;
+    else if (r.bottom > vh - HOVER_TIP_EDGE_PX) dy = vh - HOVER_TIP_EDGE_PX - r.bottom;
+    if (dx === 0 && dy === 0) continue;
+    tip.style.translate = '100px 0px';
+    const ratio = (tip.getBoundingClientRect().left - r.left) / 100 || 1;
+    tip.style.translate = (dx / ratio) + 'px ' + (dy / ratio) + 'px';
+  }
+}
+
 // ---------- STATE INSPECTOR ----------
 
 function refreshInspector() {
@@ -169,6 +198,8 @@ function refreshInspector() {
   // click handler dismisses it before resetting, so it isn't gated on
   // dieActionStep/cardRewardStep/riteStep the way endTurnBtn is.
   document.getElementById('startGameBtn').disabled = false;
+  // A re-render replaces the hovered element's tip with a fresh, unshifted one.
+  clampHoverTips();
 }
 
 // The listener registry inspector. Read-only — only reads
@@ -898,7 +929,7 @@ function renderEnemyIntent() {
 function renderStats() {
   // A kill can leave gameState.enemy.hp negative (overkill is never
   // clamped in state) — displayed HP is clamped to 0 here, at render time only.
-  document.getElementById('enemyHpValue').textContent = Math.max(0, gameState.enemy.hp) + ' / ' + gameState.enemy.maxHp;
+  document.getElementById('enemyHpValue').textContent = shownHp(gameState.enemy.hp) + ' / ' + gameState.enemy.maxHp;
   const nameEl = document.getElementById('enemyNameValue');
   if (nameEl) { nameEl.textContent = gameState.enemy.name || '—'; }
   // Pontifex's own panel line: reads the player's heaviest loaded face.
@@ -952,7 +983,7 @@ function renderStats() {
   }
 
   document.getElementById('playerBlockValue').textContent = gameState.player.block;
-  document.getElementById('playerHpValue').textContent = gameState.player.hp + ' / ' + gameState.player.maxHp;
+  document.getElementById('playerHpValue').textContent = shownHp(gameState.player.hp) + ' / ' + gameState.player.maxHp;
   document.getElementById('playerSoulValue').textContent = gameState.player.soul + ' / ' + gameState.player.maxSoul;
   const playerDebuffs = [];
   if (gameState.player.poisonStacks) playerDebuffs.push('poison x' + gameState.player.poisonStacks);
@@ -1135,60 +1166,123 @@ function spawnFxNumber(anchorId, kind, delta) {
 // through renderOfferPanel(). Nothing here is static HTML — every panel
 // is built from gameState on every refreshInspector() (KI-3).
 
-// One 380x470 card. spec: { id, name, tierText, artPath, tagText, text,
-// footText, chosen, disabled, onClick }.
-function renderOfferCard(spec) {
-  const card = document.createElement('div');
-  card.className = 'offer-card' + (spec.chosen ? ' offer-card-chosen' : '') + (spec.disabled ? ' offer-card-disabled' : '');
-  card.dataset.offerId = spec.id;
-  setHoverTip(card, spec.name + ' — ' + spec.text);
+// ---------- THE ONE CARD (D-112) ----------
+// Every card the player sees — hand, card reward, shop, CARDS layer, both
+// removal pickers — is renderCard() at one of three sizes: 'offer', 'hand',
+// 'mini'. A 2 px border and the rarity line in its tier's colour (D-111),
+// the soul cost as filled dots top right (none at zero cost), never a cost
+// in the name. The Ring 0 cards carry no tier and read basic.
+
+function cardTier(card) {
+  return (card && card.tier) || 'basic';
+}
+
+// opts: { size, button, footText, disabled, unaffordable, count, onClick }.
+// onClick runs through offerCardHandleClick() (D-106) except on the hand,
+// where a play is immediate.
+function renderCard(cardId, opts) {
+  const card = gameState.config.cardPool[cardId] || getCard(cardId);
+  const size = opts.size || 'offer';
+  const tier = cardTier(card);
+  const colour = GAME_CONFIG.TIER_COLOURS[tier];
+  const text = getCardEffectText(cardId);
+
+  const el = document.createElement(opts.button ? 'button' : 'div');
+  el.className = 'offer-card offer-card-' + size + (size === 'hand' ? ' hand-card-el' : '') +
+    (opts.disabled ? ' offer-card-disabled' : '') + (opts.unaffordable ? ' unaffordable' : '');
+  el.dataset.offerId = cardId;
+  el.dataset.tier = tier;
+  el.style.borderColor = colour;
+  setHoverTip(el, card.name + ' — ' + text);
+
+  const cost = document.createElement('div');
+  cost.className = 'offer-card-cost';
+  for (let i = 0; i < getCardCost(card); i++) {
+    const dot = document.createElement('span');
+    dot.className = 'offer-card-dot';
+    cost.appendChild(dot);
+  }
+  el.appendChild(cost);
+
+  if (opts.count > 1) {
+    const count = document.createElement('span');
+    count.className = 'offer-card-count';
+    count.textContent = '×' + opts.count;
+    el.appendChild(count);
+  }
 
   const name = document.createElement('div');
   name.className = 'offer-card-name';
-  name.textContent = spec.name;
-  card.appendChild(name);
+  name.textContent = card.name;
+  el.appendChild(name);
 
-  const tier = document.createElement('div');
-  tier.className = 'offer-card-tier';
-  tier.textContent = spec.tierText;
-  card.appendChild(tier);
+  const tierLine = document.createElement('div');
+  tierLine.className = 'offer-card-tier';
+  tierLine.textContent = tier.toUpperCase();
+  tierLine.style.color = colour;
+  el.appendChild(tierLine);
 
   const art = document.createElement('div');
   art.className = 'offer-card-art';
-  const label = document.createElement('span');
-  label.className = 'offer-card-art-label';
-  label.textContent = spec.name.toUpperCase() + ' ART';
-  art.appendChild(label);
-  if (spec.artPath) {
-    const img = document.createElement('img');
-    img.className = 'card-art-img';
-    img.alt = '';
-    img.onload = function() { label.style.display = 'none'; };
-    img.onerror = function() { img.style.display = 'none'; };
-    img.src = spec.artPath;
-    art.appendChild(img);
+  if (size === 'offer') {
+    const label = document.createElement('span');
+    label.className = 'offer-card-art-label';
+    label.textContent = card.name.toUpperCase() + ' ART';
+    art.appendChild(label);
+    attachCardArtImg(art, cardId).addEventListener('load', function() { label.style.display = 'none'; });
+  } else {
+    attachCardArtImg(art, cardId);
   }
-  card.appendChild(art);
+  el.appendChild(art);
 
   const tag = document.createElement('div');
   tag.className = 'offer-card-tag';
-  tag.textContent = spec.tagText;
-  card.appendChild(tag);
+  tag.textContent = offerTagText(card.tags);
+  el.appendChild(tag);
 
-  const text = document.createElement('div');
-  text.className = 'offer-card-text';
-  text.textContent = spec.text;
-  card.appendChild(text);
+  const textEl = document.createElement('div');
+  textEl.className = 'offer-card-text';
+  textEl.textContent = text;
+  el.appendChild(textEl);
 
-  const foot = document.createElement('div');
-  foot.className = 'offer-card-foot';
-  foot.textContent = spec.footText;
-  card.appendChild(foot);
-
-  if (spec.onClick && !spec.disabled) {
-    card.addEventListener('click', function() { offerCardHandleClick(card, spec.onClick); });
+  if (opts.footText) {
+    const foot = document.createElement('div');
+    foot.className = 'offer-card-foot';
+    foot.textContent = opts.footText;
+    el.appendChild(foot);
   }
-  return card;
+
+  if (opts.onClick && !opts.disabled) {
+    el.addEventListener('click', size === 'hand' ? opts.onClick : function() { offerCardHandleClick(el, opts.onClick); });
+  } else if (!opts.onClick) {
+    el.style.cursor = 'default';
+  }
+  return el;
+}
+
+// A card offer's spec (offerCardSpecForCard()) drawn as the one card.
+function renderOfferCard(spec) {
+  return renderCard(spec.id, { size: 'offer', footText: spec.footText, disabled: spec.disabled, onClick: spec.onClick });
+}
+
+// The owned deck as one card per distinct id, each with its copy count —
+// the removal pickers and the CARDS layer. onPick gets the id's first index
+// in ownedCards, the same copy a list of every copy would remove first.
+function renderOwnedCardGrid(onPick) {
+  const grid = document.createElement('div');
+  grid.className = 'card-grid';
+  const owned = gameState.player.ownedCards;
+  const ids = [];
+  owned.forEach(function(id) { if (ids.indexOf(id) === -1) ids.push(id); });
+  ids.forEach(function(id) {
+    const count = owned.filter(function(o) { return o === id; }).length;
+    grid.appendChild(renderCard(id, {
+      size: 'mini',
+      count: count,
+      onClick: onPick ? function() { log('[CLICK] ' + getCard(id).name); onPick(owned.indexOf(id)); } : null
+    }));
+  });
+  return grid;
 }
 
 // D-110 — the Load offer's and the artifact offer's choice: the symbol
@@ -1216,7 +1310,7 @@ function renderOfferSymbol(spec) {
 
   setHoverTip(el, [spec.name, spec.tierText, spec.tagText, spec.text]);
   const tierLine = el.querySelector('.hover-tip').children[1];
-  tierLine.style.color = GAME_CONFIG.TIER_COLOURS[(spec.tierText || '').toLowerCase()] || GAME_CONFIG.TIER_COLOURS.none;
+  tierLine.style.color = GAME_CONFIG.TIER_COLOURS[(spec.tierText || '').toLowerCase()] || GAME_CONFIG.TIER_COLOURS.basic;
 
   if (spec.onClick && !spec.disabled) {
     el.addEventListener('click', function() { offerCardHandleClick(el, spec.onClick); });
@@ -1645,7 +1739,7 @@ function renderDieIcons() {
 const CARD_EFFECT_TEXT = {
   strike: '5 damage',
   ward: '5 block',
-  rite: '5 damage 6 block',
+  rite: '6 damage 6 block',
   rebuke: '4 damage',
   censure: '14 damage',
   judgement: '20 damage',
@@ -1778,40 +1872,17 @@ function renderCardButtons() {
   const active = gameState.run.status === 'active';
   gameState.player.hand.forEach(function(cardId, index) {
     const card = getCard(cardId);
-    const cost = getCardCost(card);
-    const affordable = gameState.player.soul >= cost;
-
-    const btn = document.createElement('button');
-    btn.className = 'hand-card-el' + (affordable ? '' : ' unaffordable');
-    btn.disabled = !active;
-    setHoverTip(btn, card.name + ' — ' + getCardEffectText(cardId));
-
-    const costEl = document.createElement('span');
-    costEl.className = 'hand-card-cost';
-    costEl.textContent = cost;
-
-    // Placeholder for card art that does not exist yet — /art/ is empty.
-    const artEl = document.createElement('span');
-    artEl.className = 'hand-card-art';
-    attachCardArtImg(artEl, cardId);
-
-    const nameEl = document.createElement('span');
-    nameEl.className = 'hand-card-name';
-    nameEl.textContent = card.name;
-
-    const effectEl = document.createElement('span');
-    effectEl.className = 'hand-card-effect';
-    effectEl.textContent = getCardEffectText(cardId);
-
-    btn.appendChild(costEl);
-    btn.appendChild(artEl);
-    btn.appendChild(nameEl);
-    btn.appendChild(effectEl);
-
-    btn.addEventListener('click', function() {
-      log('[CLICK] ' + card.name);
-      playCard(index);
+    const affordable = gameState.player.soul >= getCardCost(card);
+    const btn = renderCard(cardId, {
+      size: 'hand',
+      button: true,
+      unaffordable: !affordable,
+      onClick: function() {
+        log('[CLICK] ' + card.name);
+        playCard(index);
+      }
     });
+    btn.disabled = !active;
     handRow.appendChild(btn);
   });
 }
@@ -1910,7 +1981,7 @@ function eligibleLoadModIds() {
   });
 }
 
-// Which [common, uncommon, rare] GAME_CONFIG.TIER_SPLIT table a
+// Which GAME_CONFIG.TIER_SPLIT table (one weight per TIER_ORDER tier) a
 // reward/offer should roll against — decided by the slot the win (or
 // rite) came from. A rite's Load offer shares the 'fight' split.
 function currentOfferTierSplit(origin) {
@@ -2272,18 +2343,18 @@ function offerCardSpecForMod(modId, chosen, onClick) {
   };
 }
 
-// The card spec for one reward-pool card. priceText replaces the tier
-// line in the shop, per D-86.
+// The card spec for one reward-pool card. In the shop the price leads the
+// foot line; the rarity line keeps the tier (D-112).
 function offerCardSpecForCard(cardId, priceText, footText, disabled, onClick) {
   const card = gameState.config.cardPool[cardId] || getCard(cardId);
   return {
     id: cardId,
-    name: card.name + ' (' + getCardCost(card) + ')',
-    tierText: priceText !== null && priceText !== undefined ? priceText : (card.tier || '').toUpperCase(),
+    name: card.name,
+    tierText: cardTier(card).toUpperCase(),
     artPath: 'art/cards/' + cardId + '.png',
     tagText: offerTagText(card.tags),
     text: getCardEffectText(cardId),
-    footText: footText,
+    footText: priceText !== null && priceText !== undefined ? priceText + ' — ' + footText : footText,
     chosen: false,
     disabled: !!disabled,
     onClick: onClick
@@ -2421,14 +2492,14 @@ function renderArtifactRewardPanel() {
   });
 }
 
-// Artifacts carry no tier and no tags — the two lines read ARTIFACT and
-// NONE so the card shape stays identical across every offer.
+// Artifacts carry no tags — the tag line reads NONE so the shape stays
+// identical across every offer; the rarity line is the artifact's tier.
 function offerCardSpecForArtifact(artifactId, priceText, footText, disabled, onClick) {
   const artifact = gameState.config.artifacts[artifactId];
   return {
     id: artifactId,
     name: artifact.name,
-    tierText: priceText !== null && priceText !== undefined ? priceText : 'ARTIFACT',
+    tierText: priceText !== null && priceText !== undefined ? priceText : artifact.tier.toUpperCase(),
     artPath: 'art/artifacts/' + artifactId + '.png',
     tagText: offerTagText(artifact.tags),
     text: artifact.text,
@@ -2460,7 +2531,7 @@ function riteChooseHeal() {
   const healedAmount = healPlayer(GAME_CONFIG.RITE_HEAL);
   const after = gameState.player.hp;
   log('[RITE] healed ' + healedAmount + ' HP (' + before + ' to ' + after + ')');
-  appendTranscript('RITE heal ' + healedAmount + ' | you ' + after + '/' + gameState.player.maxHp);
+  appendTranscript('RITE heal ' + healedAmount + ' | you ' + shownHp(after) + '/' + gameState.player.maxHp);
   closeRiteScreen();
   openShopScreen();
 }
@@ -2518,27 +2589,18 @@ function renderRiteScreen() {
   }
 
   // D-116 — the rite is its own screen in the reward layer, titled Rite,
-  // the fight's face row exposed beneath it like every other layer step.
-  const row = document.createElement('div');
+  // the fight's face row exposed beneath it like every other layer step;
+  // the player's HP sits under the title in the HP red, nothing else.
+  const hpLine = document.createElement('div');
+  hpLine.className = 'rite-hp';
+  hpLine.textContent = shownHp(gameState.player.hp) + ' / ' + gameState.player.maxHp;
+  let row = document.createElement('div');
   row.className = 'die-action-row';
   let instruction = null;
 
   if (riteStep === 'remove_pick_card') {
     instruction = 'CHOOSE A CARD TO REMOVE';
-
-    gameState.player.ownedCards.forEach(function(cardId, index) {
-      const card = getCard(cardId);
-      const btn = document.createElement('button');
-      btn.textContent = card.name + ' (' + getCardCost(card) + ')';
-
-      const tip = document.createElement('span');
-      tip.className = 'hover-tip';
-      tip.textContent = getCardEffectText(cardId);
-      btn.appendChild(tip);
-
-      btn.addEventListener('click', function() { log('[CLICK] ' + card.name); riteRemoveCard(index); });
-      row.appendChild(btn);
-    });
+    row = renderOwnedCardGrid(riteRemoveCard);
   } else {
     const healBtn = document.createElement('button');
     healBtn.textContent = 'Heal ' + GAME_CONFIG.RITE_HEAL + ' HP';
@@ -2557,7 +2619,7 @@ function renderRiteScreen() {
     row.appendChild(removeBtn);
   }
 
-  renderOfferPanel(panel, { title: 'Rite', cards: [], skip: null, buttonRow: row, instruction: instruction });
+  renderOfferPanel(panel, { title: 'Rite', extra: [hpLine], cards: [], skip: null, buttonRow: row, instruction: instruction });
 }
 
 // ---------- EVENT SCREEN — The Font (slot type 'event', id 'font') ----------
@@ -2824,23 +2886,10 @@ function renderShopPanel() {
 
   const shop = gameState.run.shop;
 
-  // The removal picker is a full deck list, not a three-card offer — it
-  // keeps the plain button row.
+  // The removal picker is the whole owned deck as small cards, not a
+  // three-card offer.
   if (shopRemovingCard) {
-    const row = document.createElement('div');
-    row.className = 'die-action-row';
-    gameState.player.ownedCards.forEach(function(cardId, index) {
-      const card = getCard(cardId);
-      const btn = document.createElement('button');
-      btn.textContent = card.name + ' (' + getCardCost(card) + ')';
-      const tip = document.createElement('span');
-      tip.className = 'hover-tip';
-      tip.textContent = getCardEffectText(cardId);
-      btn.appendChild(tip);
-      btn.addEventListener('click', function() { log('[CLICK] ' + card.name); shopRemoveCard(index); });
-      row.appendChild(btn);
-    });
-    renderOfferPanel(panel, { title: 'SHOP', cards: [], skip: null, buttonRow: row, instruction: 'CHOOSE A CARD TO REMOVE' });
+    renderOfferPanel(panel, { title: 'SHOP', cards: [], skip: null, buttonRow: renderOwnedCardGrid(shopRemoveCard), instruction: 'CHOOSE A CARD TO REMOVE' });
     return;
   }
 
@@ -2996,7 +3045,8 @@ function renderMapScreen() {
   // D-98 — the map screen shows the top bar and the map only; the act
   // number already reads on the top bar's own #actStamp.
   const composition = document.createElement('div');
-  composition.className = 'map-composition';
+  // D-123: act 1's nine-slot lanes draw with shorter connectors.
+  composition.className = 'map-composition' + (gameState.run.act.upper.length > 8 ? ' map-composition-long' : '');
 
   // START — a marker, not a clickable slot; reads 'current' until the
   // shared opening fight is done and 'completed' once it is.
@@ -3128,7 +3178,7 @@ function renderInfoLayers() {
 
   if (gameState.ui.dieInfoOpen) {
     const content = document.getElementById('dieInfoContent');
-    let html = '<div class="info-list-row">HP ' + gameState.player.hp + ' / ' + gameState.player.maxHp + '</div>';
+    let html = '<div class="info-list-row">HP ' + shownHp(gameState.player.hp) + ' / ' + gameState.player.maxHp + '</div>';
     content.innerHTML = html;
     gameState.die.faces.forEach(function(face) {
       const row = document.createElement('div');
@@ -3157,17 +3207,8 @@ function renderInfoLayers() {
 
   if (gameState.ui.cardsInfoOpen) {
     const content = document.getElementById('cardsInfoContent');
-    const counts = {};
-    gameState.player.ownedCards.forEach(function(id) { counts[id] = (counts[id] || 0) + 1; });
-    const ids = Object.keys(counts).sort();
-    content.innerHTML = ids.length
-      ? ids.map(function(id) {
-          const card = getCard(id);
-          const name = card ? card.name : id;
-          const cost = card ? card.soulCost : '—';
-          return '<div class="info-list-row">' + counts[id] + '× ' + name + ' — cost ' + cost + ' — ' + getCardEffectText(id) + '</div>';
-        }).join('')
-      : '<div class="info-list-row">No cards owned.</div>';
+    content.innerHTML = gameState.player.ownedCards.length ? '' : '<div class="info-list-row">No cards owned.</div>';
+    if (gameState.player.ownedCards.length) content.appendChild(renderOwnedCardGrid(null));
   }
 }
 

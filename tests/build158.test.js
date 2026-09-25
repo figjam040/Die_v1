@@ -52,7 +52,9 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
   // ITEM A — D-99, rollOdds() to one decimal
   // ---------------------------------------------------------------
 
-  await runTest('D-99: rollOdds() on a 26-ticket bag returns 3.8 for weight 1 and 19.2 for weight 5', async () => {
+  // KI-45 (BUILD 169): largest remainder — the ten weight-1 faces with the
+  // lowest numbers take the ten leftover tenths, so face 1 reads 3.9.
+  await runTest('D-99: rollOdds() on a 26-ticket bag returns 3.9 for face 1 (weight 1) and 19.2 for weight 5', async () => {
     const page = await freshPage(browser);
     const odds = await page.evaluate(() => {
       const faces = [{ number: 1, weight: 1 }, { number: 2, weight: 5 }];
@@ -60,7 +62,8 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       return rollOdds(faces);
     });
     assert.strictEqual(odds[1].total, 26, 'the constructed bag must total 26 tickets, got ' + odds[1].total);
-    assert.strictEqual(odds[1].pct, 3.8, 'weight 1 of 26 must read 3.8, got ' + odds[1].pct);
+    assert.strictEqual(odds[1].pct, 3.9, 'face 1, weight 1 of 26, must read 3.9, got ' + odds[1].pct);
+    assert.strictEqual(odds[119].pct, 3.8, 'the highest weight-1 face must read 3.8, got ' + odds[119].pct);
     assert.strictEqual(odds[2].pct, 19.2, 'weight 5 of 26 must read 19.2, got ' + odds[2].pct);
     await page.close();
   });
@@ -96,15 +99,16 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.close();
   });
 
-  await runTest('D-100: act 1 upper lane positions 1-4 (indices 0,2,5,6) carry HP 58/65/78/85', async () => {
+  // D-123 (BUILD 169): the ninth slot at index 4 moves positions 3/4 to indices 6/7.
+  await runTest('D-100: act 1 upper lane positions 1-4 (indices 0,2,6,7) carry HP 58/65/78/85', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
       const act = buildAct(1);
       return {
         p1: act.upper[0].enemy.hp,
         p2: act.upper[2].enemy.hp,
-        p3: act.upper[5].enemy.hp,
-        p4: act.upper[6].enemy.hp
+        p3: act.upper[6].enemy.hp,
+        p4: act.upper[7].enemy.hp
       };
     });
     assert.strictEqual(v.p1, 58);

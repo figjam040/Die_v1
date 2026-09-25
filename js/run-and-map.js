@@ -37,8 +37,8 @@ function buildEnemyDieFaces(poisonFaceNumbers, includeNats, dieSize) {
   return faces;
 }
 
-// The act: a shared opening fight, two lanes of eight slots each that
-// diverge, rejoin at a shared boss. Every enemy comes from GAME_CONFIG.
+// The act: a shared opening fight, two lanes (SLOTS_PER_LANE for that act)
+// that diverge, rejoin at a shared boss. Every enemy comes from GAME_CONFIG.
 // ENEMIES; HP is Math.ceil(base * that act's ACT_HP_MULTIPLIER), fixed
 // once here, never read live off GAME_CONFIG mid-fight.
 
@@ -97,32 +97,39 @@ function buildAct(actNumber) {
   // player reads it as an Anomaly (D-117); the type key stays 'event'.
   const event = function() { return { type: 'event', label: 'Anomaly', id: 'font', completed: false }; };
 
+  // Rites, then the Elite/Anomaly slot, then this act's lane fights in order.
+  const slotCount = GAME_CONFIG.SLOTS_PER_LANE[actNumber - 1];
+  const riteIndices = GAME_CONFIG.RITE_SLOT_INDICES[actNumber - 1];
+  const buildLane = function(laneName, laneFights, eliteSlot) {
+    const lane = [];
+    let fightIndex = 0;
+    for (let i = 0; i < slotCount; i++) {
+      if (riteIndices.indexOf(i) !== -1) {
+        lane.push(rite());
+      } else if (i === GAME_CONFIG.ELITE_SLOT_INDEX) {
+        lane.push(laneName === 'upper' ? eliteSlot : event());
+      } else {
+        const f = laneFights[fightIndex++];
+        lane.push(fightSlot('Fight', f[0], f[1]));
+      }
+    }
+    return lane;
+  };
+
   if (actNumber === 1) {
-    // Act 1's five lane-fight positions each carry their own fixed HP,
-    // rather than the lightest/second-lightest/heaviest rotation below.
+    // D-123's ninth slot is a Verger: the one act 1 normal unlike both neighbours.
     const laneHp = GAME_CONFIG.ACT1_LANE_FIGHT_HP;
+    const laneFights = [
+      ['thurifer', laneHp[0]],
+      ['asperser', laneHp[1]],
+      ['verger_opening', scaleHp(GAME_CONFIG.HP.OPENING)],
+      ['thurifer', laneHp[2]],
+      ['asperser', laneHp[3]]
+    ];
     return {
       opening: fightSlot('Fight', 'verger_opening', scaleHp(GAME_CONFIG.HP.OPENING)),
-      upper: [
-        fightSlot('Fight', 'thurifer', laneHp[0]),
-        rite(),
-        fightSlot('Fight', 'asperser', laneHp[1]),
-        fightSlot('Elite', 'lector', GAME_CONFIG.HP.ELITE),
-        rite(),
-        fightSlot('Fight', 'thurifer', laneHp[2]),
-        fightSlot('Fight', 'asperser', laneHp[3]),
-        rite()
-      ],
-      lower: [
-        fightSlot('Fight', 'thurifer', laneHp[0]),
-        rite(),
-        fightSlot('Fight', 'asperser', laneHp[1]),
-        event(),
-        rite(),
-        fightSlot('Fight', 'thurifer', laneHp[2]),
-        fightSlot('Fight', 'asperser', laneHp[3]),
-        rite()
-      ],
+      upper: buildLane('upper', laneFights, fightSlot('Elite', 'lector', GAME_CONFIG.HP.ELITE)),
+      lower: buildLane('lower', laneFights, null),
       boss: fightSlot('Boss', 'hierophant', GAME_CONFIG.HP.BOSS)
     };
   }
@@ -135,29 +142,17 @@ function buildAct(actNumber) {
   const heaviestId = actNumber === 2 ? 'flagellant' : 'inquisitor';
   const eliteId = actNumber === 2 ? 'archdeacon' : 'exarch';
   const bossId = actNumber === 2 ? 'cardinal' : 'pontifex';
+  const laneFights = [
+    [secondId, scaleHp(normalHp[1])],
+    [heaviestId, scaleHp(normalHp[2])],
+    [secondId, scaleHp(normalHp[1])],
+    [heaviestId, scaleHp(normalHp[2])]
+  ];
 
   return {
     opening: fightSlot('Fight', lightestId, scaleHp(GAME_CONFIG.HP.OPENING)),
-    upper: [
-      fightSlot('Fight', secondId, scaleHp(normalHp[1])),
-      rite(),
-      fightSlot('Fight', heaviestId, scaleHp(normalHp[2])),
-      fightSlot('Elite', eliteId, scaleHp(GAME_CONFIG.HP.ELITE)),
-      rite(),
-      fightSlot('Fight', secondId, scaleHp(normalHp[1])),
-      fightSlot('Fight', heaviestId, scaleHp(normalHp[2])),
-      rite()
-    ],
-    lower: [
-      fightSlot('Fight', secondId, scaleHp(normalHp[1])),
-      rite(),
-      fightSlot('Fight', heaviestId, scaleHp(normalHp[2])),
-      event(),
-      rite(),
-      fightSlot('Fight', secondId, scaleHp(normalHp[1])),
-      fightSlot('Fight', heaviestId, scaleHp(normalHp[2])),
-      rite()
-    ],
+    upper: buildLane('upper', laneFights, fightSlot('Elite', eliteId, scaleHp(GAME_CONFIG.HP.ELITE))),
+    lower: buildLane('lower', laneFights, null),
     boss: fightSlot('Boss', bossId, scaleHp(GAME_CONFIG.HP.BOSS))
   };
 }
@@ -431,11 +426,11 @@ function appendRoundTranscript(actionSummary) {
     rollSegment = 'roll ' + t.rolledFaceNumber + ' ' + t.modsTriggered.join(', ');
   }
 
-  const line = 'R' + t.round + ' ' + e.name + ' ' + e.hp + '/' + e.maxHp + ' P' + e.poisonStacks
+  const line = 'R' + t.round + ' ' + e.name + ' ' + shownHp(e.hp) + '/' + e.maxHp + ' P' + e.poisonStacks
     + ' | ' + rollSegment
     + ' | ' + t.cardsPlayed.join(', ')
     + ' | enemy ' + actionSummary
-    + ' | you ' + p.hp + '/' + p.maxHp + ' bl' + p.block + ' P' + p.poisonStacks;
+    + ' | you ' + shownHp(p.hp) + '/' + p.maxHp + ' bl' + p.block + ' P' + p.poisonStacks;
   appendTranscript(line);
 }
 
@@ -508,7 +503,7 @@ function enterSlot(laneName, index) {
   const slotForDescribe = (laneName === 'opening' || laneName === 'boss') ? laneName : { lane: laneName, index: index };
   const nodeLabel = describeSlot(slotForDescribe);
   const runRecordChanges = { started: true, node: nodeLabel };
-  if (laneName === 'boss') { runRecordChanges.arrivalHpAtBoss = gameState.player.hp; }
+  if (laneName === 'boss') { runRecordChanges.arrivalHpAtBoss = shownHp(gameState.player.hp); }
   updateRunRecord(runRecordChanges);
 
   const handler = SLOT_HANDLERS[slot.type];
@@ -605,7 +600,7 @@ function beginFightFromSlot(slot, nodeLabel) {
   updateRun({ screen: 'fight' });
   log('[RUN] fight begins: ' + slot.label + ' (' + slot.enemy.hp + ' HP)');
   playAudioEvent(slot.label === 'Boss' ? 'fight_start_boss' : slot.label === 'Elite' ? 'fight_start_elite' : 'fight_start_normal');
-  appendTranscript('FIGHT act ' + gameState.run.actNumber + ' ' + nodeLabel + ' ' + slot.enemy.name + ' ' + slot.enemy.hp + ' | you ' + gameState.player.hp + '/' + gameState.player.maxHp);
+  appendTranscript('FIGHT act ' + gameState.run.actNumber + ' ' + nodeLabel + ' ' + slot.enemy.name + ' ' + slot.enemy.hp + ' | you ' + shownHp(gameState.player.hp) + '/' + gameState.player.maxHp);
   // Fires after the fight-scoped reset, so anything it applies to the
   // enemy survives into round 1 (Plague Bell's poison).
   callListeners('FIGHT_START', {});

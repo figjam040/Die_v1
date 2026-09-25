@@ -257,6 +257,12 @@ function updateUi(changes, silent) {
   refreshInspector();
 }
 
+// KI-47: HP as the player reads it (panels, layers, transcript, run record)
+// never goes below 0; state itself keeps overkill unclamped.
+function shownHp(hp) {
+  return Math.max(0, hp);
+}
+
 // ---------- SHUFFLE ----------
 
 function shuffle(array) {
@@ -277,7 +283,12 @@ function rollTier(splitWeights) {
     cumulative += splitWeights[i];
     if (r < cumulative) return order[i];
   }
-  return order[order.length - 1];
+  // Float rounding can leave r past the sum; the last tier with weight wins,
+  // never an empty zero-weight tier.
+  for (let i = order.length - 1; i > 0; i--) {
+    if (splitWeights[i] > 0) return order[i];
+  }
+  return order[0];
 }
 
 // A random entry of the given tier from pool ({id, tier} array), or null
@@ -296,7 +307,7 @@ function pickRandom(list) {
 
 // Rolls `count` choices out of `pool`, each rolling its own tier
 // independently off splitWeights. If the rolled tier is empty, tries the
-// next tier down (toward 'common'), then up (toward 'rare') — an offer
+// next tier down (toward 'basic'), then up (toward 'void') — an offer
 // fills up to count as long as pool has that many entries left. No piece
 // is picked twice within one offer. rolledTier is kept distinct from the
 // delivered id's own tier so a fallback substitution never contaminates a

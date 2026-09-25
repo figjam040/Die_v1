@@ -237,6 +237,13 @@ document.getElementById('devMuteAudioCheckbox').addEventListener('change', funct
 // pointerdown, wherever it lands.
 document.addEventListener('pointerdown', unlockAudioOnce, { once: true });
 
+// KI-46: a hover box that opens is kept inside the window. Once now, once
+// on the next frame, in case :hover lands after the event.
+document.addEventListener('mouseover', function() {
+  clampHoverTips();
+  requestAnimationFrame(clampHoverTips);
+});
+
 // Run record — player-facing, not a dev tool (see RUN RECORD, CLAUDE.md).
 document.getElementById('copyRunRecordBtn').addEventListener('click', function() {
   log('[CLICK] Copy Run Record');

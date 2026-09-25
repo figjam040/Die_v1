@@ -7,10 +7,10 @@
 // no test runner, no server, file:// direct. Never ships, same status as
 // tests/facts.test.js/tests/mods.test.js/tests/autoplay.js.
 //
-// Drives to five screens and saves one PNG each into verify/, overwriting
+// Drives to six screens and saves one PNG each into verify/, overwriting
 // every run: the map, a fight with one dev-loaded two-mod face and one
 // strengthened face visible, the die action panel, the card reward panel,
-// and the dev drawer open. Every action taken to reach each screen is a
+// the dev drawer open, and act 1's nine-slot map at the fork. Every action taken to reach each screen is a
 // real, already-used-elsewhere function (openDieActionScreen(),
 // dieActionChooseStrengthen()/dieActionPickStrengthenFace(),
 // dieActionChooseSkip(), cardRewardSkip(), devLoadMod(), the real
@@ -38,7 +38,7 @@ const FILE_URL = 'file://' + path.resolve(__dirname, '..', 'index.html').replace
 const VERIFY_DIR = path.resolve(__dirname, '..', 'verify');
 const PREV_DIR = path.resolve(__dirname, '..', 'verify_prev');
 
-const SCREENS = ['map', 'fight', 'die_action', 'card_reward', 'dev_drawer'];
+const SCREENS = ['map', 'fight', 'die_action', 'card_reward', 'dev_drawer', 'map_act1_nine_slots'];
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -160,6 +160,10 @@ async function shoot(page, name) {
   // ---- 5. The dev drawer open (back on the map by now) ----
   await page.waitForFunction(function() { return gameState.run.screen === 'map'; });
   await shoot(page, 'dev_drawer');
+
+  // ---- 6. Act 1's map at the fork, drawer closed: nine slots a lane (D-123) ----
+  await page.click('#devChromeToggleBtn');
+  await shoot(page, 'map_act1_nine_slots');
 
   console.log('\nConsole errors:', consoleErrors.length, JSON.stringify(consoleErrors));
   console.log('Page errors:', pageErrors.length, JSON.stringify(pageErrors));

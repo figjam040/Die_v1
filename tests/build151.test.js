@@ -148,8 +148,11 @@ async function enterEventSlot(page) {
       assert.strictEqual(act.upper[3].type, 'fight', 'act ' + (i + 1) + ' upper[3] must remain a fight (the Elite)');
       assert.strictEqual(act.upper[3].label, 'Elite', 'act ' + (i + 1) + ' upper[3] must remain the Elite');
     });
-    // The rest of the lower lane is untouched — still Fight/Rite at every other index.
-    ['a1', 'a2', 'a3'].forEach(function(key) {
+    // The rest of the lower lane is untouched — still Fight/Rite at every
+    // other index. D-123 (BUILD 169): act 1 carries a ninth slot, a Fight at 4.
+    assert.deepStrictEqual(acts.a1.lower.map(function(s) { return s.type; }),
+      ['fight', 'rite', 'fight', 'event', 'fight', 'rite', 'fight', 'fight', 'rite']);
+    ['a2', 'a3'].forEach(function(key) {
       const act = acts[key];
       assert.strictEqual(act.lower[0].type, 'fight');
       assert.strictEqual(act.lower[1].type, 'rite');

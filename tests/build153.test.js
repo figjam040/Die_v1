@@ -128,15 +128,16 @@ const NEW_CARD_IDS = ['venom', 'ballast', 'refrain', 'second_sight', 'cadence', 
     await page.close();
   });
 
-  await runTest("Item B: Merchant's Seal prices a common at 37 and leaves removal at 75 after a purchase", async () => {
+  // D-111 (BUILD 169): the common tier is named basic; its price key follows.
+  await runTest("Item B: Merchant's Seal prices a basic at 37 and leaves removal at 75 after a purchase", async () => {
     const page = await freshPage(browser);
     await page.evaluate(() => { updateRun({ artifacts: ['merchants_seal'], gold: 1000 }); });
     const before = await page.evaluate(() => ({
-      common: shopPriceWithArtifacts(GAME_CONFIG.SHOP.CARD_PRICE.common),
+      common: shopPriceWithArtifacts(GAME_CONFIG.SHOP.CARD_PRICE.basic),
       removal: shopRemovalPrice(),
       gold: gameState.run.gold
     }));
-    assert.strictEqual(before.common, 37, 'a common card must cost 37, got ' + before.common);
+    assert.strictEqual(before.common, 37, 'a basic card must cost 37, got ' + before.common);
     assert.strictEqual(before.removal, 75, 'removal must cost 75, got ' + before.removal);
 
     await page.evaluate(() => { openShopScreen(); shopBuyRemoval(); shopRemoveCard(0); });

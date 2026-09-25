@@ -1282,3 +1282,19 @@ Verification: see paste-back.
 Full write-ups: HISTORY.md.
 
 BUILD 168 index note: D-120 poison ticks at the end of the poisoned side's own turn: the player's in END_PLAYER_TURN, the enemy's in CHECK_WIN_LOSS, nothing at START_OF_TURN; the poison answer now runs at END_PLAYER_TURN; F09, F33 and F34 reworded.
+
+Stage 2.95 (BUILD 168) — D-120, poison timing.
+
+D-120: poison ticks at the end of the poisoned side's own turn. The player's tick is tickPlayerPoison() in END_PLAYER_TURN, after hand-to-discard and after poison_answer_passive (re-hooked from START_OF_TURN to END_PLAYER_TURN, where it runs ahead of the other listeners), before the enemy rolls or acts. The enemy's tick is tickEnemyPoison() in CHECK_WIN_LOSS, after its intent resolved and before the next START_OF_TURN. A tick still deals damage equal to the stacks through calculateDamage(), ignores block, and drops the stacks by 1; stacks applied in a side's own turn tick at the end of that same turn. Both START_OF_TURN ticks are deleted. Each tick is followed by a runPhase() re-entry, so its top guard ends the fight as a win before the next round, or as a loss before the enemy acts; no new death path.
+
+KI-28 holds: the enemy's tick from the round before lands ahead of advanceEnemyIntentForRound(), so a Charge's break check counts the tick that ended the wind-up round.
+
+Text: the player's poison tip reads "at the end of your turn", the enemy's poison icon "at the end of its turn". config.js's F09, F33 and F34, and CLAUDE.md's PHASE ORDER (new POISON TIMING paragraph), EVENT HOOKS, enemy intent and POISON ANSWER lines describe the new timing. No new F-line.
+
+Tests: build168.test.js holds this build's assertions. Corrected to the new timing: build141 Items A-a to A-d and B-d, build148 Item a (both cases), facts.test.js F09. mods.test.js unchanged.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.
+
+BUILD 169 index note: D-111 five rarity tiers basic to void, every label and border in its tier colour; D-112 one card component (hand, offers, shop, CARDS layer, removal pickers); KI-45 odds by largest remainder; KI-46 hover boxes clamped to the window; D-116 HP line on the rite screen; D-121 Rite 6/6; D-122 boss heal 20 percent; D-123 act 1 lanes nine slots; KI-47 HP floored at 0; F08, F16, F42 reworded.
