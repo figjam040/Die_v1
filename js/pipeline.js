@@ -103,6 +103,7 @@ function strengthenFace(faceNumber) {
   const newFaces = gameState.die.faces.slice();
   newFaces[playerFaceIndex(faceNumber)] = Object.assign({}, face, { weight: newWeight });
   updateDie({ faces: newFaces });
+  updateRun({ weightAdded: gameState.run.weightAdded + 1 });
   return newWeight;
 }
 

@@ -1318,3 +1318,17 @@ Verification: see paste-back.
 Full write-ups: HISTORY.md.
 
 BUILD 170 index note: D-124 mod symbols at 24px in a strip under each loaded face of the fight face row, the squares unmoved; D-125 every mod, card and artifact text rewritten as one or two imperative sentences, face hover in two lines; D-113 roll sounds die_rolling, die_landing, die_blank with mod_trigger, a dev mute for the four; F50 reworded.
+
+Stage 2.97 (BUILD 170) — mod symbols under the face row, card-style text, roll sounds.
+
+D-124: renderDieList() adds a .face-symbol-strip under each face caption on #playerDieList: the loaded face's mod symbol, art/mods/<id>.png at FACE_SYMBOL_PX (24), two side by side on a two-mod face, none on a blank or on 1/20 (faceSymbolModIds()). attachArtIcon() hides a missing file. The strip is absolute, 3px under the caption, so the squares and captions keep their size and place; #fightScreen is overflow: clip with a 20px overflow-clip-margin, so the strip paints into the left column's bottom padding. Nothing scrolls at 1600x900 or 1920x1080.
+
+D-125: MOD_DESCRIPTION, CARD_EFFECT_TEXT, getCardEffectText() (Threnody), config.artifacts' text and NAT_DESCRIPTION are one or two imperative sentences; no numbers or mechanics changed. The face hover box is two lines: faceTitleText() (name, weight, trigger count, Bound/Sealed; MAX without parentheses, no "this run"), then faceHoverText() (no ×N suffix; a second mod after " / "; a blank reads Gain 2 block., an enemy blank Nothing happens.). Strengthen's Becomes line is the title line at one more weight. Enemy face texts and the Penitence icon lost their parentheses and "applies". Tags are no longer repeated in the text.
+
+D-113 sounds: die_rolling (four falling ticks, 165ms) plays as the player's die icon starts; resolvePlayerRoll() announces die_landing, die_blank (replacing roll_blank) or nat_20/nat_1; mod_trigger is the trigger sound. playAudioEvent() holds everything else announced during the spin and releaseDieRollDisplay() plays it at the stop. roll stays for The Font. #devMuteRollSoundsCheckbox (rollSoundsMuted) mutes ROLL_SOUND_EVENTS only. F50 reworded.
+
+Tests: build170.test.js. Corrected to the new text: build145 Titles, build165 ARTIFACTS layer row, build169 Item F, facts' Gloria hand and reward text and its word-for-word reworded-text check. build167 E allows overflow inside an overflow: clip element's clip margin.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.

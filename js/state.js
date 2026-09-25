@@ -106,7 +106,8 @@ const gameState = {
     artifacts: [],
     shop: null,
     removalPrice: GAME_CONFIG.SHOP.REMOVAL_BASE_PRICE,
-    thirdEyeUsedThisAct: false
+    thirdEyeUsedThisAct: false,
+    weightAdded: 0
   },
 
   runRecord: {

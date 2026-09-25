@@ -189,7 +189,8 @@ gameState = {
     act: null, // buildAct(actNumber)'s opening/upper[]/lower[]/boss slots
     actNumber: 1, // 1-based — see ACTS
     threnodyFace: null, // fixed once per run, 2-19
-    gold: 0, artifacts: [], shop: null, removalPrice: 75, thirdEyeUsedThisAct: false // GOLD, SHOP AND ARTIFACTS
+    gold: 0, artifacts: [], shop: null, removalPrice: 75, thirdEyeUsedThisAct: false, // GOLD, SHOP AND ARTIFACTS
+    weightAdded: 0 // weight added through strengthenFace() this run; Jubilee reads it
   },
 
  // A write-once-per-event log for the player's own reference, distinct
@@ -532,7 +533,7 @@ Vigil — 5 block per card still in hand at end of turn, via a turn-scoped liste
 Zeal — 10 damage plus a bonus that permanently increases by 4 each further trigger from the same face; stored per-face on that face's modData (updateDie()), not a global counter, so Zeal on two faces accrues independently.
 Ordain — 10 damage, then permanently +1 weight to the face it triggered from.
 Elevation — 10 damage; the face above (the next number still on the die, nextFaceNumberAbove()) permanently gains +1 weight, only if loaded and not face 20. Blank-above or face 20: just the 10 damage, no write, no error. Weight write goes through the shared strengthenFace() (pipeline.js), the only place weight is ever written.
-Anthem — 6 damage plus 4 per point of weight on its own face (1→10, 2→14, 3→18). Reuses dealDamage() tagged 'attack' and turn.rolledFaceWeight. Reads weight only; writes nothing.
+Anthem — 6 damage plus 4 per point of weight on its own face (1→10, 2→14, 3→18). Reuses dealDamage() tagged 'attack'; reads the weight of the face that carries it (data.faceNumber), never the rolled face's. Writes nothing.
 
 The rest (Smite, Penance, Offering, Blight, Virulence, Sanctuary, Largesse, Tithe, Congregation, Cope, Anathema, Thurible, Magnificat, Unison, Accord, Kinship, Concord, Herald, Dread, Genuflect) each have a plain, direct effect in MOD_DESCRIPTION — see that table rather than duplicating numbers here.
 
@@ -792,21 +793,20 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 168) — D-120 poison ticks at the end of the poisoned side's turn (player END_PLAYER_TURN, enemy CHECK_WIN_LOSS); START_OF_TURN no longer ticks; poison answer at END_PLAYER_TURN; KI-28 holds.
 (BUILD 169) — D-111 five rarity tiers basic to void, D-112 one card component (2px rarity border, soul dots), KI-45 odds total 100.0, KI-46 hover clamp, D-116 rite HP line, D-121 Rite 6/6, D-122 boss heal 20 percent, D-123 act 1 ninth slot, KI-47 HP floored at 0.
 (BUILD 170) — D-124 24px mod symbols under each loaded face, squares unmoved; D-125 all 27 mod, 51 card, 13 artifact texts as imperative sentences, two-line face hover; D-113 rolling/landing/blank/trigger sounds, held to the stop, dev mute.
+(BUILD 171) — KI-48 Anthem reads the weight of its own face, KI-49 Jubilee counts weight added (run.weightAdded, set only in strengthenFace()), Remove no longer lowers it.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.97 (BUILD 170) — mod symbols under the face row, card-style text, roll sounds.
+Stage 2.98 (BUILD 171) — KI-48 Anthem reads its own face, KI-49 Jubilee counts weight added.
 
-D-124: renderDieList() adds a .face-symbol-strip under each face caption on #playerDieList: the loaded face's mod symbol, art/mods/<id>.png at FACE_SYMBOL_PX (24), two side by side on a two-mod face, none on a blank or on 1/20 (faceSymbolModIds()). attachArtIcon() hides a missing file. The strip is absolute, 3px under the caption, so the squares and captions keep their size and place; #fightScreen is overflow: clip with a 20px overflow-clip-margin, so the strip paints into the left column's bottom padding. Nothing scrolls at 1600x900 or 1920x1080.
+KI-48: Anthem deals 6 damage plus 4 per weight of the face carrying it, read through getPlayerFace(data.faceNumber), so a Nat 20 sweep, Magnificat, Novena, Cardinal or Threnody trigger reads the right face. Text: Deal 6 damage, plus 4 per weight on this face.
 
-D-125: MOD_DESCRIPTION, CARD_EFFECT_TEXT, getCardEffectText() (Threnody), config.artifacts' text and NAT_DESCRIPTION are one or two imperative sentences; no numbers or mechanics changed. The face hover box is two lines: faceTitleText() (name, weight, trigger count, Bound/Sealed; MAX without parentheses, no "this run"), then faceHoverText() (no ×N suffix; a second mod after " / "; a blank reads Gain 2 block., an enemy blank Nothing happens.). Strengthen's Becomes line is the title line at one more weight. Enemy face texts and the Penitence icon lost their parentheses and "applies". Tags are no longer repeated in the text.
+KI-49: gameState.run.weightAdded (0 on a new run) is incremented only inside strengthenFace(), by the weight it adds; Leaden Face counts 2, Ordain and Elevation 1, Gilded Die never (it writes turn.gildedFace, not weight). Jubilee reads it, so Remove no longer lowers it.
 
-D-113 sounds: die_rolling (four falling ticks, 165ms) plays as the player's die icon starts; resolvePlayerRoll() announces die_landing, die_blank (replacing roll_blank) or nat_20/nat_1; mod_trigger is the trigger sound. playAudioEvent() holds everything else announced during the spin and releaseDieRollDisplay() plays it at the stop. roll stays for The Font. #devMuteRollSoundsCheckbox (rollSoundsMuted) mutes ROLL_SOUND_EVENTS only. F50 reworded.
-
-Tests: build170.test.js. Corrected to the new text: build145 Titles, build165 ARTIFACTS layer row, build169 Item F, facts' Gloria hand and reward text and its word-for-word reworded-text check. build167 E allows overflow inside an overflow: clip element's clip margin.
+Tests: build171.test.js. facts.test.js's Jubilee test now sets run.weightAdded to 12 instead of writing face weights.
 
 Verification: see paste-back.
 

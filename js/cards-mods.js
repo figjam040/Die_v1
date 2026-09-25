@@ -552,14 +552,12 @@ function init() {
     }
   };
 
-  // Weight added means the
-  // total weight of all 20 faces minus 20 (every face starts at weight 1,
-  // per DIE FACE OBJECT STRUCTURE, so the sum starts at exactly 20).
+  // Weight added is gameState.run.weightAdded, which strengthenFace() alone
+  // increments, so Remove never lowers it.
   gameState.config.cards['jubilee'] = {
     id: 'jubilee', name: 'Jubilee', soulCost: 2, type: 'attack', classRestriction: null, tier: 'rare', tags: ['growth', 'mass'],
     effect: function(gameState) {
-      const totalWeight = gameState.die.faces.reduce(function(sum, f) { return sum + f.weight; }, 0);
-      const weightAdded = totalWeight - 20;
+      const weightAdded = gameState.run.weightAdded;
       const raw = 4 + (2 * weightAdded);
       const capped = raw > 24;
       const damage = dealDamage('enemy', capped ? 24 : raw, 'attack', 'jubilee');
@@ -1248,8 +1246,8 @@ function init() {
     name: 'Anthem',
     tier: 'basic',
     tags: ['mass'],
-    effect: function() {
-      const weight = gameState.turn.rolledFaceWeight;
+    effect: function(data) {
+      const weight = getPlayerFace(data.faceNumber).weight;
       const damage = dealDamage('enemy', 6 + (4 * weight), 'attack', 'anthem');
       log('[MOD] anthem: ' + damage + ' damage');
     }

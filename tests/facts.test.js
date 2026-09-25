@@ -2108,10 +2108,8 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
     await page.evaluate(() => {
-      const newFaces = gameState.die.faces.slice();
-      // Six faces at weight 3 each add (3-1)*6 = 12 weight: 4 + 2*12 = 28, caps at 24.
-      [2, 3, 4, 5, 6, 7].forEach(function(n) { newFaces[n - 1] = Object.assign({}, newFaces[n - 1], { weight: 3 }); });
-      updateDie({ faces: newFaces });
+      // 12 weight added: 4 + 2*12 = 28, caps at 24.
+      updateRun({ weightAdded: 12 });
     });
     await page.evaluate(() => { forcePlayerRoll(9); }); // face 9, untouched, still blank
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');

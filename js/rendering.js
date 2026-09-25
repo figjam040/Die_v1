@@ -1845,7 +1845,7 @@ const MOD_DESCRIPTION = {
   zeal: 'Deal 10 damage, plus 4 for each earlier trigger of this face.',
   fervour: 'Double your attack damage this turn.',
   ordain: 'Deal 10 damage. Add 1 weight to this face.',
-  anthem: 'Deal 6 damage, plus 4 per weight on the rolled face.',
+  anthem: 'Deal 6 damage, plus 4 per weight on this face.',
   elevation: 'Deal 10 damage. If the next face up holds a mod, add 1 weight to it.',
   largesse: 'Gain 2 soul and 4 block.',
   tithe: 'When this turn ends, deal 5 damage per soul you have left, up to 20.',
