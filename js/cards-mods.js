@@ -317,7 +317,7 @@ function init() {
   // Reads rollOutcome directly — excludes NAT_ONE/NAT_TWENTY, which carry
   // no loaded mod but aren't 'blank' either, from the 9-damage branch.
   gameState.config.cards['orison'] = {
-    id: 'orison', name: 'Orison', soulCost: 1, type: 'attack', classRestriction: null, tier: 'basic', tags: [],
+    id: 'orison', name: 'Orison', soulCost: 1, type: 'attack', classRestriction: null, tier: 'basic', tags: ['blank'],
     effect: function(gameState) {
       const isBlank = gameState.turn.rollOutcome === 'blank';
       const damage = dealDamage('enemy', isBlank ? 9 : 5, 'attack', 'orison');
@@ -355,22 +355,13 @@ function init() {
     }
   };
 
-  // Counts blank (modId null)
-  // faces among faces 2-19 (index 1-18), excluding the two Nat faces.
+  // One damage per blank face on the die (blankFaceNumbers()), uncapped.
   gameState.config.cards['vacancy'] = {
-    id: 'vacancy', name: 'Vacancy', soulCost: 2, type: 'attack', classRestriction: null, tier: 'basic', tags: ['mass'],
+    id: 'vacancy', name: 'Vacancy', soulCost: 2, type: 'attack', classRestriction: null, tier: 'rare', tags: ['mass', 'blank'],
     effect: function(gameState) {
-      const blanks = gameState.die.faces.filter(function(f) {
-        return f.number >= 2 && f.number <= 19 && f.modId === null;
-      }).length;
-      const raw = blanks;
-      const capped = raw > 16;
-      const damage = dealDamage('enemy', capped ? 16 : raw, 'attack', 'vacancy');
-      if (capped) {
-        log('[CARD] vacancy: ' + damage + ' damage (capped, ' + blanks + ' blank faces)');
-      } else {
-        log('[CARD] vacancy: ' + damage + ' damage (' + blanks + ' blank faces)');
-      }
+      const blanks = blankFaceNumbers().length;
+      const damage = dealDamage('enemy', GAME_CONFIG.VACANCY_DAMAGE_PER_BLANK * blanks, 'attack', 'vacancy');
+      log('[CARD] vacancy: ' + damage + ' damage (' + blanks + ' blank faces)');
     }
   };
 
@@ -535,20 +526,13 @@ function init() {
     }
   };
 
-  // Reads gameState.turn.
-  // rolledFaceWeight, the exact field Covenant already reads.
+  // Block per blank face on the die, uncapped — Vacancy's count.
   gameState.config.cards['tabernacle'] = {
-    id: 'tabernacle', name: 'Tabernacle', soulCost: 1, type: 'block', classRestriction: null, tier: 'basic', tags: ['mass'],
+    id: 'tabernacle', name: 'Tabernacle', soulCost: 1, type: 'block', classRestriction: null, tier: 'basic', tags: ['mass', 'blank'],
     effect: function(gameState) {
-      const weight = gameState.turn.rolledFaceWeight;
-      const raw = 3 + (3 * weight);
-      const capped = raw > 12;
-      const block = dealBlock(capped ? 12 : raw, 'tabernacle');
-      if (capped) {
-        log('[CARD] tabernacle: ' + block + ' block (capped, face weight ' + weight + ')');
-      } else {
-        log('[CARD] tabernacle: ' + block + ' block (face weight ' + weight + ')');
-      }
+      const blanks = blankFaceNumbers().length;
+      const block = dealBlock(GAME_CONFIG.TABERNACLE_BLOCK_PER_BLANK * blanks, 'tabernacle');
+      log('[CARD] tabernacle: ' + block + ' block (' + blanks + ' blank faces)');
     }
   };
 
@@ -597,27 +581,19 @@ function init() {
     }
   };
 
-  // Re-triggers the face
-  // rolled this round (gameState.turn.rolledFaceNumber, the same field
-  // Covenant/Tabernacle already read): a loaded face triggers again through
-  // triggerFaceOutsideRoll(), a blank face gives its 2 block again the same
-  // way. Faces 1 and 20 are Nat stubs triggerFaceOutsideRoll() always
-  // refuses, so a Nat roll is special-cased here instead: 6 block, direct.
+  // Triggers every blank face, ascending, through triggerFaceOutsideRoll():
+  // each pays the blank payout as a non-roll (no Alms, Vigil or Gilded Die),
+  // exempt from the round trigger cap. A face already triggered outside a
+  // roll this round is skipped.
   gameState.config.cards['reverberation'] = {
-    id: 'reverberation', name: 'Reverberation', soulCost: 2, type: 'utility', classRestriction: null, tier: 'rare', tags: ['mass'],
+    id: 'reverberation', name: 'Reverberation', soulCost: 2, type: 'utility', classRestriction: null, tier: 'rare', tags: ['mass', 'blank'],
     effect: function(gameState) {
-      const faceNumber = gameState.turn.rolledFaceNumber;
-      if (faceNumber === 1 || faceNumber === GAME_CONFIG.DIE_SIZE.PLAYER) {
-        const block = dealBlock(6, 'reverberation');
-        log('[CARD] reverberation: ' + block + ' block (rolled face ' + faceNumber + ' was a Nat face)');
-        return;
-      }
-      const triggered = triggerFaceOutsideRoll(faceNumber);
-      if (triggered) {
-        log('[CARD] reverberation: face ' + faceNumber + ' triggered again');
-      } else {
-        log('[CARD] reverberation: face ' + faceNumber + ' could not trigger again (already triggered outside a roll this round, or the round trigger cap was reached)');
-      }
+      const blankNumbers = blankFaceNumbers();
+      let triggered = 0;
+      blankNumbers.forEach(function(faceNumber) {
+        if (triggerFaceOutsideRoll(faceNumber, { capExempt: true })) { triggered++; }
+      });
+      log('[CARD] reverberation: ' + triggered + ' of ' + blankNumbers.length + ' blank faces triggered');
     }
   };
 
@@ -1161,19 +1137,18 @@ function init() {
     }
   };
 
-  // Reads hand size at END_PLAYER_TURN, after cards are played, not at roll time.
+  // Damage grows with the blanks rolled this run (gameState.run.blanksRolled,
+  // one point per VIGIL_BLANKS_PER_POINT, whole points only). Also triggers on
+  // every blank roll: see 'vigil_blank_trigger' below.
   gameState.config.mods['vigil'] = {
     id: 'vigil',
     name: 'Vigil',
     tier: 'uncommon',
-    tags: ['bastion'],
+    tags: ['blank'],
     effect: function() {
-      log('[MOD] vigil: registered, block scales with cards held at end of turn');
-      registerListener('END_PLAYER_TURN', 'vigil_block_per_card_held', function() {
-        const cardsHeld = gameState.player.hand.length;
-        const block = dealBlock(5 * cardsHeld, 'vigil');
-        log('[MOD] vigil: ' + cardsHeld + ' cards held, granted 5x' + cardsHeld + ' block');
-      }, 'turn');
+      const bonus = Math.floor(gameState.run.blanksRolled / GAME_CONFIG.VIGIL_BLANKS_PER_POINT);
+      const damage = dealDamage('enemy', GAME_CONFIG.VIGIL_BASE_DAMAGE + bonus, 'attack', 'vigil');
+      log('[MOD] vigil: ' + damage + ' damage (' + gameState.run.blanksRolled + ' blanks rolled)');
     }
   };
 
@@ -1286,26 +1261,16 @@ function init() {
     }
   };
 
-  // End-of-round effect: 5 damage per soul remaining, capped at 20.
+  // Block per blank face on the die at the moment it triggers.
   gameState.config.mods['tithe'] = {
     id: 'tithe',
     name: 'Tithe',
     tier: 'uncommon',
-    tags: ['soul'],
+    tags: ['blank'],
     effect: function() {
-      log('[MOD] tithe: registered, deals damage per soul remaining at end of round (capped 20)');
-      registerListener('END_PLAYER_TURN', 'tithe_damage_per_soul', function() {
-        const soul = gameState.player.soul;
-        const raw = 5 * soul;
-        const capped = raw > 20;
-        const rawDamage = capped ? 20 : raw;
-        const damage = dealDamage('enemy', rawDamage, 'attack', 'tithe');
-        if (capped) {
-          log('[MOD] tithe: ' + damage + ' damage (capped, ' + soul + ' soul)');
-        } else {
-          log('[MOD] tithe: ' + damage + ' damage (' + soul + ' soul)');
-        }
-      }, 'turn');
+      const blanks = blankFaceNumbers().length;
+      const block = dealBlock(GAME_CONFIG.TITHE_BLOCK_PER_BLANK * blanks, 'tithe');
+      log('[MOD] tithe: ' + block + ' block (' + blanks + ' blank faces)');
     }
   };
 
@@ -1363,9 +1328,8 @@ function init() {
   };
 
   // Anathema — pool mod (uncommon). End-of-round effect: damage equal to
-  // the player's current block, capped at 16 — same END_PLAYER_TURN hook
-  // Vigil/Tithe already register on, own listener id so all three coexist
-  // independently. Block is read only, never spent/cleared here — block
+  // the player's current block, capped at 16, on a turn-scoped
+  // END_PLAYER_TURN listener. Block is read only, never spent/cleared here — block
   // still clears at the next START_OF_TURN exactly as it always has, and
   // this fires before that (END_PLAYER_TURN precedes ENEMY_ACT_PHASE in
   // PHASE_ORDER, so the enemy's own attack this round hasn't landed yet
@@ -1554,9 +1518,9 @@ function init() {
   };
 
   // ---------- ARTIFACTS ----------
-  // Third Eye, Loaded Die and Tolling Bell each act on the one roll path
+  // Third Eye and Loaded Die act on the one roll path
   // (nextPhase(), phase-machine.js) rather than a MOD_TRIGGER-shaped
-  // listener — none of them are a die trigger, so there is no hook in
+  // listener — neither is a die trigger, so there is no hook in
   // EVENT HOOKS shaped for "before/instead of the roll itself". Every
   // artifact function still gates itself on hasArtifact(), the same pattern the
   // enemy die mechanics use for "registered unconditionally, checks which
@@ -1564,25 +1528,25 @@ function init() {
   gameState.config.artifacts = {
     third_eye: { id: 'third_eye', name: 'Third Eye', tier: 'rare', text: 'Once per act, before you roll, choose the face.' },
     loaded_die: { id: 'loaded_die', name: 'Loaded Die', tier: 'rare', text: 'Roll twice. Keep the higher face.' },
-    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', text: 'If the enemy is winding up or releasing, roll twice. Both faces resolve.' },
+    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', tags: ['blank'], text: 'Blanks pay 2 block, plus 1 for every blank you have rolled this fight.' },
     tithe_box: { id: 'tithe_box', name: 'Tithe Box', tier: 'rare', text: 'When you roll a Nat 20, gain 15 gold.' },
     merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", tier: 'rare', text: 'Pay a quarter less for everything in the shop. Card removal stays at 75 gold.' },
     leaden_face: { id: 'leaden_face', name: 'Leaden Face', tier: 'rare', text: 'Strengthen adds 2 weight instead of 1.' },
     reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', tier: 'rare', text: 'When you roll a Bound face and the face above it is loaded, trigger that face too.' },
     plague_bell: { id: 'plague_bell', name: 'Plague Bell', tier: 'rare', text: 'When a fight starts, apply 1 stack of poison to the enemy for every 2 loaded faces other than face 10.' },
-    alms: { id: 'alms', name: 'Alms', tier: 'rare', text: 'When you roll a blank, gain 1 soul instead of 2 block.' },
+    alms: { id: 'alms', name: 'Alms', tier: 'rare', tags: ['blank'], text: 'When you roll a blank, gain 1 soul instead of 2 block.' },
     hourglass: { id: 'hourglass', name: 'Hourglass', tier: 'rare', text: "Skip the enemy's first round of every fight." },
     second_chance: { id: 'second_chance', name: 'Second Chance', tier: 'rare', text: 'Once per fight, reroll your die.' },
-    gilded_die: { id: 'gilded_die', name: 'Gilded Die', tier: 'rare', text: 'Before you roll, pay 10 gold to add 2 weight to one face for that roll.' },
+    gilded_die: { id: 'gilded_die', name: 'Gilded Die', tier: 'rare', tags: ['blank'], text: 'When you roll a blank, gain 3 gold.' },
     bone_counter: { id: 'bone_counter', name: 'Bone Counter', tier: 'rare', text: 'When you roll a Nat 1, pay 15 gold instead of starting Penitence. Without the gold, Penitence starts.' }
   };
 
   // Every artifact with a hook of its own to sit on registers here,
   // unconditionally, and gates itself on hasArtifact() — the same pattern
-  // the enemy die mechanics use. The rest (Third Eye, Loaded Die, Tolling
-  // Bell, Merchant's Seal, Leaden Face, Second Chance, Gilded Die) act on
-  // the roll path or a shop price, where there is no hook to sit on, and
-  // gate themselves at that call site instead.
+  // the enemy die mechanics use. The rest (Third Eye, Loaded Die, Merchant's
+  // Seal, Leaden Face, Second Chance) act on the roll path or a shop price,
+  // where there is no hook to sit on, and gate themselves at that call site
+  // instead.
   registerListener('NAT_TWENTY', 'artifact_tithe_box', function() {
     if (!hasArtifact('tithe_box')) { return; }
     const gold = GAME_CONFIG.ARTIFACTS.TITHE_BOX_GOLD;
@@ -1595,6 +1559,43 @@ function init() {
     const soul = GAME_CONFIG.ARTIFACTS.ALMS_SOUL;
     updatePlayer({ soul: gameState.player.soul + soul });
     log('[ARTIFACT] Alms: +' + soul + ' soul instead of block');
+  }, 'permanent');
+
+  // The BLANK_ROLL listeners below run in registration order, which the
+  // counts depend on: Tolling Bell reads the blanks rolled before this
+  // one, the counter then adds it, and Vigil reads the count with it in.
+  // A blank a card reached for (outsideRoll) is not a roll: it pays
+  // Tolling Bell's block but is never counted and never triggers the rest.
+  registerListener('BLANK_ROLL', 'artifact_tolling_bell', function() {
+    if (!hasArtifact('tolling_bell')) { return; }
+    const extra = gameState.fight.blanksRolled * GAME_CONFIG.ARTIFACTS.TOLLING_BELL_BLOCK_PER_BLANK;
+    if (extra <= 0) { return; }
+    const block = dealBlock(extra, 'tolling_bell');
+    log('[ARTIFACT] Tolling Bell: +' + block + ' block for ' + gameState.fight.blanksRolled + ' earlier blanks');
+  }, 'permanent');
+
+  registerListener('BLANK_ROLL', 'blank_roll_counter', function(data) {
+    if (data && data.outsideRoll) { return; }
+    updateFight({ blanksRolled: gameState.fight.blanksRolled + 1 });
+    updateRun({ blanksRolled: gameState.run.blanksRolled + 1 });
+  }, 'permanent');
+
+  registerListener('BLANK_ROLL', 'vigil_blank_trigger', function(data) {
+    if (data && data.outsideRoll) { return; }
+    const face = gameState.die.faces.filter(function(f) {
+      return (f.modId === 'vigil' || f.modId2 === 'vigil') && !isFaceSealed(f.number);
+    })[0];
+    if (!face) { return; }
+    log('[MOD] vigil: triggers on a blank roll');
+    markFaceHopped(face.number);
+    callListeners('MOD_TRIGGER', { modId: 'vigil', faceNumber: face.number });
+  }, 'permanent');
+
+  registerListener('BLANK_ROLL', 'artifact_gilded_die', function(data) {
+    if (!hasArtifact('gilded_die') || (data && data.outsideRoll)) { return; }
+    const gold = GAME_CONFIG.BLANK_GOLD;
+    updateRun({ gold: gameState.run.gold + gold });
+    log('[ARTIFACT] Gilded Die: ' + gold + ' gold');
   }, 'permanent');
 
   registerListener('FIGHT_START', 'artifact_plague_bell', function() {

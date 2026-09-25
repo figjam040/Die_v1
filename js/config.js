@@ -23,7 +23,7 @@
 // F19 enemy buff applies 3 stacks of poison (act 1), scaled per act to 4 (act 2) and 5 (act 3) · F20 act 1 elite (Lector) buff faces 3 and 9, both poison, 12-sided, no Nat faces · F21 act 1 boss (Hierophant) buff faces 5, 10, 15, all poison, plus Nat 20 and Nat 1
 // F22 enemy Nat 20 forces the boss's Charge next round (forcedNextIntent, breakable as any Charge); buff faces trigger only when rolled · F23 enemy Nat 1 attack cancelled, self-applies a flat 5 stacks of poison, once per fight
 // F24 mods 27 (BUILD 149: +Dread, Genuflect; 26 offerable plus Consecrate, tiers 13/9/4), each asserted by tests/mods.test.js
-// F25 cards 48 (BUILD 153: +Venom, Ballast, Refrain, Second Sight, Cadence, Watchword, Blight Weight; tiers 25/16/7), each asserted by tests/facts.test.js
+// F25 cards 48 (BUILD 153: +Venom, Ballast, Refrain, Second Sight, Cadence, Watchword, Blight Weight; BUILD 173: Vacancy to rare; tiers 24/16/8), each asserted by tests/facts.test.js
 // F26 files under /js/: eleven — config, state, listener-registry, audio, pipeline, cards-mods, run-and-map, phase-machine, rendering, dev-tools, bootstrap
 // F27 pitch chains cap 8, reset at START_OF_TURN
 // F28 sound duration ceiling 200 ms holds for every frequent sound (roll, card plays, damage, block, end turn, mod trigger, die action, card reward, fight_start_normal/elite); nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it — all six are rare, at most once per fight-ending event, boss fight, or Nat roll
@@ -51,7 +51,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 172,
+  BUILD: 173,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -99,6 +99,12 @@ const GAME_CONFIG = {
   DRAW_COUNT: 5,
   STARTING_DECK: ['strike', 'strike', 'strike', 'strike', 'strike', 'ward', 'ward', 'ward', 'ward', 'rite'],
   BLANK_ROLL_BLOCK: 2,
+  BLANK_GOLD: 3,
+  VIGIL_BASE_DAMAGE: 4,
+  VIGIL_BLANKS_PER_POINT: 3,
+  TITHE_BLOCK_PER_BLANK: 1,
+  VACANCY_DAMAGE_PER_BLANK: 1,
+  TABERNACLE_BLOCK_PER_BLANK: 2,
   PENITENCE_TURNS: 3,
   RITE_HEAL: 20,
   BOSS_HEAL_PERCENT: 20,
@@ -265,8 +271,7 @@ const GAME_CONFIG = {
     LEADEN_FACE_STRENGTHEN: 2,
     PLAGUE_BELL_FACES_PER_STACK: 2,
     ALMS_SOUL: 1,
-    GILDED_DIE_PRICE: 10,
-    GILDED_DIE_WEIGHT: 2,
+    TOLLING_BELL_BLOCK_PER_BLANK: 1,
     BONE_COUNTER_GOLD: 15
   },
 

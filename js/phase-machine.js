@@ -166,7 +166,7 @@ function runPhase(phase) {
     log('[START] turn listeners cleared');
 
     // Clears every per-turn/per-round roll flag so none leaks forward.
-    updateTurn({ rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, enemyRollOutcome: null, enemyRolledFaceNumber: null, modTriggeredThisTurn: false, enemyAttackCancelledThisTurn: false, outsideTriggeredFaces: [], roundTriggerCount: 0, roundSweepPlays: 0, roundTriggerCapLogged: false, hoppedFaces: [], cardsPlayed: [], modsTriggered: [], boundTriggeredThisRound: false, enemyRoundSkippedThisTurn: false, gildedFace: null });
+    updateTurn({ rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, enemyRollOutcome: null, enemyRolledFaceNumber: null, modTriggeredThisTurn: false, enemyAttackCancelledThisTurn: false, outsideTriggeredFaces: [], roundTriggerCount: 0, roundSweepPlays: 0, roundTriggerCapLogged: false, hoppedFaces: [], cardsPlayed: [], modsTriggered: [], boundTriggeredThisRound: false, enemyRoundSkippedThisTurn: false });
 
     drawCards(GAME_CONFIG.DRAW_COUNT);
   }
@@ -302,16 +302,6 @@ function nextPhase() {
     playerRollResolved = true;
     const face = rollWithArtifacts(gameState.die.faces);
     resolvePlayerRoll(face);
-    // Tolling Bell — a second roll, fully after the first resolves, while
-    // the enemy is mid-Charge (wind-up or release) this round. Goes
-    // through the same resolvePlayerRoll() dispatch, so a Nat on either
-    // roll behaves exactly as it always does and both count toward
-    // GAME_CONFIG.ROUND_TRIGGER_CAP via mod_dispatch as usual.
-    if (hasArtifact('tolling_bell') && (gameState.enemy.chargeStage === 'windup' || gameState.enemy.chargeStage === 'release')) {
-      const secondFace = rollWithArtifacts(gameState.die.faces);
-      log('[ARTIFACT] Tolling Bell: second face ' + secondFace.number + ' triggers');
-      resolvePlayerRoll(secondFace);
-    }
   }
   if (currentPhase === 'ENEMY_ROLL_PHASE') {
     if (!enemyRollResolved) {
@@ -338,8 +328,7 @@ const ROLL_PHASE_PAUSE_MS = 1800;
 
 function preRollControlLive() {
   return (hasArtifact('third_eye') && !gameState.run.thirdEyeUsedThisAct) ||
-    (hasArtifact('second_chance') && !gameState.turn.secondChanceUsedThisFight) ||
-    (hasArtifact('gilded_die') && gameState.run.gold >= GAME_CONFIG.ARTIFACTS.GILDED_DIE_PRICE && !gameState.turn.gildedFace);
+    (hasArtifact('second_chance') && !gameState.turn.secondChanceUsedThisFight);
 }
 
 // Auto-advances through every phase needing no player input, stopping at

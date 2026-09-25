@@ -180,14 +180,11 @@ function faceRow(page, faceNumber) {
     await page.close();
   });
 
-  await runTest('Item B: with Gilded Die paid on face 7, the percent under 7 reads 3 of 22 for that roll and returns after it', async () => {
+  await runTest('Item B: holding Gilded Die leaves every percent alone, face 7 stays at 5.0%', async () => {
     const page = await freshFightPage(browser, ['gilded_die']);
-    await page.evaluate(() => { updateRun({ gold: 50 }); gildedDiePayForFace(7); });
-    const during = await faceRow(page, 7);
-    assert.strictEqual(during.captionText, '13.6%', '3 of 22 tickets rounds to 13.6%, got "' + during.captionText + '"');
-    await page.evaluate(() => { updateTurn({ gildedFace: null }); });
-    const after = await faceRow(page, 7);
-    assert.strictEqual(after.captionText, '5.0%', 'face 7 must return to 5.0% once the paid-for roll is spent, got "' + after.captionText + '"');
+    await page.evaluate(() => { updateRun({ gold: 50 }); });
+    const row = await faceRow(page, 7);
+    assert.strictEqual(row.captionText, '5.0%', 'face 7 must read 5.0% with Gilded Die held, got "' + row.captionText + '"');
     await page.close();
   });
 

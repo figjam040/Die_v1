@@ -179,7 +179,8 @@ function clearFightScopedState() {
   updatePlayer({ drainNextRound: 0, sealNextRound: [] });
   updateEnemy({ poisonStacks: 0, activeBuffs: [], natOneFiredThisFight: false, patternIndex: 0, chargeStage: null, chargeBroken: false, windupStartHp: null, currentEntry: null, forcedNextIntent: null, wrath: 0, wrathPending: 0, pontifexDoubleAttackThisRound: false, aweStacks: 0 });
   updateTurn({ round: 0, cardsPlayedThisTurn: 0 });
-  updateTurn({ sealedFaces: [], secondChanceUsedThisFight: false, enemyRoundSkippedThisTurn: false, gildedFace: null });
+  updateTurn({ sealedFaces: [], secondChanceUsedThisFight: false, enemyRoundSkippedThisTurn: false });
+  updateFight({ blanksRolled: 0 });
   // A Bound grant lasts one fight only, unlike the rest of a face's
   // modData (trigger counts, Zeal's/Cope's accumulators), which is
   // run-scoped and deliberately untouched here.
@@ -242,7 +243,8 @@ function startNewRun() {
     shop: null,
     removalPrice: GAME_CONFIG.SHOP.REMOVAL_BASE_PRICE,
     thirdEyeUsedThisAct: false,
-    weightAdded: 0
+    weightAdded: 0,
+    blanksRolled: 0
   });
   localStorage.removeItem(RUN_TRANSCRIPT_STORAGE_KEY);
 

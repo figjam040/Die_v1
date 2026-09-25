@@ -315,8 +315,6 @@ async function hoverEveryTip(page, label) {
       out.d19 = sum();
       strengthenFace(5); strengthenFace(5); strengthenFace(20); strengthenFace(10);
       out.weighted = sum();
-      updateTurn({ gildedFace: { faceNumber: 3, weight: 2 } });
-      out.gilded = sum();
       out.raw = Object.values(rollOdds(gameState.die.faces)).reduce((a, o) => a + Math.round(o.pct * 10), 0);
       return out;
     });
@@ -325,7 +323,6 @@ async function hoverEveryTip(page, label) {
     assert.strictEqual(v.d19.n, 19);
     assert.strictEqual(v.d19.total, 1000, '19-face total ' + v.d19.total / 10);
     assert.strictEqual(v.weighted.total, 1000, 'weighted total ' + v.weighted.total / 10);
-    assert.strictEqual(v.gilded.total, 1000, 'Gilded total ' + v.gilded.total / 10);
     assert.strictEqual(v.raw, 1000, 'rollOdds() pct total');
     assert.ok(v.d19.oneDecimal && v.weighted.oneDecimal, 'every caption keeps one decimal');
     await page.close();

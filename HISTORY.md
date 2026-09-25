@@ -1344,3 +1344,17 @@ Tests: build171.test.js. facts.test.js's Jubilee test now sets run.weightAdded t
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+Stage 2.99 (BUILD 172) — face hover without trigger counts, symbol hover, roll sound tuning.
+
+Item A: the player face hover's first line is faceTitleText(face, isPlayerDie): the name (BLANK, NAT 1, NAT 20, a two-mod face's two names split by " / "), then "weight N" with MAX after it for face 20 at its cap, then Bound/Sealed when they apply. No trigger count anywhere in a hover; the DIE layer alone shows "triggered N times" (a two-mod face "triggered N / M times") under a loaded face's line, .info-row-triggers, the odds' font. The count is the face's modData count, run-scoped as ever.
+
+Item B: each mod symbol under a face is a .face-symbol (hover-parent) with its own hover box through setHoverTip(), opening upward over the symbol: line 1 that mod's name and the face's weight, line 2 that mod's text (a Sealed face's "Counts as blank this round."). The face's own box stays shut while a symbol is hovered. The strip is appended after the row's own box, so row.querySelector('.hover-tip') still finds the face's.
+
+Item C: die_rolling gain 0.05 to 0.04 and its four ticks 700/640/580/520 to 644/588.8/533.6/478.4 Hz; die_blank gain 0.07 to 0.084. Nothing else in the sound table changed.
+
+Tests: build172.test.js. Corrected: build145 Titles asserts no trigger count, build170 Item B's box lines (BLANK, " / ") and its faceTitleText calls.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.

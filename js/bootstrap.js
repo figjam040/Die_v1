@@ -19,7 +19,6 @@ document.getElementById('startGameBtn').addEventListener('click', function() {
   shopStep = null;
   shopRemovingCard = false;
   thirdEyeChoosing = false;
-  gildedDieChoosing = false;
   flushRunRecord('abandoned');
   startNewRun();
 });
@@ -36,14 +35,6 @@ document.getElementById('thirdEyeBtn').addEventListener('click', function() {
 document.getElementById('secondChanceBtn').addEventListener('click', function() {
   log('[CLICK] Second Chance');
   secondChanceReroll();
-  refreshInspector();
-});
-
-// Gilded Die — same face-choosing pattern Third Eye uses; the click on a
-// face row pays the gold and weights that face for the coming roll.
-document.getElementById('gildedDieBtn').addEventListener('click', function() {
-  gildedDieChoosing = !gildedDieChoosing;
-  log('[CLICK] Gilded Die' + (gildedDieChoosing ? ' — choose a face' : ' — cancelled'));
   refreshInspector();
 });
 

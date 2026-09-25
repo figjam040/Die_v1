@@ -1372,7 +1372,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       covenant: 'uncommon', retribution: 'uncommon',
       // BUILD 131 — checkpoint 3 cards, sixteen new cards.
       chastise: 'basic', cloister: 'basic', psalm: 'basic', reliquary: 'basic',
-      vacancy: 'basic', lauds: 'basic', hosanna: 'basic', tabernacle: 'basic',
+      vacancy: 'rare', lauds: 'basic', hosanna: 'basic', tabernacle: 'basic',
       tenet: 'uncommon', gradual: 'uncommon', myrrh: 'uncommon', gloria: 'uncommon',
       vindication: 'rare', exequy: 'rare', oblation: 'rare', jubilee: 'rare',
       // BUILD 132 — checkpoint 3, trigger a face outside a roll (prompt D).
@@ -1415,7 +1415,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     });
     // D-111 (BUILD 169): the common tier is named basic.
     assert.deepStrictEqual(totals.modTotals, { basic: 13, uncommon: 9, rare: 4 }, 'offerable mods must be 13 basic, 9 uncommon, 4 rare (Consecrate excluded, it carries no tier)');
-    assert.deepStrictEqual(totals.cardTotals, { basic: 25, uncommon: 16, rare: 7 }, 'reward cards must be 25 basic, 16 uncommon, 7 rare');
+    assert.deepStrictEqual(totals.cardTotals, { basic: 24, uncommon: 16, rare: 8 }, 'reward cards must be 24 basic, 16 uncommon, 8 rare (Vacancy is rare)');
     await liveBrowser.close();
   });
 
@@ -1545,7 +1545,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       blight: ['poison'],
       virulence: ['poison'],
       sanctuary: ['bastion'],
-      vigil: ['bastion'],
+      vigil: ['blank'],
       zeal: ['mass', 'growth'],
       fervour: ['mass'],
       ordain: ['mass', 'growth'],
@@ -1553,7 +1553,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       elevation: ['mass', 'growth'],
       // The six new mods.
       largesse: ['soul'],
-      tithe: ['soul'],
+      tithe: ['blank'],
       congregation: ['growth'],
       cope: ['growth', 'bastion'],
       anathema: ['bastion'],
@@ -1580,7 +1580,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     });
     assert.deepStrictEqual(tags, {
       rebuke: [], censure: [], vestment: [], litany: [], scripture: [],
-      interdict: [], orison: [],
+      interdict: [], orison: ['blank'],
       censer: ['poison'], purge: ['poison'], reckoning: ['poison'],
       communion: ['soul'], rapture: ['soul'],
       retribution: ['bastion'],
@@ -1589,13 +1589,13 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       // BUILD 131 — checkpoint 3 cards, sixteen new cards.
       chastise: [], cloister: [], psalm: [],
       tenet: ['growth', 'mass'], jubilee: ['growth', 'mass'],
-      gradual: ['mass'], vacancy: ['mass'], tabernacle: ['mass'],
+      gradual: ['mass'], vacancy: ['mass', 'blank'], tabernacle: ['mass', 'blank'],
       lauds: ['growth'],
       reliquary: ['bastion'], vindication: ['bastion'],
       myrrh: ['poison'], exequy: ['poison'],
       hosanna: [], gloria: ['soul'], oblation: ['soul'],
       // BUILD 132 — checkpoint 3, trigger a face outside a roll (prompt D).
-      threnody: ['growth'], reverberation: ['mass'],
+      threnody: ['growth'], reverberation: ['mass', 'blank'],
       // BUILD 134 — checkpoint 3, the remaining Bound pieces.
       kyrie: ['bound'], novena: ['bound'], canticle: ['bound'],
       // BUILD 149 — the awe cluster.
@@ -1639,7 +1639,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 130: Tithe — 5 damage per soul at end of round, capped at 20', async () => {
+  await runTest('BUILD 130: Tithe — 1 block per blank face on the die when it triggers', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
@@ -1648,14 +1648,12 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       newFaces[1] = Object.assign({}, newFaces[1], { modId: 'tithe' }); // face 2
       updateDie({ faces: newFaces });
     });
+    // Faces 1 and 20 are Nat faces; 10 (Consecrate) and 2 (Tithe) are loaded: 16 blanks.
+    const blockBefore = await page.evaluate(() => gameState.player.block);
     await page.evaluate(() => { forcePlayerRoll(2); });
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
-    await page.evaluate(() => { updatePlayer({ soul: 6 }); }); // 5*6=30, must cap at 20
-    const hpBefore = await page.evaluate(() => gameState.enemy.hp);
-    await page.evaluate(() => { nextPhase(); });
-    await page.waitForFunction(() => gameState.turn.phase === 'END_PLAYER_TURN');
-    const hpAfter = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(hpBefore - hpAfter, 20, 'expected damage capped at 20 despite 30 raw (5 x 6 soul)');
+    const blockAfter = await page.evaluate(() => gameState.player.block);
+    assert.strictEqual(blockAfter - blockBefore, 16, 'expected 1 block per blank face (16 blanks)');
     await liveBrowser.close();
   });
 
@@ -1839,21 +1837,21 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 131: Vacancy — 1 damage per blank face among faces 2-19, capped at 16', async () => {
+  await runTest('BUILD 131: Vacancy — 1 damage per blank face on the die, no cap', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
     await page.evaluate(() => { forcePlayerRoll(3); });
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
     const blanksBefore = await page.evaluate(() => gameState.die.faces.filter(function(f) { return f.number >= 2 && f.number <= 19 && f.modId === null; }).length);
-    const expectedBefore = Math.min(blanksBefore, 16);
+    assert.strictEqual(blanksBefore, 17, 'test setup: a fresh die holds 17 blank faces');
     await page.evaluate(() => { updatePlayer({ hand: ['vacancy'], soul: 5 }); });
     const hpBefore1 = await page.evaluate(() => gameState.enemy.hp);
     await page.evaluate(() => { playCard(0); });
     const hpAfter1 = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(hpBefore1 - hpAfter1, expectedBefore, 'expected min(' + blanksBefore + ' blank faces, 16) = ' + expectedBefore + ' damage');
+    assert.strictEqual(hpBefore1 - hpAfter1, 17, 'expected 17 damage for 17 blank faces, above the old cap of 16');
 
-    // Load faces down under the cap and confirm the raw count is used, not always 16.
+    // Load faces and confirm the count follows the blanks left.
     const blanksAfter = await page.evaluate(() => {
       const newFaces = gameState.die.faces.slice();
       for (let n = 2; n <= 9; n++) { newFaces[n - 1] = Object.assign({}, newFaces[n - 1], { modId: 'smite' }); }
@@ -1861,11 +1859,10 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
       updatePlayer({ hand: ['vacancy'], soul: 5 });
       return gameState.die.faces.filter(function(f) { return f.number >= 2 && f.number <= 19 && f.modId === null; }).length;
     });
-    assert.ok(blanksAfter < 16, 'test setup: expected fewer than 16 blank faces after loading, got ' + blanksAfter);
     const hpBefore2 = await page.evaluate(() => gameState.enemy.hp);
     await page.evaluate(() => { playCard(0); });
     const hpAfter2 = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(hpBefore2 - hpAfter2, blanksAfter, 'expected exactly ' + blanksAfter + ' damage, uncapped');
+    assert.strictEqual(hpBefore2 - hpAfter2, blanksAfter, 'expected exactly ' + blanksAfter + ' damage');
     await liveBrowser.close();
   });
 
@@ -2084,13 +2081,13 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 131: Tabernacle — 3 block +3 per weight of the rolled face, capped at 12', async () => {
+  await runTest('BUILD 131: Tabernacle — 2 block per blank face on the die, no cap, whatever the rolled weight', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
     await page.evaluate(() => {
       const newFaces = gameState.die.faces.slice();
-      newFaces[2] = Object.assign({}, newFaces[2], { weight: 4 }); // face 3, weight 4: 3 + 3*4 = 15, caps at 12
+      newFaces[2] = Object.assign({}, newFaces[2], { weight: 4 }); // face 3, weight 4: must not matter
       updateDie({ faces: newFaces });
     });
     await page.evaluate(() => { forcePlayerRoll(3); });
@@ -2099,7 +2096,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     const before = await page.evaluate(() => gameState.player.block);
     await page.evaluate(() => { playCard(0); });
     const after = await page.evaluate(() => gameState.player.block);
-    assert.strictEqual(after - before, 12, 'expected block capped at 12 despite 15 raw (3 + 3x4 rolled face weight)');
+    assert.strictEqual(after - before, 34, 'expected 2 block per blank face (17 blanks = 34), above the old cap of 12');
     await liveBrowser.close();
   });
 
@@ -2149,7 +2146,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 132: Reverberation — a loaded rolled face triggers again', async () => {
+  await runTest('BUILD 132: Reverberation — a loaded face is not triggered again, only blank faces trigger', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
@@ -2161,14 +2158,15 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.evaluate(() => { forcePlayerRoll(2); }); // triggers smite once, normally
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
     await page.evaluate(() => { updatePlayer({ hand: ['reverberation'], soul: 5 }); });
-    const before = await page.evaluate(() => gameState.enemy.hp);
+    const before = await page.evaluate(() => ({ hp: gameState.enemy.hp, block: gameState.player.block }));
     await page.evaluate(() => { playCard(0); });
-    const after = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(before - after, 16, 'expected smite (face 2, already rolled and triggered once this round) to trigger a second time via Reverberation');
+    const after = await page.evaluate(() => ({ hp: gameState.enemy.hp, block: gameState.player.block }));
+    assert.strictEqual(before.hp - after.hp, 0, 'expected the loaded rolled face (smite) not to trigger again');
+    assert.strictEqual(after.block - before.block, 32, 'expected 2 block for each of the 16 blank faces');
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 132: Reverberation — a blank rolled face gives its 2 block again', async () => {
+  await runTest('BUILD 132: Reverberation — a blank rolled face is one of the blank faces triggered, 2 block each', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
@@ -2178,11 +2176,11 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     const before = await page.evaluate(() => gameState.player.block);
     await page.evaluate(() => { playCard(0); });
     const after = await page.evaluate(() => gameState.player.block);
-    assert.strictEqual(after - before, 2, 'expected the blank face\'s 2 block again');
+    assert.strictEqual(after - before, 34, 'expected 2 block for each of the 17 blank faces, the rolled one included');
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 132: Reverberation — a Nat roll gives 6 block instead of a re-trigger attempt', async () => {
+  await runTest('BUILD 132: Reverberation — a Nat roll changes nothing: every blank face still triggers for 2 block', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
@@ -2191,15 +2189,14 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     // registers a turn-scoped 3-block-per-card-played listener that would
     // then also fire when Reverberation itself is played, confounding the
     // block delta this test reads. Nat 1's onNatOne registers no such
-    // listener, so it isolates the branch cleanly; the card's own check
-    // (face 1 OR face 20) is unaffected by which one triggers it.
+    // listener, so it isolates the branch cleanly.
     await page.evaluate(() => { forcePlayerRoll(1); });
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
     await page.evaluate(() => { updatePlayer({ hand: ['reverberation'], soul: 5 }); });
     const before = await page.evaluate(() => gameState.player.block);
     await page.evaluate(() => { playCard(0); });
     const after = await page.evaluate(() => gameState.player.block);
-    assert.strictEqual(after - before, 6, 'expected 6 block on a Nat roll (triggerFaceOutsideRoll() always refuses faces 1 and 20)');
+    assert.strictEqual(after - before, 34, 'expected 2 block for each of the 17 blank faces after a Nat roll');
     await liveBrowser.close();
   });
 
@@ -2721,7 +2718,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     // (item F) — it now names the live, run-fixed threnodyFace number via
     // getCardEffectText() (rendering.js), not a fixed string this shared
     // batch of raw CARD_EFFECT_TEXT/MOD_DESCRIPTION lookups can check.
-    assert.strictEqual(texts.reverberation, 'Trigger the rolled face again. If you rolled a 1 or 20, gain 6 block instead.');
+    assert.strictEqual(texts.reverberation, 'Trigger every blank face on your die.');
     assert.strictEqual(texts.canticle, 'Gain 6 block. If the rolled face is loaded, it gains Bound for this fight.');
     assert.strictEqual(texts.herald, 'Deal 6 damage. Another random loaded face without Bound gains Bound for this fight.');
     assert.strictEqual(texts.congregation, 'Deal 8 damage. If another mod on your die has Growth, deal 16 instead.');
@@ -2730,7 +2727,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     assert.strictEqual(texts.vindication, 'Deal damage equal to twice your block, up to 24.');
     assert.strictEqual(texts.exequy, "Deal damage equal to the enemy's stacks of poison, up to 12.");
     assert.strictEqual(texts.oblation, 'Spend all your soul. Deal 7 damage per soul spent, up to 42.');
-    assert.strictEqual(texts.tithe, 'When this turn ends, deal 5 damage per soul you have left, up to 20.');
+    assert.strictEqual(texts.tithe, 'Gain 1 block per blank face on your die.');
     assert.strictEqual(texts.anathema, 'When this turn ends, deal damage equal to your block, up to 16.');
     await liveBrowser.close();
   });

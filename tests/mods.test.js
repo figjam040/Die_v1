@@ -298,26 +298,22 @@ function assertNoErrors(page) {
     await page.close();
   });
 
-  // ---- Vigil — the BUILD 100 fix. Must end the turn with cards still in
-  // hand and assert the block that generates, through the real
-  // END_PLAYER_TURN phase transition (nextPhase() from CARD_PHASE), never a
-  // direct call to the mod's effect() or its listener. This is the
-  // assertion that fails if Vigil's registration ever points at a hook
-  // nothing dispatches again. ----
-  await runTest(browser, 'Vigil: 5 block per card held, at real end of turn', async (browser) => {
-    const page = await freshFightPage(browser);
+  // ---- Vigil — 4 damage, plus 1 per 3 blanks rolled this run. ----
+  await runTest(browser, 'Vigil: 4 damage plus 1 for every 3 blanks rolled this run', async (browser) => {
+    let page = await freshFightPage(browser);
+    let hpBefore = await page.evaluate(() => gameState.enemy.hp);
     await triggerMod(page, 'vigil');
-    const handSize = await page.evaluate(() => gameState.player.hand.length);
-    assert.ok(handSize > 0, 'test requires at least one card in hand at end of turn');
-    const blockBefore = await page.evaluate(() => gameState.player.block);
-    assert.strictEqual(blockBefore, 0, 'block should be 0 before end of turn (no cards played)');
-    // Advance exactly one phase step: CARD_PHASE -> END_PLAYER_TURN. This is
-    // the same nextPhase() the real End Turn button's click handler and the
-    // auto-advance chain both call — not a shortcut.
-    await page.evaluate(() => { nextPhase(); });
-    await page.waitForFunction(() => gameState.turn.phase === 'END_PLAYER_TURN');
-    const blockAfter = await page.evaluate(() => gameState.player.block);
-    assert.strictEqual(blockAfter, 5 * handSize, 'expected exactly 5 block per card held (' + handSize + ' cards)');
+    let hpAfter = await page.evaluate(() => gameState.enemy.hp);
+    assert.strictEqual(hpBefore - hpAfter, 4, 'expected 4 damage with no blanks rolled');
+    assertNoErrors(page);
+    await page.close();
+
+    page = await freshFightPage(browser);
+    await page.evaluate(() => { updateRun({ blanksRolled: 9 }); });
+    hpBefore = await page.evaluate(() => gameState.enemy.hp);
+    await triggerMod(page, 'vigil');
+    hpAfter = await page.evaluate(() => gameState.enemy.hp);
+    assert.strictEqual(hpBefore - hpAfter, 7, 'expected 4 + 3 damage with 9 blanks rolled');
     assertNoErrors(page);
     await page.close();
   });
@@ -550,34 +546,27 @@ function assertNoErrors(page) {
     await page.close();
   });
 
-  // ---- Tithe — end-of-round damage, 5 per soul remaining, capped at 20.
-  // Registers on the same generic phase-name hook Vigil already uses
-  // (callListeners(phase) inside runPhase(), phase-machine.js), so the real
-  // CARD_PHASE -> END_PLAYER_TURN transition (nextPhase()) is what fires it,
-  // never a direct call. ----
-  await runTest(browser, 'Tithe: 5 damage per soul at end of round, capped at 20', async (browser) => {
-    // Uncapped: a fresh turn holds 3 soul (F02) -> 15 damage.
+  // ---- Tithe — 1 block per blank face on the die, on the trigger itself. ----
+  await runTest(browser, 'Tithe: 1 block per blank face on the die', async (browser) => {
     let page = await freshFightPage(browser);
+    const blockBefore = await page.evaluate(() => gameState.player.block);
     await triggerMod(page, 'tithe');
-    const soulBefore = await page.evaluate(() => gameState.player.soul);
-    assert.strictEqual(soulBefore, 3, 'test assumes a fresh turn starts at 3 soul (F02)');
-    let hpBefore = await page.evaluate(() => gameState.enemy.hp);
-    await page.evaluate(() => { nextPhase(); }); // CARD_PHASE -> END_PLAYER_TURN
-    await page.waitForFunction(() => gameState.turn.phase === 'END_PLAYER_TURN');
-    let hpAfter = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(hpBefore - hpAfter, 15, 'expected 5 damage per soul (3 soul = 15), uncapped');
+    // Faces 1 and 20 are Nat faces; 10 (Consecrate) and 2 (Tithe) are loaded.
+    const blockAfter = await page.evaluate(() => gameState.player.block);
+    assert.strictEqual(blockAfter - blockBefore, 16, 'expected 1 block for each of the 16 blank faces');
     assertNoErrors(page);
     await page.close();
 
-    // Capped: soul boosted to 6 (5*6=30 raw) must cap at 20.
+    // Five more faces loaded: the count follows the blanks left.
     page = await freshFightPage(browser);
+    await page.evaluate(() => {
+      const newFaces = gameState.die.faces.slice();
+      [3, 4, 5, 6, 7].forEach(function(n) { newFaces[n - 1] = Object.assign({}, newFaces[n - 1], { modId: 'smite' }); });
+      updateDie({ faces: newFaces });
+    });
     await triggerMod(page, 'tithe');
-    await page.evaluate(() => { updatePlayer({ soul: 6 }); });
-    hpBefore = await page.evaluate(() => gameState.enemy.hp);
-    await page.evaluate(() => { nextPhase(); });
-    await page.waitForFunction(() => gameState.turn.phase === 'END_PLAYER_TURN');
-    hpAfter = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(hpBefore - hpAfter, 20, 'expected damage capped at 20 despite 30 raw (5 x 6 soul)');
+    const blockAfter2 = await page.evaluate(() => gameState.player.block);
+    assert.strictEqual(blockAfter2, 11, 'expected 1 block for each of the 11 blank faces');
     assertNoErrors(page);
     await page.close();
   });

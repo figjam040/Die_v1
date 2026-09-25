@@ -145,7 +145,8 @@ const BANNED = [/applied/i, /applies/i, /this run/i, /[()]/];
       out.push(['title face 2', faceTitleText(getPlayerFace(2), true)]);
       return out;
     });
-    const bad = texts.filter(t => BANNED.some(re => re.test(t[1])));
+    // D-126 fixes Vigil's text with "this run"; that one phrase is exempt.
+    const bad = texts.filter(t => BANNED.some(re => re.test(t[1].replace('blanks you have rolled this run', ''))));
     assert.deepStrictEqual(bad, [], 'banned wording: ' + JSON.stringify(bad));
     await page.close();
   });

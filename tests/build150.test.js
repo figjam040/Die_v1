@@ -240,7 +240,7 @@ async function enterOpeningFight(page) {
     await page.close();
   });
 
-  await runTest('Item E: Tolling Bell triggers two faces in a wind-up (or release) round, and one in an Attack round', async () => {
+  await runTest('Item E: Tolling Bell no longer rolls twice: one face triggers in a wind-up round and in an Attack round', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => {
@@ -261,7 +261,7 @@ async function enterOpeningFight(page) {
     await page.evaluate(() => { nextPhase(); });
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
     const hpAfter = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(hpBefore - hpAfter, 32, 'expected two 16-damage triggers (32 total) during a wind-up round');
+    assert.strictEqual(hpBefore - hpAfter, 16, 'expected exactly one 16-damage trigger during a wind-up round');
 
     const page2 = await freshPage(browser);
     await enterOpeningFight(page2);

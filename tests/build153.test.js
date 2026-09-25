@@ -275,25 +275,23 @@ const NEW_CARD_IDS = ['venom', 'ballast', 'refrain', 'second_sight', 'cadence', 
     await page.close();
   });
 
-  await runTest('Item B: Gilded Die buys 2 tickets for one roll at 10 gold, and the next bag is back to normal', async () => {
+  await runTest('Item B: Gilded Die no longer sells weight: no payment function, no button, the bag stays at 20 tickets', async () => {
     const page = await freshFightPage(browser, ['gilded_die']);
     await page.evaluate(() => { updateRun({ gold: 50 }); });
-    const paid = await page.evaluate(() => gildedDiePayForFace(7));
-    assert.strictEqual(paid, true, 'the payment must be accepted with gold in hand');
     await page.evaluate(() => { nextPhase(); });
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
-    const boughtPool = await lastPoolSize(page);
-    const v = await page.evaluate(() => ({ gold: gameState.run.gold, gilded: gameState.turn.gildedFace }));
-    assert.strictEqual(boughtPool, 22, 'the paid-for roll must draw from 22 tickets, drew from ' + boughtPool);
-    assert.strictEqual(v.gold, 40, '10 gold must be charged, left ' + v.gold);
-    assert.strictEqual(v.gilded, null, 'the extra weight must not survive the roll it was bought for');
-
-    await page.evaluate(() => { rollDie(gameState.die.faces); });
-    const plainPool = await lastPoolSize(page);
-    assert.strictEqual(plainPool, 20, 'the next bag must hold 20 tickets, held ' + plainPool);
-
-    const refused = await page.evaluate(() => { updateRun({ gold: 5 }); return gildedDiePayForFace(7); });
-    assert.strictEqual(refused, false, 'under 10 gold the payment must be refused');
+    const pool = await lastPoolSize(page);
+    const v = await page.evaluate(() => ({
+      gold: gameState.run.gold,
+      payFn: typeof gildedDiePayForFace,
+      button: document.getElementById('gildedDieBtn'),
+      turnField: 'gildedFace' in gameState.turn
+    }));
+    assert.strictEqual(pool, 20, 'the bag must hold 20 tickets, held ' + pool);
+    assert.strictEqual(v.payFn, 'undefined', 'gildedDiePayForFace must be gone');
+    assert.strictEqual(v.button, null, 'the Gilded Die button must be gone');
+    assert.strictEqual(v.turnField, false, 'turn.gildedFace must be gone');
+    assert.ok(v.gold >= 50, 'no gold may be charged for a roll, left ' + v.gold);
     await page.close();
   });
 

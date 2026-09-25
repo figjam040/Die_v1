@@ -174,8 +174,11 @@ gameState = {
     sealedFaces: [], // this round's Sealed faces — see ENEMY DIE PER TYPE, SEAL
     boundTriggeredThisRound: false,// set by mod_dispatch, read by Watchword
     enemyRoundSkippedThisTurn: false, // Hourglass's own skip
-    gildedFace: null, // Gilded Die's paid weight, one roll: { faceNumber, weight }
     secondChanceUsedThisFight: false // once per fight
+  },
+
+  fight: {
+    blanksRolled: 0 // blank rolls this fight, Tolling Bell's count; zeroed by clearFightScopedState()
   },
 
   run: {
@@ -190,7 +193,8 @@ gameState = {
     actNumber: 1, // 1-based — see ACTS
     threnodyFace: null, // fixed once per run, 2-19
     gold: 0, artifacts: [], shop: null, removalPrice: 75, thirdEyeUsedThisAct: false, // GOLD, SHOP AND ARTIFACTS
-    weightAdded: 0 // weight added through strengthenFace() this run; Jubilee reads it
+    weightAdded: 0, // weight added through strengthenFace() this run; Jubilee reads it
+    blanksRolled: 0 // blank rolls this run, counted by the blank_roll_counter listener; Vigil reads it
   },
 
  // A write-once-per-event log for the player's own reference, distinct
@@ -231,6 +235,7 @@ updatePlayer(changes)   — Object.assign into gameState.player
 updateEnemy(changes)    — Object.assign into gameState.enemy
 updateTurn(changes)     — Object.assign into gameState.turn
 updateDie(changes)      — Object.assign into gameState.die
+updateFight(changes)    — Object.assign into gameState.fight
 updateRun(changes)      — Object.assign into gameState.run
 updateRunRecord(changes) — Object.assign into gameState.runRecord — see RUN RECORD
 
@@ -252,10 +257,10 @@ POISON TIMING (D-120, F09): poison ticks at the end of the poisoned side's own t
 
 # EVENT HOOKS — COMPLETE LIST
 
-These are the names registerListener() is designed around. The PHASE ORDER names (START_OF_TURN, ROLL_PHASE, CARD_PHASE, END_PLAYER_TURN, ENEMY_ROLL_PHASE, ENEMY_ACT_PHASE, CHECK_WIN_LOSS) are also real dispatchable hooks: runPhase(phase) calls callListeners(phase) unconditionally near its top, once per visit, before that phase's own if-branch — so a listener on one of these seven fires at that boundary, ahead of the phase's own logic. END_PLAYER_TURN is exercised by Vigil, Tithe and Anathema, firing before hand-to-discard, which is what lets Vigil read hand size pre-discard, and by poison_answer_passive, registered first, so it runs ahead of the others and of the player's poison tick.
+These are the names registerListener() is designed around. The PHASE ORDER names (START_OF_TURN, ROLL_PHASE, CARD_PHASE, END_PLAYER_TURN, ENEMY_ROLL_PHASE, ENEMY_ACT_PHASE, CHECK_WIN_LOSS) are also real dispatchable hooks: runPhase(phase) calls callListeners(phase) unconditionally near its top, once per visit, before that phase's own if-branch — so a listener on one of these seven fires at that boundary, ahead of the phase's own logic. END_PLAYER_TURN is exercised by Anathema, firing before hand-to-discard, and by poison_answer_passive, registered first, so it runs ahead of Anathema and of the player's poison tick.
 
 Player-side hooks:
-BLANK_ROLL — { outsideRoll } — a genuinely blank roll, and the player's own Nat 1 once already fired this fight. outsideRoll: true marks a blank reached for rather than rolled (triggerFaceOutsideRoll()) — what Alms reads to leave those alone
+BLANK_ROLL — { outsideRoll } — a genuinely blank roll, and the player's own Nat 1 once already fired this fight. outsideRoll: true marks a blank reached for rather than rolled (triggerFaceOutsideRoll()) — what Alms, the blank counter, Vigil and Gilded Die read to leave those alone; Tolling Bell still pays. Listeners run in registration order: the class passive, Alms, Tolling Bell (reads the fight count before this blank), blank_roll_counter (adds it), Vigil's trigger (reads the run count with it in), Gilded Die
 MOD_TRIGGER — { modId, faceNumber } — a real mod trigger, normal roll or Nat 20's loop
 NAT_TWENTY — {} — player rolls face 20
 NAT_ONE — {} — player rolls face 1
@@ -371,6 +376,8 @@ Rite — 2 soul, attack, Ordained-only — 6 damage + 6 block (D-121).
 
 Pool (config.cardPool) carries a tier ('basic'/'uncommon'/'rare'; D-111's 'mythic'/'void' hold no pieces yet, offer weight 0) and a tags list per card; the Ring 0 cards carry none and read basic (cardTier()). See CARD_EFFECT_TEXT (rendering.js) for the live, plain-text description of every reward-pool card — that table, not this file, is the source a player reads from, and getCardEffectText() is the one place code should read a card's text from (Threnody's own entry is live-numbered, see THE HOP/rendering.js).
 
+Tags in use: poison, soul, bastion, mass, growth, bound, awe, die, blank (D-126). BLANK PIECES (D-126, D-127): a blank face is a face on the die with no mod, or Sealed this round, never face 1 or 20 nor a removed face (blankFaceNumbers(), pipeline.js). Rolling a blank is any resolved player roll landing on one, a spent Nat 1 and a Second Sight or Loaded Die roll included; a blank a card triggers is not a roll. Vacancy (rare, 2 soul) deals 1 damage per blank face, Tabernacle (basic, 1 soul) gains 2 block per blank face, both uncapped; Reverberation (rare, 2 soul) triggers every blank face, ascending, through triggerFaceOutsideRoll(face, { capExempt: true }) — each pays the blank payout as an outside-roll blank, so Alms, Vigil, Gilded Die and the blank counters do not react, and none counts toward ROUND_TRIGGER_CAP. Orison is unchanged. Each carries the Blank tag with its old ones (Vigil and Tithe drop bastion and soul). Every number is in GAME_CONFIG (BLANK_GOLD, VIGIL_BASE_DAMAGE, VIGIL_BLANKS_PER_POINT, TITHE_BLOCK_PER_BLANK, VACANCY_DAMAGE_PER_BLANK, TABERNACLE_BLOCK_PER_BLANK, ARTIFACTS.TOLLING_BELL_BLOCK_PER_BLANK).
+
 ---
 
 # DIE FACE OBJECT STRUCTURE
@@ -427,7 +434,7 @@ Refuses outright (no state change, returns false) for face 1 or DIE_SIZE.PLAYER 
 
 Refuses a face already triggered this way once this round — turn.outsideTriggeredFaces (state.js), cleared to [] at START_OF_TURN. A face rolled normally then re-triggered outside a roll (Reverberation) isn't blocked — the record only tracks outside triggers, not the roll itself.
 
-D-51 — per-round trigger cap. ROUND_TRIGGER_CAP (config.js) is 10. turn.roundTriggerCount counts every real MOD_TRIGGER dispatch this round — mod_dispatch increments it on every call except a Nat 20 sweep's own (tagged natTwentySweep: true), the one exemption. A blank face bumps the same counter directly in triggerFaceOutsideRoll(). Refuses once the counter reaches the cap; cleared to 0 at START_OF_TURN. The "round trigger cap reached" log line prints at most once per round (roundTriggerCapLogged).
+D-51 — per-round trigger cap. ROUND_TRIGGER_CAP (config.js) is 10. turn.roundTriggerCount counts every real MOD_TRIGGER dispatch this round — mod_dispatch increments it on every call except a Nat 20 sweep's own (tagged natTwentySweep: true), the one exemption. A blank face bumps the same counter directly in triggerFaceOutsideRoll(). Refuses once the counter reaches the cap, unless the call passes { capExempt: true } (Reverberation's blank sweep, D-127), which neither checks nor bumps it; cleared to 0 at START_OF_TURN. The "round trigger cap reached" log line prints at most once per round (roundTriggerCapLogged).
 
 Dispatch: a loaded face triggers through the identical MOD_TRIGGER dispatch a rolled face uses — modId first, then modId2 — so permanent per-face growth accrues exactly as on a roll. A blank face dispatches BLANK_ROLL for the same BLANK_ROLL_BLOCK (2) block. Never writes rolledFaceNumber/rollOutcome/rolledFaceWeight.
 
@@ -465,15 +472,13 @@ Bound mods/cards: Unison (6 damage), Accord (10 block), Kinship (4 poison) are p
 
 function rollDie(faces) {
   const pool = [];
-  const gilded = gameState.turn.gildedFace;
   faces.forEach(face => {
-    const extra = (gilded && gilded.faceNumber === face.number) ? gilded.weight : 0;
-    for (let i = 0; i < face.weight + extra; i++) { pool.push(face); }
+    for (let i = 0; i < face.weight; i++) { pool.push(face); }
   });
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-Default: DIE_SIZE.PLAYER faces (20) weight 1 = 5% each. Strengthen to weight 2 = that face appears twice in pool. Only weight values change. turn.gildedFace is the one exception, the only ticket source outside face.weight: Gilded Die's paid weight, live for one roll, never written onto the face (GOLD, SHOP AND ARTIFACTS). rollOdds() (pipeline.js, BUILD 155) reads this exact bag to show the face row's own percent — see DIE COLUMN.
+Default: DIE_SIZE.PLAYER faces (20) weight 1 = 5% each. Strengthen to weight 2 = that face appears twice in pool. Only weight values change; face.weight is the only ticket source. rollOdds() (pipeline.js, BUILD 155) reads this exact bag to show the face row's own percent — see DIE COLUMN.
 
 Strengthen may target face DIE_SIZE.PLAYER (20), plus any loaded face. Face 1 is never targetable — the Strengthen picker (rendering.js) excludes number 1 explicitly. Face 20 never gains a mod; Strengthen only adds weight, raising how often Nat 20 comes up, and stops at FACE_TWENTY_MAX_WEIGHT (5): strengthenFace() refuses past it, the picker marks face 20 inert, and its caption reads MAX.
 
@@ -529,7 +534,7 @@ Twenty-seven mods, all in config.mods. Consecrate is excluded from the reward po
 
 Consecrate (anchor) — +2 soul this turn; each card played this turn also generates 3 block, turn-scoped.
 Fervour — turn-scoped DAMAGE_MULTIPLIER listener doubling damage tagged 'attack' only (poison untouched). The first and only mod using the pipeline's multiplier stage.
-Vigil — 5 block per card still in hand at end of turn, via a turn-scoped listener on 'END_PLAYER_TURN'.
+Vigil — 4 damage plus 1 per 3 blanks rolled this run (gameState.run.blanksRolled, whole points), and it also triggers on every blank roll: the permanent 'vigil_blank_trigger' listener on BLANK_ROLL dispatches MOD_TRIGGER for the face carrying it (one trigger per roll, counted against ROUND_TRIGGER_CAP, skipped for an outside-roll blank or a Sealed face), after the roll's blank is counted. Tithe — 1 block per blank face on the die, on the trigger.
 Zeal — 10 damage plus a bonus that permanently increases by 4 each further trigger from the same face; stored per-face on that face's modData (updateDie()), not a global counter, so Zeal on two faces accrues independently.
 Ordain — 10 damage, then permanently +1 weight to the face it triggered from.
 Elevation — 10 damage; the face above (the next number still on the die, nextFaceNumberAbove()) permanently gains +1 weight, only if loaded and not face 20. Blank-above or face 20: just the 10 damage, no write, no error. Weight write goes through the shared strengthenFace() (pipeline.js), the only place weight is ever written.
@@ -595,7 +600,7 @@ SHOP (GAME_CONFIG.SHOP): opens after every rite, in #shopPanel. Stock (gameState
 
 ARTIFACTS (F45): gameState.run.artifacts, max ARTIFACT_MAX (8), defs in config.artifacts, thirteen total, every one tier rare (colour only, D-111); amounts in GAME_CONFIG.ARTIFACTS. #artifactRewardPanel (pick 1 of 3, Skip allowed) opens after an Elite win and a non-final Boss win, before the die reward, drawing 3 from the unheld. Each with a hook of its own registers a permanent listener in init(), gated on hasArtifact(); the rest gate at the roll path or shop price they act on.
 
-Third Eye (thirdEyeChooseFace()) forces one chosen face per act. Loaded Die (rollWithArtifacts()) rolls twice, higher stands. Tolling Bell (nextPhase()) triggers a second face after the first if chargeStage is 'windup'/'release'. Tithe Box (NAT_TWENTY) pays TITHE_BOX_GOLD per Nat 20. Merchant's Seal lowers every shop price a quarter, rounded down, freezes removal at REMOVAL_BASE_PRICE while held. Leaden Face makes dieActionPickStrengthenFace() call strengthenFace() twice — Ordain/Elevation untouched. Reliquary Chain (rolled face only) triggers the loaded face above a rolled Bound face (the next number still on the die) via triggerFaceOutsideRoll(), never face 20, counting toward ROUND_TRIGGER_CAP. Plague Bell (FIGHT_START) poisons the enemy for half its loaded faces, rounded down, 1/10/20 excluded. Alms (BLANK_ROLL) replaces the blank passive with ALMS_SOUL soul — an outside-roll blank (Threnody, Reverberation, Refrain) still gives its block. Hourglass (ENEMY_ACT_PHASE) skips round 1's intent, pattern still advances, die still rolls. Second Chance rerolls once a fight — the first face never resolves. Gilded Die pays GILDED_DIE_PRICE for GILDED_DIE_WEIGHT extra tickets on one face for one roll. Bone Counter takes BONE_COUNTER_GOLD instead of arming Penitence, when the gold is there.
+Third Eye (thirdEyeChooseFace()) forces one chosen face per act. Loaded Die (rollWithArtifacts()) rolls twice, higher stands. Tolling Bell (BLANK_ROLL) pays 1 block per blank rolled earlier this fight (gameState.fight.blanksRolled) on top of the blank payout, an outside-roll blank included, and pays it beside Alms. Tithe Box (NAT_TWENTY) pays TITHE_BOX_GOLD per Nat 20. Merchant's Seal lowers every shop price a quarter, rounded down, freezes removal at REMOVAL_BASE_PRICE while held. Leaden Face makes dieActionPickStrengthenFace() call strengthenFace() twice — Ordain/Elevation untouched. Reliquary Chain (rolled face only) triggers the loaded face above a rolled Bound face (the next number still on the die) via triggerFaceOutsideRoll(), never face 20, counting toward ROUND_TRIGGER_CAP. Plague Bell (FIGHT_START) poisons the enemy for half its loaded faces, rounded down, 1/10/20 excluded. Alms (BLANK_ROLL) replaces the blank passive with ALMS_SOUL soul — an outside-roll blank (Threnody, Reverberation, Refrain) still gives its block. Hourglass (ENEMY_ACT_PHASE) skips round 1's intent, pattern still advances, die still rolls. Second Chance rerolls once a fight — the first face never resolves. Gilded Die (BLANK_ROLL) pays BLANK_GOLD gold on a blank roll, never on an outside-roll blank. Alms, Tolling Bell, Gilded Die, Vigil, Tithe, Vacancy, Tabernacle, Reverberation and Orison carry the Blank tag (D-126, D-127). Bone Counter takes BONE_COUNTER_GOLD instead of arming Penitence, when the gold is there.
 
 ---
 
@@ -620,7 +625,8 @@ Mute: devMuteAudioCheckbox (dev chrome) sets the module-level audioMuted flag (b
 Player: block→0, soul→maxSoul, deck/hand/discard reshuffled from ownedCards, poisonStacks→0, penitenceActive→false, penitenceTurnsRemaining→0, natOneFiredThisFight→false. hp carries over.
 Enemy: hp→maxHp, poisonStacks→0, activeBuffs→[], natOneFiredThisFight→false. die is overwritten from the entering slot's own static config on next fight entry (beginFightFromSlot()), not reset here.
 Die (player's): weights and mods unchanged. Persists between fights.
-Turn: phase→'START_OF_TURN', cardsPlayedThisTurn→0, round→0, sealedFaces→[], secondChanceUsedThisFight→false, enemyRoundSkippedThisTurn→false, gildedFace→null.
+Turn: phase→'START_OF_TURN', cardsPlayedThisTurn→0, round→0, sealedFaces→[], secondChanceUsedThisFight→false, enemyRoundSkippedThisTurn→false.
+Fight: blanksRolled→0 (updateFight()). The run's blanksRolled is untouched.
 Registry: no clearListeners('fight') call exists anywhere — no listener has ever registered with clearOn: 'fight'. Every fight-scoped field above is reset explicitly, field by field, in clearFightScopedState()/resetFight() (run-and-map.js), not by a registry sweep.
 Run: status→'active'.
 Run record: entirely untouched by a fight reset — clearFightScopedState() never mentions gameState.runRecord. See RUN RECORD.
@@ -733,11 +739,11 @@ HOVER BOXES (KI-46) — clampHoverTips() (rendering.js) shifts any showing .hove
 
 HAND ROW — #handRow, centred in the stats band's middle column, the one card at hand size. Unaffordable at opacity 0.4; every card carries name/effect in its hover box. #endTurnBtn (128x44px) sits right of the last card, vertically centred (align-self: center). Every hand card's art placeholder and every card reward panel card holds an img child, src art/cards/<id>.png, pixelated, object-fit contain, hidden with an empty box on load failure — no art ships this build.
 
-DIE COLUMN (now the face row) — #playerDieList, bottom band's middle column, twenty squares in one row, face 1 left, face 20 right (D-10 as amended 22 Sep 2026); the only face row on screen (BUILD 155) — the reward layer picks/lights faces on this row, not one of its own. Each square is a .face-btn capped at 56px, square, shrinking together, 8px gap, 2px border: blank --line/--blank number, loaded --player-mod, faces 1/20 --nat. The rolled face fills --text with a black number, holds for the round; a blank roll holds the same way; a hopped face matches; a sealed face keeps colour at opacity 0.5. Under each square, 17px var(--game-font-2) --blank: this roll's odds (rollOdds(), pipeline.js, the exact bag rollDie() builds, Gilded Die's extra tickets included), one decimal by largest remainder so the row totals 100.0 (KI-45; ties to the lower face); NAT 1/NAT 20 beside their percent, SEALED/SEALED NEXT ROUND on a sealed face; weight above 1 drops its percent ODDS_EMPHASIS.DROP_PX lower, one font step larger, ODDS_EMPHASIS.COLOUR. The weight number now lives only in the hover box, two lines (D-125): "Blight · weight 1" (BLANK, NAT 20 · weight 5 MAX, a two-mod face "Smite / Blight · weight 1", Bound after when it applies), then the text (a two-mod face's two texts split by " / "); never a trigger count, that shows only in the DIE layer. SYMBOL STRIP (D-124): under each loaded face's caption, its mod symbol(s), art/mods/<id>.png at 24px (FACE_SYMBOL_PX), a two-mod face's side by side; blank faces and 1/20 none; a missing file hides. Each symbol is a .face-symbol with its own hover box (setHoverTip()) opening upward over it: that mod's name and the face's weight, then that mod's text; the face's own box stays shut meanwhile. .face-symbol-strip is absolute, so the squares and captions keep BUILD 169's size and place; it hangs below band-d into #fightScreen's overflow-clip-margin (20px, overflow: clip). Rows built face 20 first, flipped by row-reverse; .die-mod-wrap (mod names, ×N weight, trigger badges, Bound badge) stays hidden in the DOM as the source of those words. Dev force-roll click disables whenever a step wires the row as a picker instead (currentPlayerDiePickConfig()). ENEMY DIE ROW: #enemyDieList (the old element, restyled) sits under #enemyArtBox in .enemy-art-col, one square per face (6/12 at 28px, 20 at 22px, .enemy-face-row): blank like a blank player face, buff --enemy-mod, Nat --nat, no percents. The rolled face holds through the round (enemyRollDisplay, rendering.js). Hover shows faceHoverText(). A dieless enemy hides the row (:empty); the reward layer hides it. Dev drawer open, a click in ENEMY_ROLL_PHASE forces that face via forceEnemyRoll().
+DIE COLUMN (now the face row) — #playerDieList, bottom band's middle column, twenty squares in one row, face 1 left, face 20 right (D-10 as amended 22 Sep 2026); the only face row on screen (BUILD 155) — the reward layer picks/lights faces on this row, not one of its own. Each square is a .face-btn capped at 56px, square, shrinking together, 8px gap, 2px border: blank --line/--blank number, loaded --player-mod, faces 1/20 --nat. The rolled face fills --text with a black number, holds for the round; a blank roll holds the same way; a hopped face matches; a sealed face keeps colour at opacity 0.5. Under each square, 17px var(--game-font-2) --blank: this roll's odds (rollOdds(), pipeline.js, the exact bag rollDie() builds), one decimal by largest remainder so the row totals 100.0 (KI-45; ties to the lower face); NAT 1/NAT 20 beside their percent, SEALED/SEALED NEXT ROUND on a sealed face; weight above 1 drops its percent ODDS_EMPHASIS.DROP_PX lower, one font step larger, ODDS_EMPHASIS.COLOUR. The weight number now lives only in the hover box, two lines (D-125): "Blight · weight 1" (BLANK, NAT 20 · weight 5 MAX, a two-mod face "Smite / Blight · weight 1", Bound after when it applies), then the text (a two-mod face's two texts split by " / "); never a trigger count, that shows only in the DIE layer. SYMBOL STRIP (D-124): under each loaded face's caption, its mod symbol(s), art/mods/<id>.png at 24px (FACE_SYMBOL_PX), a two-mod face's side by side; blank faces and 1/20 none; a missing file hides. Each symbol is a .face-symbol with its own hover box (setHoverTip()) opening upward over it: that mod's name and the face's weight, then that mod's text; the face's own box stays shut meanwhile. .face-symbol-strip is absolute, so the squares and captions keep BUILD 169's size and place; it hangs below band-d into #fightScreen's overflow-clip-margin (20px, overflow: clip). Rows built face 20 first, flipped by row-reverse; .die-mod-wrap (mod names, ×N weight, trigger badges, Bound badge) stays hidden in the DOM as the source of those words. Dev force-roll click disables whenever a step wires the row as a picker instead (currentPlayerDiePickConfig()). ENEMY DIE ROW: #enemyDieList (the old element, restyled) sits under #enemyArtBox in .enemy-art-col, one square per face (6/12 at 28px, 20 at 22px, .enemy-face-row): blank like a blank player face, buff --enemy-mod, Nat --nat, no percents. The rolled face holds through the round (enemyRollDisplay, rendering.js). Hover shows faceHoverText(). A dieless enemy hides the row (:empty); the reward layer hides it. Dev drawer open, a click in ENEMY_ROLL_PHASE forces that face via forceEnemyRoll().
 
 DIE ICONS — #playerDieIcon, bottom band's left column: 104px inline SVG stroked --text, shaped by GAME_CONFIG.DIE_SIZE (20 hexagon d20, 12 pentagon, 6 square, each with an inner shape/spokes), rolled face number centred in --player-mod for a mod, --nat for a Nat, --blank for a blank, empty pre-roll. The number sits on a #000000 backing (`.die-icon-number-text`, 4px padding, 26px font) so the shape's inner lines stop short of it. #enemyDieIcon mirrors it in the right column, stroked --enemy-mod, sized from that enemy's die; beside it the triggered buff in upper case, or NAT 20/NAT 1 in --nat, and die size as d20/d12/d6 in --muted. A normal with no die: empty 104px outline (D-29). ROLL ANIMATION (D-107): every roll animates both icons per GAME_CONFIG.DIE_ROLL_ANIMATION — stepped random-number frames, each turned further, then upright on the rolled number, one flash, two shakes; the face row's rolled look, the roll strip and pops land at the stop. Display only (3 frames over 200ms); The Font's roll doesn't animate.
 
-ROLL STAGE — #rollHero, one line above the face row: #rollResultNumber carries the roll's signed value, #rollResultLabel the mod name upper case in --player-mod with the run trigger count as ↻N in --muted (+13 CONSECRATE ↻6). A two-mod face prints both. A blank roll reads +2 BLANK, Nat 20 reads NAT 20, Nat 1 reads NAT 1 PENITENCE, both --nat; pre-roll, AWAITING ROLL in --muted — values taken from the mod's own log line, nothing recomputed. Pre-roll artifact controls sit on this strip, each shown only while open: #thirdEyeBtn, #secondChanceBtn (REROLL), #gildedDieBtn. Third Eye and Gilded Die both pick their face by clicking the real die row.
+ROLL STAGE — #rollHero, one line above the face row: #rollResultNumber carries the roll's signed value, #rollResultLabel the mod name upper case in --player-mod with the run trigger count as ↻N in --muted (+13 CONSECRATE ↻6). A two-mod face prints both. A blank roll reads +2 BLANK, Nat 20 reads NAT 20, Nat 1 reads NAT 1 PENITENCE, both --nat; pre-roll, AWAITING ROLL in --muted — values taken from the mod's own log line, nothing recomputed. Pre-roll artifact controls sit on this strip, each shown only while open: #thirdEyeBtn, #secondChanceBtn (REROLL). Third Eye picks its face by clicking the real die row.
 
 THE REWARD LAYER — #dieActionPanel, #cardRewardPanel, #artifactRewardPanel, #eventScreenPanel, #shopPanel, #riteScreenPanel keep their ids, live inside #fightScreen's .band-top (a position:absolute wrapper filling the space above the face row; band-d itself is pinned position:absolute to #fightScreen's own bottom edge, fixed 118px, so a reward panel's own content height can never move the face row again — KI-32: #playerDieIcon/#enemyDieIcon go display:none while the layer is open, a display:none grid item drops out of grid placement, so without band-d's three children each carrying an explicit grid-column, band-d-mid auto-placed into the 180px column instead of the middle 1fr track). #fightScreen.reward-layer-active (any of the six with a step open) hides band-b, band-c and band-d's roll-hero/die icons by CSS, so the layer covers everything in .band-top; #mapScreen hides the same way, so the layer shows in place of the map too (a rite, its shop, an elite's artifact reward, The Font). All six render through renderOfferPanel() (rendering.js, D-86): .die-action-title — Choose on the die action (every step), card and artifact layers (D-115), SHOP, Rite, The Font's flavour — then .offer-cards — three of the one card at offer size (THE ONE CARD), except the Load and artifact reward offers, whose three choices are .offer-symbol, the symbol alone at 160px with its name/rarity/tag/text in a .hover-tip (D-110); .offer-skip right; then .offer-instruction, above the exposed face row. A face-picking step wires #playerDieList as the picker — currentPlayerDiePickConfig() is the one place isEligible/onPick/showBecomes lives. Card/artifact show cards, no instruction; Strengthen/Purify/Remove the instruction/row only (the die action's own buttons centred under Choose); Load its menu then three mod symbols; shop shows the price on the foot line, LEAVE for SKIP; The Font its flavour as title, ROLL then CONTINUE. Every panel builds from gameState each refreshInspector(). Nothing scrolls at 1600x900.
 
@@ -795,21 +801,24 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 170) — D-124 24px mod symbols under each loaded face, squares unmoved; D-125 all 27 mod, 51 card, 13 artifact texts as imperative sentences, two-line face hover; D-113 rolling/landing/blank/trigger sounds, held to the stop, dev mute.
 (BUILD 171) — KI-48 Anthem reads the weight of its own face, KI-49 Jubilee counts weight added (run.weightAdded, set only in strengthenFace()), Remove no longer lowers it.
 (BUILD 172) — face hover carries no trigger count (DIE layer shows it), each mod symbol opens its own mod's hover box, die_rolling quieter and lower, die_blank louder.
+(BUILD 173) — D-126/D-127 blank synergy: Vacancy, Tabernacle, Tithe count blank faces, Vigil grows with blanks rolled and triggers on a blank, Reverberation triggers every blank, Tolling Bell and Gilded Die reworked, Blank tag on nine pieces.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 2.99 (BUILD 172) — face hover without trigger counts, symbol hover, roll sound tuning.
+Stage 3.00 (BUILD 173) — the blank face synergy (D-126, D-127).
 
-Item A: the player face hover's first line is faceTitleText(face, isPlayerDie): the name (BLANK, NAT 1, NAT 20, a two-mod face's two names split by " / "), then "weight N" with MAX after it for face 20 at its cap, then Bound/Sealed when they apply. No trigger count anywhere in a hover; the DIE layer alone shows "triggered N times" (a two-mod face "triggered N / M times") under a loaded face's line, .info-row-triggers, the odds' font. The count is the face's modData count, run-scoped as ever.
+Item A: Tolling Bell pays 1 block per blank rolled earlier this fight (gameState.fight.blanksRolled, updateFight(), zeroed in clearFightScopedState()) on top of the blank payout, beside Alms; its old second roll is gone. Gilded Die pays BLANK_GOLD (3) gold on a blank roll; its gold-for-weight sale is gone with #gildedDieBtn, gildedDiePayForFace(), turn.gildedFace and the ticket code in rollDie()/rollOdds(). Both keep RARE and their price.
 
-Item B: each mod symbol under a face is a .face-symbol (hover-parent) with its own hover box through setHoverTip(), opening upward over the symbol: line 1 that mod's name and the face's weight, line 2 that mod's text (a Sealed face's "Counts as blank this round."). The face's own box stays shut while a symbol is hovered. The strip is appended after the row's own box, so row.querySelector('.hover-tip') still finds the face's.
+Item B: Vigil deals 4 plus 1 per 3 blanks rolled this run (gameState.run.blanksRolled) and also triggers on every blank roll, through 'vigil_blank_trigger' on BLANK_ROLL. Tithe gains 1 block per blank face. The BLANK_ROLL order is fixed by registration: Tolling Bell, blank_roll_counter, Vigil, Gilded Die.
 
-Item C: die_rolling gain 0.05 to 0.04 and its four ticks 700/640/580/520 to 644/588.8/533.6/478.4 Hz; die_blank gain 0.07 to 0.084. Nothing else in the sound table changed.
+Item C: Vacancy (now RARE) deals 1 damage and Tabernacle gains 2 block per blank face, uncapped; Reverberation triggers every blank face through triggerFaceOutsideRoll(face, { capExempt: true }). blankFaceNumbers() (pipeline.js) is the one count, a Sealed face included.
 
-Tests: build172.test.js. Corrected: build145 Titles asserts no trigger count, build170 Item B's box lines (BLANK, " / ") and its faceTitleText calls.
+Item D: Alms, Tolling Bell, Gilded Die, Vigil, Tithe, Vacancy, Tabernacle, Reverberation and Orison carry the Blank tag; Vigil and Tithe lose bastion and soul. Vigil's text keeps "this run" (D-126 over D-125's ban), exempted in build170 by that phrase alone.
+
+Tests: build173.test.js. Corrected: facts (Vacancy tier and the 24/16/8 card tiers, mod and card tags, Tithe, Vacancy, Tabernacle, three Reverberation tests, two text lines), mods (Vigil, Tithe), build150 (Tolling Bell), build153 and build155 (Gilded Die), build169 (Gilded odds line), build170 (the this-run exemption).
 
 Verification: see paste-back.
 

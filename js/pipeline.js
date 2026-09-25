@@ -88,6 +88,15 @@ function nextFaceNumberAbove(faceNumber) {
   return above.reduce(function(min, f) { return f.number < min ? f.number : min; }, above[0].number);
 }
 
+// Blank faces still on the die, ascending: no mod, or Sealed this round.
+// Faces 1 and 20 are Nat faces, never blank.
+function blankFaceNumbers() {
+  return gameState.die.faces.filter(function(f) {
+    if (f.number === 1 || f.number === GAME_CONFIG.DIE_SIZE.PLAYER) { return false; }
+    return f.modId === null || isFaceSealed(f.number);
+  }).map(function(f) { return f.number; });
+}
+
 function isFaceTwentyAtCap(faceNumber) {
   if (faceNumber !== GAME_CONFIG.DIE_SIZE.PLAYER) return false;
   return getPlayerFace(faceNumber).weight >= GAME_CONFIG.FACE_TWENTY_MAX_WEIGHT;
@@ -128,32 +137,22 @@ function markFaceHopped(faceNumber) {
 
 // ---------- ROLL SYSTEM ----------
 
-// turn.gildedFace is the one ticket source outside face.weight, live for
-// the single roll it was bought for (resolvePlayerRoll() clears it).
 function rollDie(faces) {
   const pool = [];
-  const gilded = gameState.turn.gildedFace;
   faces.forEach(face => {
-    const extra = (gilded && gilded.faceNumber === face.number) ? gilded.weight : 0;
-    for (let i = 0; i < face.weight + extra; i++) { pool.push(face); }
+    for (let i = 0; i < face.weight; i++) { pool.push(face); }
   });
   log('[ROLL] pool size: ' + pool.length);
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-// the exact bag rollDie() builds, read without consuming a
-// roll. Gilded Die's extra tickets on one face count here the same way
-// they count in the real pool, so the face row's own odds match what a
-// roll actually draws from. Keyed by face number; pct is one decimal place
-// (D-99), by largest remainder so the shown numbers total exactly 100.0
-// (KI-45): every face takes its floored tenths, then the faces with the
-// largest leftover take one tenth each, ties to the lower face number.
+// the exact bag rollDie() builds, read without consuming a roll. Keyed by
+// face number; pct is one decimal place (D-99), by largest remainder so the
+// shown numbers total exactly 100.0 (KI-45): every face takes its floored
+// tenths, then the faces with the largest leftover take one tenth each,
+// ties to the lower face number.
 function rollOdds(faces) {
-  const gilded = gameState.turn.gildedFace;
-  const tickets = faces.map(function(face) {
-    const extra = (gilded && gilded.faceNumber === face.number) ? gilded.weight : 0;
-    return face.weight + extra;
-  });
+  const tickets = faces.map(function(face) { return face.weight; });
   const total = tickets.reduce(function(a, b) { return a + b; }, 0);
   // Integer tenths of a percent: exact, so equal weights tie exactly.
   const tenths = tickets.map(function(t) { return total > 0 ? Math.floor(t * 1000 / total) : 0; });
@@ -209,26 +208,8 @@ function secondChanceReroll() {
   resolvePlayerRoll(face);
 }
 
-// Gilded Die — buys one face extra tickets for the next roll only; the
-// weight lives in gameState.turn, never on the face.
-function gildedDiePayForFace(faceNumber) {
-  if (!hasArtifact('gilded_die')) { return false; }
-  const price = GAME_CONFIG.ARTIFACTS.GILDED_DIE_PRICE;
-  if (gameState.run.gold < price) { return false; }
-  if (gameState.turn.phase !== 'ROLL_PHASE' || playerRollResolved) { return false; }
-  if (gameState.turn.gildedFace) { return false; }
-  const weight = GAME_CONFIG.ARTIFACTS.GILDED_DIE_WEIGHT;
-  updateRun({ gold: gameState.run.gold - price });
-  updateTurn({ gildedFace: { faceNumber: faceNumber, weight: weight } });
-  log('[ARTIFACT] Gilded Die: face ' + faceNumber + ' gains ' + weight + ' weight for this roll, ' + price + ' gold paid');
-  return true;
-}
-
 function resolvePlayerRoll(face) {
   log('[ROLL] face: ' + face.number + ' modId: ' + face.modId);
-
-  // Gilded Die's extra tickets were bought for the roll that just landed.
-  if (gameState.turn.gildedFace) { updateTurn({ gildedFace: null }); }
 
   let rollOutcome;
   if (face.modId === 'NAT_TWENTY') {
@@ -402,12 +383,12 @@ function buildEnemyDieFromSpec(spec) {
 // The one shared function every "trigger a face without rolling it"
 // card/mod goes through (Threnody, Reverberation, Magnificat). Refuses
 // face 1/20 and a face already triggered this way this round. Counts
-// toward GAME_CONFIG.ROUND_TRIGGER_CAP — a loaded face counts through
-// mod_dispatch same as a normal roll; a blank face bumps the counter here
-// directly, since BLANK_ROLL has no counter of its own. Exempt: Nat 20's
-// own sweep, which tags its calls so mod_dispatch can tell the two apart.
+// toward ROUND_TRIGGER_CAP: a loaded face through mod_dispatch, a blank
+// here directly. Exempt: Nat 20's sweep (natTwentySweep), and a call with
+// options.capExempt, which skips the cap check and the blank's count.
 // Never touches rolledFaceNumber/rollOutcome/rolledFaceWeight.
-function triggerFaceOutsideRoll(faceNumber) {
+function triggerFaceOutsideRoll(faceNumber, options) {
+  const capExempt = !!(options && options.capExempt);
   if (faceNumber === 1 || faceNumber === GAME_CONFIG.DIE_SIZE.PLAYER) {
     log('[TRIGGER] outside-roll trigger refused: face ' + faceNumber + ' is a Nat face');
     return false;
@@ -420,7 +401,7 @@ function triggerFaceOutsideRoll(faceNumber) {
     log('[TRIGGER] outside-roll trigger refused: face ' + faceNumber + ' already triggered outside a roll this round');
     return false;
   }
-  if (gameState.turn.roundTriggerCount >= GAME_CONFIG.ROUND_TRIGGER_CAP) {
+  if (!capExempt && gameState.turn.roundTriggerCount >= GAME_CONFIG.ROUND_TRIGGER_CAP) {
     // Logs at most once per round, to avoid flooding the log.
     if (!gameState.turn.roundTriggerCapLogged) {
       log('[TRIGGER] outside-roll trigger refused: round trigger cap (' + GAME_CONFIG.ROUND_TRIGGER_CAP + ') reached');
@@ -440,7 +421,7 @@ function triggerFaceOutsideRoll(faceNumber) {
       callListeners('MOD_TRIGGER', { modId: face.modId2, faceNumber: face.number });
     }
   } else {
-    updateTurn({ roundTriggerCount: gameState.turn.roundTriggerCount + 1 });
+    if (!capExempt) { updateTurn({ roundTriggerCount: gameState.turn.roundTriggerCount + 1 }); }
     log('[TRIGGER] face ' + faceNumber + ' triggered outside a roll (blank)');
     // outsideRoll keeps Alms off a blank a card reached for.
     callListeners('BLANK_ROLL', { outsideRoll: true });

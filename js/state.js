@@ -83,11 +83,13 @@ const gameState = {
     // Hourglass's own skip, kept apart from the enemy Nat 1's cancel so
     // each reports its own wording.
     enemyRoundSkippedThisTurn: false,
-    // Gilded Die's paid-for weight, live for exactly one roll:
-    // null | { faceNumber, weight }. Never written into face.weight.
-    gildedFace: null,
     // Second Chance is once per fight, not once per turn.
     secondChanceUsedThisFight: false
+  },
+
+  // Fight-scoped counters, zeroed by clearFightScopedState().
+  fight: {
+    blanksRolled: 0
   },
 
   run: {
@@ -107,7 +109,8 @@ const gameState = {
     shop: null,
     removalPrice: GAME_CONFIG.SHOP.REMOVAL_BASE_PRICE,
     thirdEyeUsedThisAct: false,
-    weightAdded: 0
+    weightAdded: 0,
+    blanksRolled: 0
   },
 
   runRecord: {
@@ -232,6 +235,12 @@ function updateTurn(changes, silent) {
 function updateDie(changes, silent) {
   Object.assign(gameState.die, changes);
   if (!silent) logStateChange('updateDie', changes);
+  refreshInspector();
+}
+
+function updateFight(changes, silent) {
+  Object.assign(gameState.fight, changes);
+  if (!silent) logStateChange('updateFight', changes);
   refreshInspector();
 }
 

@@ -512,8 +512,7 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
   const isPlayerDie = showTriggerBadges;
 
   // this roll's own odds, read straight off rollDie()'s own
-  // bag (pipeline.js) so Gilded Die's extra tickets show for the roll they
-  // apply to. Player die only — nothing else needs it.
+  // bag (pipeline.js). Player die only — nothing else needs it.
   const oddsByFace = isPlayerDie ? rollOdds(faces) : null;
 
   // The player's own die reads as one horizontal row of squares, face 1 at
@@ -640,17 +639,6 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       btn.addEventListener('click', function() {
         thirdEyeChoosing = false;
         thirdEyeChooseFace(faceNumber);
-      });
-    }
-
-    // Gilded Die — the same click-a-face-row pattern, buying that face
-    // extra weight for the coming roll instead of choosing it outright.
-    if (containerId === 'playerDieList' && gildedDieChoosing) {
-      const faceNumber = face.number;
-      btn.addEventListener('click', function() {
-        gildedDieChoosing = false;
-        gildedDiePayForFace(faceNumber);
-        refreshInspector();
       });
     }
 
@@ -1491,14 +1479,6 @@ function renderThirdEyeButton() {
     rerollBtn.style.display = (hasArtifact('second_chance') && !gameState.turn.secondChanceUsedThisFight &&
       gameState.turn.phase === 'ROLL_PHASE' && !playerRollResolved) ? '' : 'none';
   }
-
-  const gildedBtn = document.getElementById('gildedDieBtn');
-  if (!gildedBtn) return;
-  const gildedEligible = hasArtifact('gilded_die') && gameState.run.gold >= GAME_CONFIG.ARTIFACTS.GILDED_DIE_PRICE &&
-    !gameState.turn.gildedFace && gameState.turn.phase === 'ROLL_PHASE' && !playerRollResolved;
-  gildedBtn.style.display = gildedEligible ? '' : 'none';
-  gildedBtn.classList.toggle('choosing', gildedDieChoosing);
-  if (!gildedEligible) { gildedDieChoosing = false; }
 }
 
 // D-114 — the coin icon beside the amount; the amount is the only part
@@ -1795,7 +1775,7 @@ const CARD_EFFECT_TEXT = {
   orison: 'Deal 5 damage. If you rolled a blank, deal 9 instead.',
   tenet: 'Deal 6 damage, plus 1 for each time the rolled face has triggered.',
   gradual: "Deal 3 damage, plus 1 per weight on your heaviest face that isn't blank.",
-  vacancy: 'Deal 1 damage per blank face on your die, up to 16.',
+  vacancy: 'Deal 1 damage per blank face on your die.',
   lauds: 'Deal 4 damage, plus 3 per Growth mod on your die, up to 13.',
   chastise: 'Deal 7 damage.',
   cloister: 'Gain 7 block.',
@@ -1807,12 +1787,12 @@ const CARD_EFFECT_TEXT = {
   hosanna: "Deal 6 damage. If the enemy's intent this round is not an Attack, deal 12 instead.",
   gloria: 'Deal 30 damage.',
   oblation: 'Spend all your soul. Deal 7 damage per soul spent, up to 42.',
-  tabernacle: 'Gain 3 block, plus 3 per weight on the rolled face, up to 12.',
+  tabernacle: 'Gain 2 block per blank face on your die.',
   jubilee: 'Deal 4 damage, plus 2 per weight added to your die, up to 24.',
   // Fallback only — getCardEffectText() below overrides this with the
   // live threnodyFace number; no real caller reads this map directly.
   threnody: 'Trigger the same face every time. If it is blank, gain 2 block.',
-  reverberation: 'Trigger the rolled face again. If you rolled a 1 or 20, gain 6 block instead.',
+  reverberation: 'Trigger every blank face on your die.',
   kyrie: 'Deal 5 damage. If the rolled face has Bound, deal 10 instead.',
   novena: 'Trigger every loaded Bound face.',
   canticle: 'Gain 6 block. If the rolled face is loaded, it gains Bound for this fight.',
@@ -1848,14 +1828,14 @@ const MOD_DESCRIPTION = {
   blight: 'Apply 6 stacks of poison.',
   virulence: "Apply 3 stacks of poison. Double the enemy's stacks of poison.",
   sanctuary: 'Gain 16 block.',
-  vigil: 'When this turn ends, gain 5 block per card in your hand.',
+  vigil: 'Deal 4 damage, plus 1 for every 3 blanks you have rolled this run. Also triggers whenever you roll a blank.',
   zeal: 'Deal 10 damage, plus 4 for each earlier trigger of this face.',
   fervour: 'Double your attack damage this turn.',
   ordain: 'Deal 10 damage. Add 1 weight to this face.',
   anthem: 'Deal 6 damage, plus 4 per weight on this face.',
   elevation: 'Deal 10 damage. If the next face up holds a mod, add 1 weight to it.',
   largesse: 'Gain 2 soul and 4 block.',
-  tithe: 'When this turn ends, deal 5 damage per soul you have left, up to 20.',
+  tithe: 'Gain 1 block per blank face on your die.',
   congregation: 'Deal 8 damage. If another mod on your die has Growth, deal 16 instead.',
   cope: 'Gain 8 block, plus 2 for each earlier trigger of this face.',
   anathema: 'When this turn ends, deal damage equal to your block, up to 16.',
@@ -1938,9 +1918,6 @@ let dieActionChosenModId = null;
 // Third Eye's own UI-flow flag, same convention — true while the button is
 // toggled on and the next real player-die face click chooses the roll.
 let thirdEyeChoosing = false;
-
-// Gilded Die's own flag, the same shape as thirdEyeChoosing.
-let gildedDieChoosing = false;
 
 // Consecrate is the class anchor, not a reward, per SCOPE — V1.
 const DIE_ACTION_EXCLUDED_MOD_IDS = ['consecrate'];
@@ -2528,8 +2505,8 @@ function renderArtifactRewardPanel() {
   });
 }
 
-// Artifacts carry no tags — the tag line reads NONE so the shape stays
-// identical across every offer; the rarity line is the artifact's tier.
+// An artifact without a tags list reads NONE on the tag line so the shape
+// stays identical across every offer; the rarity line is the artifact's tier.
 function offerCardSpecForArtifact(artifactId, priceText, footText, disabled, onClick) {
   const artifact = gameState.config.artifacts[artifactId];
   return {
