@@ -83,7 +83,7 @@ async function reachCardPhase(page) {
   await runTest('Item A: in a Nat 20 sweep Anthem reads its own face (14), not the rolled face 20 at weight 5 (26)', async () => {
     const page = await freshFight(browser);
     await loadMod(page, 'anthem', 7);
-    await page.evaluate(() => { strengthenFace(7); for (let i = 0; i < 4; i++) { strengthenFace(20); } });
+    await page.evaluate(() => { updateRun({ artifacts: ['halo'] }); strengthenFace(7); for (let i = 0; i < 4; i++) { strengthenFace(20); } });
     assert.strictEqual(await page.evaluate(() => getPlayerFace(20).weight), 5);
     assert.strictEqual(await rollAndMeasure(page, 20, 'Anthem'), 14);
     await page.close();

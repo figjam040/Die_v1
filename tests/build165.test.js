@@ -143,7 +143,7 @@ async function imagesSettled(page, selector) {
   await runTest('an artifact id with no art file keeps the text fallback and shows no broken image', async () => {
     const page = await freshPage(browser);
     await page.evaluate(() => {
-      gameState.config.artifacts.fake_charm = { id: 'fake_charm', name: 'Fake Charm', text: 'Does nothing.' };
+      gameState.config.artifacts.fake_charm = { id: 'fake_charm', name: 'Fake Charm', tier: 'rare', text: 'Does nothing.' };
       updateRun({ artifacts: ['fake_charm'] });
       updateUi({ artifactsInfoOpen: true });
     });
@@ -165,7 +165,7 @@ async function imagesSettled(page, selector) {
     assert.strictEqual(r.slotImgHidden, true, 'slot img hidden');
     assert.strictEqual(r.nameVisible, true, 'slot name text visible');
     assert.strictEqual(r.rowImgHidden, true, 'layer row img hidden');
-    assert.ok(r.rowText.includes('Fake Charm — Does nothing.'), r.rowText);
+    assert.ok(r.rowText.includes('Fake Charm — RARE — Does nothing.'), r.rowText);
     await page.close();
   });
 

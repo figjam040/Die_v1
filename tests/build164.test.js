@@ -31,11 +31,14 @@ async function freshPage(browser) {
   return page;
 }
 
+// Face 20 is a Strengthen target only while Halo is held (D-132), so every
+// cap test holds it.
 async function setFace20Weight(page, weight) {
   await page.evaluate((w) => {
     const faces = gameState.die.faces.slice();
     faces[19] = Object.assign({}, faces[19], { weight: w });
     updateDie({ faces: faces });
+    updateRun({ artifacts: ['halo'] });
   }, weight);
 }
 
@@ -95,7 +98,7 @@ async function openChoose(page) {
   await runTest('Leaden Face with face 20 at weight 4: one Strengthen leaves 5 and logs the cap line', async () => {
     const page = await freshPage(browser);
     await setFace20Weight(page, 4);
-    await page.evaluate(() => { updateRun({ artifacts: ['leaden_face'] }); });
+    await page.evaluate(() => { updateRun({ artifacts: ['leaden_face', 'halo'] }); });
     await openChoose(page);
     await page.evaluate(() => { dieActionChooseStrengthen(); dieActionPickStrengthenFace(20); });
     const r = await page.evaluate(() => [gameState.die.faces[19].weight, document.getElementById('log').textContent.includes('[ARTIFACT] Leaden Face: face 20 at the cap')]);

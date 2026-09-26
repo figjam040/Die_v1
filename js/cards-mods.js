@@ -1526,19 +1526,20 @@ function init() {
   // enemy die mechanics use for "registered unconditionally, checks which
   // one applies".
   gameState.config.artifacts = {
-    third_eye: { id: 'third_eye', name: 'Third Eye', tier: 'rare', text: 'Once per act, before you roll, choose the face.' },
+    third_eye: { id: 'third_eye', name: 'Third Eye', tier: 'uncommon', text: 'Once per act, before you roll, choose the face.' },
     loaded_die: { id: 'loaded_die', name: 'Loaded Die', tier: 'rare', text: 'Roll twice. Keep the higher face.' },
     tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', tags: ['blank'], text: 'When a blank triggers, gain 2 block, plus 1 for every blank you have rolled this fight.' },
-    tithe_box: { id: 'tithe_box', name: 'Tithe Box', tier: 'rare', text: 'When you roll a Nat 20, gain 15 gold.' },
-    merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", tier: 'rare', text: 'Pay a quarter less for everything in the shop. Card removal stays at 75 gold.' },
+    tithe_box: { id: 'tithe_box', name: 'Tithe Box', tier: 'basic', text: 'When you roll a Nat 20, gain 15 gold.' },
+    merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", tier: 'basic', text: 'Pay a quarter less for everything in the shop. Card removal stays at 75 gold.' },
     leaden_face: { id: 'leaden_face', name: 'Leaden Face', tier: 'rare', text: 'When you Strengthen a face, add 2 weight instead of 1.' },
     reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', tier: 'rare', text: 'When you roll a Bound face and the face above it is loaded, trigger that face too.' },
-    plague_bell: { id: 'plague_bell', name: 'Plague Bell', tier: 'rare', text: 'When a fight starts, apply 1 stack of poison to the enemy for every 2 loaded faces other than face 10.' },
-    alms: { id: 'alms', name: 'Alms', tier: 'rare', tags: ['blank'], text: 'When you roll a blank, gain 1 soul instead of 2 block.' },
-    hourglass: { id: 'hourglass', name: 'Hourglass', tier: 'rare', text: "Skip the enemy's first round of every fight." },
-    second_chance: { id: 'second_chance', name: 'Second Chance', tier: 'rare', text: 'Once per fight, reroll your die.' },
-    gilded_die: { id: 'gilded_die', name: 'Gilded Die', tier: 'rare', tags: ['blank'], text: 'When you roll a blank, gain 3 gold.' },
-    bone_counter: { id: 'bone_counter', name: 'Bone Counter', tier: 'rare', text: 'When you roll a Nat 1, pay 15 gold instead of starting Penitence. Without the gold, Penitence starts.' }
+    plague_bell: { id: 'plague_bell', name: 'Plague Bell', tier: 'uncommon', text: 'When a fight starts, apply 1 stack of poison to the enemy for every 2 loaded faces other than face 10.' },
+    alms: { id: 'alms', name: 'Alms', tier: 'uncommon', tags: ['blank'], text: 'When you roll a blank, gain 1 soul instead of 2 block.' },
+    hourglass: { id: 'hourglass', name: 'Hourglass', tier: 'uncommon', text: "Skip the enemy's first round of every fight." },
+    second_chance: { id: 'second_chance', name: 'Second Chance', tier: 'uncommon', text: 'Once per fight, reroll your die.' },
+    gilded_die: { id: 'gilded_die', name: 'Gilded Die', tier: 'basic', tags: ['blank'], text: 'When you roll a blank, gain 3 gold.' },
+    bone_counter: { id: 'bone_counter', name: 'Bone Counter', tier: 'uncommon', text: 'When you roll a Nat 1, pay 15 gold instead of starting Penitence. Without the gold, Penitence starts.' },
+    halo: { id: 'halo', name: 'Halo', tier: 'rare', text: 'While you hold this, Strengthen may target face 20.' }
   };
 
   // Every artifact with a hook of its own to sit on registers here,

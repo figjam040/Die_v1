@@ -457,19 +457,25 @@ function specOnlyDeepEqual(actual, expected, label) {
   // ---------------------------------------------------------------
   // F12/F13 — Strengthen face eligibility, Load offer shape.
   // ---------------------------------------------------------------
-  await runTest('F12 Strengthen targets face 20, never face 1', async () => {
+  await runTest('F12 Strengthen targets any loaded face, and face 20 only while Halo is held; never face 1', async () => {
     const page = await freshPage(browser);
     await page.evaluate(() => { openDieActionScreen('reward'); dieActionChooseStrengthen(); });
-    const v = await page.evaluate(() => {
+    const readRows = () => page.evaluate(() => {
       const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
       function classesFor(num) {
         const row = rows.find(function(r) { return r.querySelector('.face-btn') && r.querySelector('.face-btn').textContent === String(num); });
         return row ? row.className : null;
       }
-      return { face1: classesFor(1), face20: classesFor(20) };
+      return { face1: classesFor(1), face10: classesFor(10), face20: classesFor(20) };
     });
-    assert.ok(v.face1 && v.face1.indexOf('die-row-pick-inert') !== -1, 'face 1 must never be Strengthen-eligible');
-    assert.ok(v.face20 && v.face20.indexOf('die-row-pickable') !== -1, 'face 20 must be Strengthen-eligible');
+    const without = await readRows();
+    assert.ok(without.face1 && without.face1.indexOf('die-row-pick-inert') !== -1, 'face 1 must never be Strengthen-eligible');
+    assert.ok(without.face10 && without.face10.indexOf('die-row-pickable') !== -1, 'a loaded face must be Strengthen-eligible');
+    assert.ok(without.face20 && without.face20.indexOf('die-row-pick-inert') !== -1, 'face 20 must not be Strengthen-eligible without Halo');
+    await page.evaluate(() => { updateRun({ artifacts: ['halo'] }); refreshInspector(); });
+    const held = await readRows();
+    assert.ok(held.face20 && held.face20.indexOf('die-row-pickable') !== -1, 'face 20 must be Strengthen-eligible with Halo');
+    assert.ok(held.face1.indexOf('die-row-pick-inert') !== -1, 'face 1 stays ineligible with Halo');
     await page.close();
   });
 

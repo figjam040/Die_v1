@@ -274,10 +274,11 @@ function dieActionChooseLoad() {
   refreshInspector();
 }
 
-// Face 20 is Strengthen-eligible until it reaches its weight cap; any other
-// loaded face always is. Face 1 never is.
+// canStrengthenFace() rules face 1 out and face 20 out without Halo; face 20
+// is then eligible until it reaches its weight cap, and any other loaded face
+// always is.
 function isStrengthenEligibleFace(f) {
-  if (f.number === 1) return false;
+  if (!canStrengthenFace(f.number)) return false;
   if (f.number === GAME_CONFIG.DIE_SIZE.PLAYER) return !isFaceTwentyAtCap(f.number);
   return f.modId !== null;
 }
@@ -358,6 +359,7 @@ function dieActionPickLoadFace(faceNumber) {
 // only place any face's weight is written.
 function dieActionPickStrengthenFace(faceNumber) {
   let newWeight = strengthenFace(faceNumber);
+  if (newWeight === false) { return; }
   if (hasArtifact('leaden_face')) {
     if (isFaceTwentyAtCap(faceNumber)) {
       log('[ARTIFACT] Leaden Face: face 20 at the cap');
@@ -449,10 +451,7 @@ function currentPlayerDiePickConfig() {
   }
   if (dieActionStep === 'strengthen_pick_face') {
     return {
-      isEligible: function(f) {
-        if (f.number === 1) return false;
-        return isStrengthenEligibleFace(f);
-      },
+      isEligible: isStrengthenEligibleFace,
       onPick: dieActionPickStrengthenFace,
       showBecomes: true
     };
@@ -703,12 +702,8 @@ function openArtifactRewardScreen() {
     openDieActionScreen('reward');
     return;
   }
-  const pool = available.slice();
-  const options = [];
-  while (options.length < 3 && pool.length > 0) {
-    options.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-  }
-  artifactRewardOptions = options;
+  const pool = available.map(function(id) { return { id: id, tier: gameState.config.artifacts[id].tier }; });
+  artifactRewardOptions = pickTieredOffer(pool, currentOfferTierSplit('artifact'), 3).map(function(o) { return o.id; });
   artifactRewardStep = 'choose';
   refreshInspector();
 }
@@ -1288,7 +1283,16 @@ function renderInfoLayers() {
       const row = document.createElement('div');
       row.className = 'info-list-row';
       attachArtIcon(row, 'artifacts', id, 48, 'info-row-icon');
-      row.appendChild(document.createTextNode(artifact ? artifact.name + ' — ' + artifact.text : id));
+      if (artifact) {
+        const tierWord = document.createElement('span');
+        tierWord.textContent = artifact.tier.toUpperCase();
+        tierWord.style.color = GAME_CONFIG.TIER_COLOURS[artifact.tier];
+        row.appendChild(document.createTextNode(artifact.name + ' — '));
+        row.appendChild(tierWord);
+        row.appendChild(document.createTextNode(' — ' + artifact.text));
+      } else {
+        row.appendChild(document.createTextNode(id));
+      }
       content.appendChild(row);
     });
   }

@@ -111,7 +111,7 @@ const NEW_CARD_IDS = ['venom', 'ballast', 'refrain', 'second_sight', 'cadence', 
     }));
     assert.strictEqual(v.slots, 8, 'the artifact row must hold eight slots');
     assert.strictEqual(v.max, 8, 'ARTIFACT_MAX must be 8');
-    assert.strictEqual(v.total, 13, 'there must be thirteen artifacts');
+    assert.strictEqual(v.total, 14, 'there must be fourteen artifacts');
     await page.close();
   });
 

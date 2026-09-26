@@ -11,7 +11,7 @@ const { runTest, report } = createRunner();
 
 const EXPECTED_MOD_COUNT = 27;
 const EXPECTED_CARD_COUNT = 51;
-const EXPECTED_ARTIFACT_COUNT = 13;
+const EXPECTED_ARTIFACT_COUNT = 14;
 
 async function freshFight(browser, viewport) {
   const page = await browser.newPage({ viewport: viewport || { width: 1600, height: 900 } });
@@ -168,6 +168,7 @@ function loadTwoMods(page, faceNumber) {
 
   await runTest('the Strengthen picker on face 20 shows the same Now and Becomes pair', async () => {
     const page = await freshFight(browser);
+    await page.evaluate(() => { updateRun({ artifacts: ['halo'] }); });
     await openStrengthenPicker(page);
     await page.hover(rowOf(20) + ' .face-btn');
     const v = await readPair(page, 20);

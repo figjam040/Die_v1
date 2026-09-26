@@ -1518,3 +1518,18 @@ Item C: the Strengthen picker's hover shows Now and Becomes, weight and odds (.f
 Tests: build179.test.js. Corrected: build139 (Reliquary text), build178 (--from=HEAD --compare=HEAD).
 
 Verification: see paste-back.
+
+
+# BUILD 180 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 181)
+
+Stage 3.07 (BUILD 180) — documentation reconciliation and two small fixes.
+
+Item A: CLAUDE.md corrected: art and audio folders, Not in V1, three no-art clauses, two-mod hover, hover-box clause, Reverberation's D-126, Notion pages, FACTS source.
+
+Item B: config.js header F14 (boss reward by act) and F44 (Anomaly) brought level with the Register. Tolling Bell's text now reads under D-125.
+
+Item C: build178 checks HEAD's parent against HEAD with a box report, and the tree against itself twice, instead of pinning the tree to HEAD.
+
+Tests: build180.test.js. Corrected: build173 (Tolling Bell text), build178 (compare assertion).
+
+Verification: see paste-back.

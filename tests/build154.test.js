@@ -139,7 +139,7 @@ async function enterPausedFight(page) {
     });
     assert.strictEqual(v.cards, 0, 'Strengthen must show no cards, got ' + v.cards);
     assert.strictEqual(v.rows, 20, 'Strengthen must show all twenty faces, got ' + v.rows);
-    assert.strictEqual(v.pickable, 2, 'a fresh die has two strengthenable faces, got ' + v.pickable);
+    assert.strictEqual(v.pickable, 1, 'a fresh die without Halo has one strengthenable face, got ' + v.pickable);
     assert.ok(v.instruction.length > 0, 'Strengthen must carry its one-line instruction');
     await page.close();
   });

@@ -313,8 +313,8 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
         tips: rows.filter(r => r.querySelector('.hover-tip')).length
       };
     });
-    // A fresh die: face 20 plus the one loaded anchor face are strengthenable.
-    assert.strictEqual(v.pickable, 2, 'expected two strengthenable faces on a fresh die, got ' + v.pickable);
+    // A fresh die without Halo: only the one loaded anchor face is strengthenable.
+    assert.strictEqual(v.pickable, 1, 'expected one strengthenable face on a fresh die, got ' + v.pickable);
     assert.ok(v.tips >= 2, 'the picker rows must keep their hover text');
     await page.close();
   });

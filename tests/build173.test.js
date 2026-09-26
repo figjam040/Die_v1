@@ -353,7 +353,7 @@ function snapshot(page) {
     });
     assert.deepStrictEqual(v, {
       vacancy: ['rare', 2], tabernacle: ['basic', 1], reverberation: ['rare', 2],
-      vigil: 'uncommon', tithe: 'uncommon', tolling: 'rare', gilded: 'rare'
+      vigil: 'uncommon', tithe: 'uncommon', tolling: 'rare', gilded: 'basic'
     });
     await page.close();
   });

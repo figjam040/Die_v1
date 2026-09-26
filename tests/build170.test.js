@@ -151,7 +151,7 @@ const BANNED = [/applied/i, /applies/i, /this run/i, /[()]/];
     await page.close();
   });
 
-  await runTest('Item B: all 27 mod, 51 card and 13 artifact texts are one or two sentences, each ending in a full stop', async () => {
+  await runTest('Item B: all 27 mod, 51 card and 14 artifact texts are one or two sentences, each ending in a full stop', async () => {
     const page = await freshFight(browser);
     const v = await page.evaluate(() => ({
       mods: Object.keys(gameState.config.mods).map(id => [id, MOD_DESCRIPTION[id]]),
@@ -160,7 +160,7 @@ const BANNED = [/applied/i, /applies/i, /this run/i, /[()]/];
     }));
     assert.strictEqual(v.mods.length, 27);
     assert.strictEqual(v.cards.length, 52);
-    assert.strictEqual(v.artifacts.length, 13);
+    assert.strictEqual(v.artifacts.length, 14);
     const bad = v.mods.concat(v.cards, v.artifacts).filter(t => !t[1] || sentenceCount(t[1]) < 1 || sentenceCount(t[1]) > 2 || !/\.$/.test(t[1]));
     assert.deepStrictEqual(bad, [], 'not one or two sentences: ' + JSON.stringify(bad));
     await page.close();

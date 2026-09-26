@@ -102,10 +102,24 @@ function isFaceTwentyAtCap(faceNumber) {
   return getPlayerFace(faceNumber).weight >= GAME_CONFIG.FACE_TWENTY_MAX_WEIGHT;
 }
 
+// The one rule for which faces Strengthen may target, read by the picker,
+// the shop, Leaden Face and strengthenFace(): never face 1, and face 20 only
+// while Halo is held (D-132).
+function canStrengthenFace(faceNumber) {
+  if (faceNumber === 1) return false;
+  if (faceNumber === GAME_CONFIG.DIE_SIZE.PLAYER) return hasArtifact('halo');
+  return true;
+}
+
 // The one place any face's weight is ever written. Player die only —
-// nothing Strengthens or Ordains the enemy's die. Face 20 never rises past
+// nothing Strengthens or Ordains the enemy's die. A face canStrengthenFace()
+// refuses logs and returns false. Face 20 never rises past
 // FACE_TWENTY_MAX_WEIGHT: at the cap this returns the unchanged weight.
 function strengthenFace(faceNumber) {
+  if (!canStrengthenFace(faceNumber)) {
+    log('[DIE] Strengthen refused: face ' + faceNumber + (faceNumber === GAME_CONFIG.DIE_SIZE.PLAYER ? ' needs Halo' : ''));
+    return false;
+  }
   const face = getPlayerFace(faceNumber);
   if (isFaceTwentyAtCap(faceNumber)) return face.weight;
   const newWeight = face.weight + 1;

@@ -841,7 +841,8 @@ function renderTopBarTokens() {
         img.src = 'art/artifacts/' + artifactId + '.png';
         slot.appendChild(img);
       }
-      setHoverTip(slot, artifact.name + ' — ' + artifact.text);
+      setHoverTip(slot, [artifact.name, artifact.tier.toUpperCase(), artifact.text]);
+      slot.querySelector('.hover-tip').children[1].style.color = GAME_CONFIG.TIER_COLOURS[artifact.tier];
     } else {
       slot.innerHTML = '';
       delete slot.dataset.artifactId;
