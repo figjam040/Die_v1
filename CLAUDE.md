@@ -481,7 +481,7 @@ function rollDie(faces) {
 
 Default: DIE_SIZE.PLAYER faces (20) weight 1 = 5% each. Strengthen to weight 2 = that face appears twice in pool. Only weight values change; face.weight is the only ticket source. rollOdds() (pipeline.js) reads this exact bag to show the face row's own percent — see THE FACE ROW.
 
-Strengthen may target face DIE_SIZE.PLAYER (20), plus any loaded face. Face 1 is never targetable — the Strengthen picker (render-layers.js) excludes number 1 explicitly. Face 20 never gains a mod; Strengthen only adds weight, raising how often Nat 20 comes up, and stops at FACE_TWENTY_MAX_WEIGHT (5): strengthenFace() refuses past it, the picker marks face 20 inert, and its caption reads MAX.
+Strengthen may target face DIE_SIZE.PLAYER (20), plus any loaded face. Face 1 is never targetable — the Strengthen picker (render-layers.js) excludes number 1 explicitly. Face 20 never gains a mod; Strengthen only adds weight, raising how often Nat 20 comes up, and stops at FACE_TWENTY_MAX_WEIGHT (5): strengthenFace() refuses past it, the picker marks face 20 inert, and its caption reads MAX. An eligible face's hover in the picker ends with a pair, "Now: weight N · P%" and "Becomes: weight N+1 · P%", odds from rollOdds() at each weight, Becomes in --text and Now in --blank.
 
 ---
 
@@ -778,21 +778,22 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 176) — D-128 face hover as the offer box, D-129 DIE table, D-130 weight line, flat 644 Hz rattle and ROLL_LAND_GAP_MS, dev Skip to Artifact Reward/Add card/Remove card, KI-52 blanksRolled. Verified: npm test green, screenshots compared.
 (BUILD 177) — KI-50 DIE count is per run (doc fixed), KI-23 Load All skips face 10, KI-21 no default die action origin, die_layer shot. Verified: guardrails, facts, mods, build177 green; screenshots compared.
 (BUILD 178) — KI-54 seeded, stamp-free screenshots with a commit-based --compare, KI-55 config.js header room + F52, CLAUDE.md history moved out. No game change. Verified: guardrails, facts, mods, build178, build159 green; screenshots 0 px vs 177.
+(BUILD 179) — D-125 wording pass (Consecrate, Reliquary, Leaden Face), Strengthen picker Now/Becomes with odds, symbol hover box asserted inside the viewport. Verified: npm test green, screenshots 0 px vs 178.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 3.05 (BUILD 178) — verification hygiene, no game change.
+Stage 3.06 (BUILD 179) — D-125 wording pass, on-screen text only.
 
-Item A (KI-54): tests/screenshots.js seeds Math.random (SEED 178, the build175 generator) and hides #buildStamp before every shot. --compare[=HASH] diffs the working tree against that commit (default the parent of HEAD), read out of git into a temp folder; --from=HASH shoots a commit instead of the tree. Changed pixels are grouped into bounding boxes, one line each (pngdiff.js diffBoxes()). verify_prev/ and its code are gone.
+Item A: every mod, card and artifact text audited against D-125. Reworded: Consecrate, Reliquary, Leaden Face. Tolling Bell kept, its wording asked as a question. No number, cost, tier or name changed.
 
-Item B (KI-55): config.js header lines F28 and F31 shortened, F52 added (blanksRolled counts rolls only). CLAUDE.md history moved to HISTORY.md under "Moved from CLAUDE.md at BUILD 178": ten fragments, the 141-169 index lines (one aggregate line 001-169 stays; build159 updated) and the previous build's write-up.
+Item B: symbol hover boxes were already inside clampHoverTips()'s reach; asserted at faces 2 and 19, at 1600x900 and 1280x720.
 
-Item C (KI-53): not reproduced. #enemyHpValue's line measures 124.3 px in 175, 176 and 177, and no seeded shot changes a pixel there.
+Item C: the Strengthen picker's hover shows Now and Becomes, weight and odds (.face-tip-now in --blank, .face-tip-becomes in --text).
 
-Tests: build178.test.js (CLAUDE.md under 85,000 bytes). Corrected: build159.
+Tests: build179.test.js. Corrected: build139 (Reliquary text), build178 (--from=HEAD --compare=HEAD).
 
 Verification: see paste-back.
 

@@ -479,11 +479,14 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       : faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount);
     // During the Strengthen picker, an eligible row's hover also shows
     // what the face becomes.
-    // The text never names the weight, so what a face becomes is its
-    // first line again at one more weight.
+    // A now/becomes pair: the face's weight and odds as they are, then at one
+    // more weight, odds read off the same bag rollOdds() builds.
+    let nowText = null;
     let becomesText = null;
     if (pickConfig && pickConfig.showBecomes && pickEligible) {
-      becomesText = faceTitleText(Object.assign({}, face, { weight: face.weight + 1 }), isPlayerDie);
+      const heavier = faces.map(function(f) { return f.number === face.number ? Object.assign({}, f, { weight: f.weight + 1 }) : f; });
+      nowText = 'weight ' + face.weight + ' · ' + oddsByFace[face.number].pct.toFixed(1) + '%';
+      becomesText = 'weight ' + (face.weight + 1) + ' · ' + rollOdds(heavier)[face.number].pct.toFixed(1) + '%';
     }
     // D-104/KI-41 — no native title anywhere: this row's own .hover-tip
     // carries everything the old title used to, on every row, blank faces
@@ -511,7 +514,12 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       tip.appendChild(currentLine);
     }
     if (becomesText) {
+      const nowLine = document.createElement('div');
+      nowLine.className = 'face-tip-now';
+      nowLine.textContent = 'Now: ' + nowText;
+      becomesParent.appendChild(nowLine);
       const becomesLine = document.createElement('div');
+      becomesLine.className = 'face-tip-becomes';
       becomesLine.textContent = 'Becomes: ' + becomesText;
       becomesParent.appendChild(becomesLine);
     }

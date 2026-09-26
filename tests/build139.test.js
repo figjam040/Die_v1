@@ -203,7 +203,7 @@ const { runTest, report } = createRunner();
     assert.strictEqual(texts.herald, 'Deal 6 damage. Another random loaded face without Bound gains Bound for this fight.');
     assert.strictEqual(texts.congregation, 'Deal 8 damage. If another mod on your die has Growth, deal 16 instead.');
     assert.strictEqual(texts.lauds, 'Deal 4 damage, plus 3 per Growth mod on your die, up to 13.');
-    assert.strictEqual(texts.reliquary, 'Gain 6 block. If you already had 10 or more block, deal 5 damage.');
+    assert.strictEqual(texts.reliquary, 'If you have 10 or more block, deal 5 damage. Gain 6 block.');
     assert.strictEqual(texts.vindication, 'Deal damage equal to twice your block, up to 24.');
     assert.strictEqual(texts.exequy, "Deal damage equal to the enemy's stacks of poison, up to 12.");
     assert.strictEqual(texts.oblation, 'Spend all your soul. Deal 7 damage per soul spent, up to 42.');

@@ -1489,3 +1489,17 @@ Full write-ups: HISTORY.md.
 - SCREEN LAYOUT: No rite strip under the map any more. — original wording: " node completed. No rite strip under the map any more."
 - SCREEN LAYOUT: the same name/HP/pattern/loaded-faces text the removed panels printed — original wording: "with the same name/HP/pattern/loaded-faces text the removed panels printed (enemyPreviewHoverText())"
 
+
+# BUILD 178 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 179)
+
+Stage 3.05 (BUILD 178) — verification hygiene, no game change.
+
+Item A (KI-54): tests/screenshots.js seeds Math.random (SEED 178, the build175 generator) and hides #buildStamp before every shot. --compare[=HASH] diffs the working tree against that commit (default the parent of HEAD), read out of git into a temp folder; --from=HASH shoots a commit instead of the tree. Changed pixels are grouped into bounding boxes, one line each (pngdiff.js diffBoxes()). verify_prev/ and its code are gone.
+
+Item B (KI-55): config.js header lines F28 and F31 shortened, F52 added (blanksRolled counts rolls only). CLAUDE.md history moved to HISTORY.md under "Moved from CLAUDE.md at BUILD 178": ten fragments, the 141-169 index lines (one aggregate line 001-169 stays; build159 updated) and the previous build's write-up.
+
+Item C (KI-53): not reproduced. #enemyHpValue's line measures 124.3 px in 175, 176 and 177, and no seeded shot changes a pixel there.
+
+Tests: build178.test.js (CLAUDE.md under 85,000 bytes). Corrected: build159.
+
+Verification: see paste-back.

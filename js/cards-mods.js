@@ -1531,7 +1531,7 @@ function init() {
     tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', tags: ['blank'], text: 'Blanks pay 2 block, plus 1 for every blank you have rolled this fight.' },
     tithe_box: { id: 'tithe_box', name: 'Tithe Box', tier: 'rare', text: 'When you roll a Nat 20, gain 15 gold.' },
     merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", tier: 'rare', text: 'Pay a quarter less for everything in the shop. Card removal stays at 75 gold.' },
-    leaden_face: { id: 'leaden_face', name: 'Leaden Face', tier: 'rare', text: 'Strengthen adds 2 weight instead of 1.' },
+    leaden_face: { id: 'leaden_face', name: 'Leaden Face', tier: 'rare', text: 'When you Strengthen a face, add 2 weight instead of 1.' },
     reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', tier: 'rare', text: 'When you roll a Bound face and the face above it is loaded, trigger that face too.' },
     plague_bell: { id: 'plague_bell', name: 'Plague Bell', tier: 'rare', text: 'When a fight starts, apply 1 stack of poison to the enemy for every 2 loaded faces other than face 10.' },
     alms: { id: 'alms', name: 'Alms', tier: 'rare', tags: ['blank'], text: 'When you roll a blank, gain 1 soul instead of 2 block.' },

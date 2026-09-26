@@ -461,7 +461,7 @@ const CARD_EFFECT_TEXT = {
   chastise: 'Deal 7 damage.',
   cloister: 'Gain 7 block.',
   psalm: 'Draw 1 card.',
-  reliquary: 'Gain 6 block. If you already had 10 or more block, deal 5 damage.',
+  reliquary: 'If you have 10 or more block, deal 5 damage. Gain 6 block.',
   vindication: 'Deal damage equal to twice your block, up to 24.',
   myrrh: 'Gain 6 block, plus 1 per stack of poison on the enemy, up to 12.',
   exequy: "Deal damage equal to the enemy's stacks of poison, up to 12.",
@@ -502,7 +502,7 @@ function getCardEffectText(cardId) {
 
 // Hover text for mods and Nat faces, written to what each mod's code does.
 const MOD_DESCRIPTION = {
-  consecrate: 'Gain 2 soul. Cards you play this turn give 3 block.',
+  consecrate: 'Gain 2 soul. This turn, when you play a card, gain 3 block.',
   smite: 'Deal 16 damage.',
   penance: 'Deal 8 damage. Gain 8 block.',
   offering: 'Gain 2 soul. Draw 1 card.',
