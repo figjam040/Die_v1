@@ -11,12 +11,12 @@ Read this file at the start of every session before doing anything else.
 
 Single HTML file (index.html) plus fifteen plain JavaScript files under /js/, loaded via ordinary `<script src>` tags in a fixed order: config.js, state.js, listener-registry.js, audio.js, pipeline.js, cards-mods.js, run-and-map.js, phase-machine.js, rendering.js, render-fight.js, render-map.js, render-layers.js, render-text.js, dev-tools.js, bootstrap.js. rendering.js holds log(), refreshInspector() and renderCard(); render-fight.js the fight screen and face rows; render-map.js the map; render-layers.js the reward and info layers, shop, rite and The Font; render-text.js hover boxes, pops, the roll animation and the text tables. No ES modules — file:// origins are null and module scripts are CORS-blocked, a hard constraint, not a style choice. No build step. No npm. No server.
 
-config.js is the one constants file, loaded first, before state.js. Every tunable number/structural constant lives on one object, GAME_CONFIG — every other file reads it from there instead of repeating a literal. Its header comment carries the FACTS block (F01-F39+) verbatim from the Notion "Die — V1" page, one line per fact beside the GAME_CONFIG field(s) implementing it — the one place F-numbers live in code.
+config.js is the one constants file, loaded first, before state.js. Every tunable number/structural constant lives on one object, GAME_CONFIG — every other file reads it from there instead of repeating a literal. Its header comment carries the FACTS block (F01-F39+) verbatim from the 2 Register's F-rows, one line per fact beside the GAME_CONFIG field(s) implementing it — the one place F-numbers live in code.
 
 All fifteen files share one global lexical scope, as one giant inline `<script>` block would, so a top-level name declared in two files silently overwrites the first; guardrails.test.js fails on any duplicate. The only eager trigger anywhere is `window.addEventListener('DOMContentLoaded', init)` in bootstrap.js — nothing calls a game function at parse time, so cross-file references are safe regardless of script tag order.
 
 File: C:\Users\figja\Die_v1\index.html (loads the fifteen js/ files above).
-Open in browser to test. Double-click index.html only — never through a local server. /audio/ and /art/ are empty asset folders; nothing populates them — see AUDIO MODULE. /fonts/ holds the game's two self-hosted OFL font files (Press Start 2P, VT323), loaded by index.html's @font-face rules.
+Open in browser to test. Double-click index.html only — never through a local server. /art/ holds the 28 character PNGs, gold.png, die_frame.png and the mods/, artifacts/ and cards/ symbol folders (D-109); /audio/ does not exist, every sound is synthesised, see AUDIO MODULE. /fonts/ holds the game's two self-hosted OFL font files (Press Start 2P, VT323), loaded by index.html's @font-face rules.
 
 tests/facts.test.js — plain Node script (raw `playwright`, no test runner), `node tests/facts.test.js`. Asserts every F-number against GAME_CONFIG and the live gameState/DOM of a fresh run, its opening fight or a dev-jumped elite/boss. A mismatch fails. It keeps the F-number tests and those with no BUILD label; a BUILD-labelled test lives in that build's own file.
 
@@ -56,7 +56,7 @@ Enemy HP carries progression across a run, not mod numbers. As enemies get tough
 
 A run has three fight types, each with its own HP/intent band and its own die (see ENEMY DIE PER TYPE): normal fights, one elite per act, and the act boss.
 
-Not in V1: rings, markings, resonance, shops, meta-progression, multiple enemies per fight, story and flavour, animations, art.
+Not in V1: rings, markings, resonance, meta-progression, multiple enemies per fight, story and flavour.
 
 ---
 
@@ -419,7 +419,7 @@ Faces 1/20 are untouched here: single-mod Nat stubs, excluded from the Load pick
 
 The enemy die shares this face shape (modId2 always present, always null) for structural symmetry, but nothing ever writes an enemy face's modId2.
 
-Display: a two-mod face shows both names in the one die row, side by side — `.die-mod-pair` (index.html) wrapping two `.die-mod` spans, each with its own inline trigger badge. No new row. faceHoverText() (render-text.js) appends the second mod's MOD_DESCRIPTION to the hover tip, after " / ". Each name truncates to TWO_MOD_NAME_CHARS letters (6 default), no ellipsis; full name via native `title`. Drop to 5 if a future name stops fitting.
+Display: a two-mod face shows both names in the one die row, side by side — `.die-mod-pair` (index.html) wrapping two `.die-mod` spans, each with its own inline trigger badge. No new row. A two-mod face's hover opens two offer boxes side by side (D-128, THE FACE ROW); the hidden .die-mod-wrap keeps both names for the DIE table.
 
 Dev tooling: devLoadMod() (dev-tools.js) mirrors the Load cap. devClearFace() clears both slots.
 
@@ -435,7 +435,7 @@ Refuses outright (no state change, returns false) for face 1 or DIE_SIZE.PLAYER 
 
 Refuses a face already triggered this way once this round — turn.outsideTriggeredFaces (state.js), cleared to [] at START_OF_TURN. A face rolled normally then re-triggered outside a roll (Reverberation) isn't blocked — the record only tracks outside triggers, not the roll itself.
 
-D-51 — per-round trigger cap. ROUND_TRIGGER_CAP (config.js) is 10. turn.roundTriggerCount counts every real MOD_TRIGGER dispatch this round — mod_dispatch increments it on every call except a Nat 20 sweep's own (tagged natTwentySweep: true), the one exemption. A blank face bumps the same counter directly in triggerFaceOutsideRoll(). Refuses once the counter reaches the cap, unless the call passes { capExempt: true } (Reverberation's blank sweep, D-127), which neither checks nor bumps it; cleared to 0 at START_OF_TURN. The "round trigger cap reached" log line prints at most once per round (roundTriggerCapLogged).
+D-51 — per-round trigger cap. ROUND_TRIGGER_CAP (config.js) is 10. turn.roundTriggerCount counts every real MOD_TRIGGER dispatch this round — mod_dispatch increments it on every call except a Nat 20 sweep's own (tagged natTwentySweep: true), the one exemption. A blank face bumps the same counter directly in triggerFaceOutsideRoll(). Refuses once the counter reaches the cap, unless the call passes { capExempt: true } (Reverberation's blank sweep, D-126), which neither checks nor bumps it; cleared to 0 at START_OF_TURN. The "round trigger cap reached" log line prints at most once per round (roundTriggerCapLogged).
 
 Dispatch: a loaded face triggers through the identical MOD_TRIGGER dispatch a rolled face uses — modId first, then modId2 — so permanent per-face growth accrues exactly as on a roll. A blank face dispatches BLANK_ROLL for the same BLANK_ROLL_BLOCK (2) block. Never writes rolledFaceNumber/rollOutcome/rolledFaceWeight.
 
@@ -704,7 +704,7 @@ SIZE RULE: CURRENT SUBSTAGE holds the write-up of the newest build only. The fir
 
 At the end of every session, paste back the new CONFIRMED WORKING line and the CURRENT SUBSTAGE section.
 
-Notion is the source of truth for planning; neither mirrors the other. The Notion project page is 3d27b97ff65a81d396d5f6abf687468d, titled Die — V1. The previous page, 3be7b97ff65a81cd8836fd33c0a08b70, is now the Archive and is not read at session start.
+Notion is the source of truth for planning; neither mirrors the other. The Notion planning page is 1 State, 3d27b97ff65a81d396d5f6abf687468d; the Archive was deleted 10 Sep 2026 with no backup.
 
 ---
 
@@ -720,13 +720,13 @@ Log: every event and calculation. Prefixed [PHASE] [MOD] [CARD] [DAMAGE] [BLOCK]
 
 # SCREEN LAYOUT
 
-The fight screen is designed for 1600 by 900, fits a 16:9 window with no scrollbar. The play column (.left-col) is centred, max-width 1600px, min-width min(1280px, 100%), padding 16px 24px 14px. Colour is identity, motion is state: a face's hue never changes, a flash or hold says what just happened, the screen shows state, not conclusions (D-30). Every number, name, weight, trigger count and state is visible or readable from a native title on hover — information never decreases.
+The fight screen is designed for 1600 by 900, fits a 16:9 window with no scrollbar. The play column (.left-col) is centred, max-width 1600px, min-width min(1280px, 100%), padding 16px 24px 14px. Colour is identity, motion is state: a face's hue never changes, a flash or hold says what just happened, the screen shows state, not conclusions (D-30). Every number, name, weight, trigger count and state is visible or readable in the game's own hover box (D-104) — information never decreases.
 
 ACTION BAR — div.top-bar, 58px, outside .app, three groups. Left: #buildStamp, under it #goldValue (D-114: #goldIcon, art/gold.png at 32px, then #goldAmount, gameState.run.gold; no box; a failed icon load hides it and shows #goldFallback, the word GOLD) beside #artifactRow's eight 26px slots (each an artifact's art/artifacts/<id>.png icon filling the slot, its name under it until the icon loads, its text in the hover box), then #dieInfoBtn/#artifactsInfoBtn/#cardsInfoBtn (INFO LAYERS). Centre, var(--game-font) 13px: #actStamp as ACT N, ROUND with #roundValue, #phaseBadge in --phase-color, #resultBanner. Right, 30px buttons: #devChromeToggleBtn, #copyRunRecordBtn, #logToggleBtn, #startGameBtn.
 
-ART BAND — #fightScreen's middle band, remaining height (min 220px). #playerArtBox/#enemyArtBox are 340x220px boxes, each an img (#playerArtImg/#enemyArtImg, src art/ordained.png and art/<enemy name lowercased>.png) plus a text label that swap on load/error — no art ships this build, so the label shows. Left of #enemyArtBox: #enemyIntentIcon, 40px inline SVG stroked --nat — sword/Attack, bolt/Charge, slashed bolt/Release, drop/Afflict, bolt again/Broken — aria-label carries the kind word; #enemyIntentValue beside it shows only the number (or BROKEN / the enemy Nat's wording). Both carry the full sentence in a .hover-tip child (opens downward, same as every die row's hover), no title attribute. #enemyIntentLabel under both carries a Charge wind-up's "break N / M".
+ART BAND — #fightScreen's middle band, remaining height (min 220px). #playerArtBox/#enemyArtBox are 340x220px boxes, each an img (#playerArtImg/#enemyArtImg, src art/ordained.png and art/<enemy name lowercased>.png) plus a text label that swap on load/error — the label shows only until the image loads. Left of #enemyArtBox: #enemyIntentIcon, 40px inline SVG stroked --nat — sword/Attack, bolt/Charge, slashed bolt/Release, drop/Afflict, bolt again/Broken — aria-label carries the kind word; #enemyIntentValue beside it shows only the number (or BROKEN / the enemy Nat's wording). Both carry the full sentence in a .hover-tip child (opens downward, same as every die row's hover), no title attribute. #enemyIntentLabel under both carries a Charge wind-up's "break N / M".
 
-ACT BACKGROUNDS (D-97) — #actBackgroundImg, first child of #fightScreen, same footprint as .band-top. art/background_act<N>.png, when present, draws at 40% opacity, pixelated, cover; renderActBackground() reuses setArtImage()'s onload/onerror pattern — missing (no art ships this build), it stays hidden. .band-top/band-d's own opaque backgrounds paint over it where they have content.
+ACT BACKGROUNDS (D-97) — #actBackgroundImg, first child of #fightScreen, same footprint as .band-top. art/background_act<N>.png, when present, draws at 40% opacity, pixelated, cover; renderActBackground() reuses setArtImage()'s onload/onerror pattern — missing (the label shows only until the image loads), it stays hidden. .band-top/band-d's own opaque backgrounds paint over it where they have content.
 
 ENEMY BLOCK — the stats band's right 300px column (228px tall, 300/hand/300, bottom-aligned). #enemyPanelTitle (ENEMY / ELITE ★ / BOSS ☠), #enemyNameValue, HP #enemyHpValue, #enemyWrathLine when Wrath is up, #enemyReadLine for Pontifex, then #enemyStatusRow — one 28px square per state present, P + poison and W + Wrath, both --enemy-mod, each its own sentence as a title. #enemyBuffsValue lists every loaded face by number (POISON 3, POISON 9, SEAL 6); #enemyActiveValue lists gameState.enemy.activeBuffs. #enemyPoisonValue still writes every render, hidden — the P icon is where poison reads.
 
@@ -738,7 +738,7 @@ RARITY (D-111) — GAME_CONFIG.TIER_ORDER basic/uncommon/rare/mythic/void, TIER_
 
 HOVER BOXES (KI-46) — clampHoverTips() (render-text.js) shifts any showing .hover-tip inward, through the CSS translate property, until it sits 4px inside the window; it runs on every mouseover (bootstrap.js) and every refreshInspector().
 
-HAND ROW — #handRow, centred in the stats band's middle column, the one card at hand size. Unaffordable at opacity 0.4; every card carries name/effect in its hover box. #endTurnBtn (128x44px) sits right of the last card, vertically centred (align-self: center). Every hand card's art placeholder and every card reward panel card holds an img child, src art/cards/<id>.png, pixelated, object-fit contain, hidden with an empty box on load failure — no art ships this build.
+HAND ROW — #handRow, centred in the stats band's middle column, the one card at hand size. Unaffordable at opacity 0.4; every card carries name/effect in its hover box. #endTurnBtn (128x44px) sits right of the last card, vertically centred (align-self: center). Every hand card's art placeholder and every card reward panel card holds an img child, src art/cards/<id>.png, pixelated, object-fit contain, hidden with an empty box on load failure — the label shows only until the image loads.
 
 THE FACE ROW — #playerDieList, bottom band's middle column, twenty squares in one row, face 1 left, face 20 right (D-10); the only face row on screen — the reward layer picks/lights faces on it. Each square is a .face-btn capped at 56px, square, shrinking together, 8px gap, 2px border: blank --line/--blank number, loaded --player-mod, faces 1/20 --nat. The rolled face fills --text with a black number, holds for the round; a blank roll holds the same way; a hopped face matches; a sealed face keeps colour at opacity 0.5. Under each square, 17px var(--game-font-2) --blank: this roll's odds (rollOdds(), pipeline.js, the exact bag rollDie() builds), one decimal by largest remainder so the row totals 100.0 (KI-45; ties to the lower face); NAT 1/NAT 20 beside their percent, SEALED/SEALED NEXT ROUND on a sealed face; weight above 1 drops its percent ODDS_EMPHASIS.DROP_PX lower, one font step larger, ODDS_EMPHASIS.COLOUR, and the line D-130 draws under the square (2 px per weight above 1, none at 1, the face's colour) pushes the odds and symbols down by its height (--weight-px) with no square moving. HOVER (D-128): a loaded, unsealed face opens one box per mod, load order left to right, the Load offer's box — symbol, name, rarity word in its tier colour, tags, text, foot "weight N" (MAX, Bound) — faceModBox() (render-text.js). Blank faces, faces 1/20 and a Sealed face keep two lines (D-125): "BLANK · weight 1", then the text. Never a trigger count, that shows only in the DIE layer. SYMBOL STRIP (D-124): under each loaded face's caption, its mod symbol(s), art/mods/<id>.png at 24px (FACE_SYMBOL_PX), a two-mod face's side by side; blank faces and 1/20 none; a missing file hides. Each symbol is a .face-symbol with its own hover box (setHoverTip()) opening upward over it: that mod's name and the face's weight, then that mod's text; the face's own box stays shut meanwhile. .face-symbol-strip is absolute, so the squares and captions never move; it hangs below band-d into #fightScreen's overflow-clip-margin (20px, overflow: clip). Rows built face 20 first, flipped by row-reverse; .die-mod-wrap (mod names, ×N weight, trigger badges, Bound badge) stays hidden in the DOM as the source of those words. Dev force-roll click disables whenever a step wires the row as a picker instead (currentPlayerDiePickConfig()). ENEMY DIE ROW: #enemyDieList sits under #enemyArtBox in .enemy-art-col, one square per face (6/12 at 28px, 20 at 22px, .enemy-face-row): blank like a blank player face, buff --enemy-mod, Nat --nat, no percents. The rolled face holds through the round (enemyRollDisplay, render-text.js). Hover shows faceHoverText(). A dieless enemy hides the row (:empty); the reward layer hides it. Dev drawer open, a click in ENEMY_ROLL_PHASE forces that face via forceEnemyRoll().
 
@@ -779,21 +779,22 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 177) — KI-50 DIE count is per run (doc fixed), KI-23 Load All skips face 10, KI-21 no default die action origin, die_layer shot. Verified: guardrails, facts, mods, build177 green; screenshots compared.
 (BUILD 178) — KI-54 seeded, stamp-free screenshots with a commit-based --compare, KI-55 config.js header room + F52, CLAUDE.md history moved out. No game change. Verified: guardrails, facts, mods, build178, build159 green; screenshots 0 px vs 177.
 (BUILD 179) — D-125 wording pass (Consecrate, Reliquary, Leaden Face), Strengthen picker Now/Becomes with odds, symbol hover box asserted inside the viewport. Verified: npm test green, screenshots 0 px vs 178.
+(BUILD 180) — docs reconciliation: six stale CLAUDE.md claims, D-127 to D-126, config.js F14/F44, Tolling Bell text (D-125), build178 compare assertion. Verified: npm test green, screenshots 0 px vs 179.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 3.06 (BUILD 179) — D-125 wording pass, on-screen text only.
+Stage 3.07 (BUILD 180) — documentation reconciliation and two small fixes.
 
-Item A: every mod, card and artifact text audited against D-125. Reworded: Consecrate, Reliquary, Leaden Face. Tolling Bell kept, its wording asked as a question. No number, cost, tier or name changed.
+Item A: CLAUDE.md corrected: art and audio folders, Not in V1, three no-art clauses, two-mod hover, hover-box clause, Reverberation's D-126, Notion pages, FACTS source.
 
-Item B: symbol hover boxes were already inside clampHoverTips()'s reach; asserted at faces 2 and 19, at 1600x900 and 1280x720.
+Item B: config.js header F14 (boss reward by act) and F44 (Anomaly) brought level with the Register. Tolling Bell's text now reads under D-125.
 
-Item C: the Strengthen picker's hover shows Now and Becomes, weight and odds (.face-tip-now in --blank, .face-tip-becomes in --text).
+Item C: build178 checks HEAD's parent against HEAD with a box report, and the tree against itself twice, instead of pinning the tree to HEAD.
 
-Tests: build179.test.js. Corrected: build139 (Reliquary text), build178 (--from=HEAD --compare=HEAD).
+Tests: build180.test.js. Corrected: build173 (Tolling Bell text), build178 (compare assertion).
 
 Verification: see paste-back.
 

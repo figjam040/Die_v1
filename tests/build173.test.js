@@ -372,7 +372,7 @@ function snapshot(page) {
       orison: getCardEffectText('orison')
     }));
     assert.deepStrictEqual(t, {
-      tolling: 'Blanks pay 2 block, plus 1 for every blank you have rolled this fight.',
+      tolling: 'When a blank triggers, gain 2 block, plus 1 for every blank you have rolled this fight.',
       gilded: 'When you roll a blank, gain 3 gold.',
       alms: 'When you roll a blank, gain 1 soul instead of 2 block.',
       vigil: 'Deal 4 damage, plus 1 for every 3 blanks you have rolled this run. Also triggers whenever you roll a blank.',

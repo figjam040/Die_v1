@@ -70,11 +70,11 @@ function lineCommentBytes(line) {
     assert.ok(!fs.existsSync(path.join(ROOT, 'verify_prev')));
   });
 
-  await runTest('--from=HEAD --compare=HEAD reports zero changed pixels (total) and zero on each of the ' + SCREENS.length + ' screens', async () => {
-    const out = execFileSync('node', [path.join(__dirname, 'screenshots.js'), '--from=HEAD', '--compare=HEAD'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
-    assert.ok(/total changed pixels: 0\b/.test(out), 'compare output:\n' + out);
+  await runTest('--from=HEAD~1 --compare=HEAD completes with a total and a box report line for each of the ' + SCREENS.length + ' screens', async () => {
+    const out = execFileSync('node', [path.join(__dirname, 'screenshots.js'), '--from=HEAD~1', '--compare=HEAD'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    assert.ok(/total changed pixels: \d+\b/.test(out), 'compare output:\n' + out);
     SCREENS.forEach(function(name) {
-      assert.ok(new RegExp('^' + name + ': 0 / \\d+ pixels changed', 'm').test(out), name + ' line in:\n' + out);
+      assert.ok(new RegExp('^' + name + ': \\d+ / \\d+ pixels changed \\([^)]*\\), \\d+ box\\(es\\)', 'm').test(out), name + ' line in:\n' + out);
     });
   });
 

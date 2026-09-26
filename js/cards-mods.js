@@ -1528,7 +1528,7 @@ function init() {
   gameState.config.artifacts = {
     third_eye: { id: 'third_eye', name: 'Third Eye', tier: 'rare', text: 'Once per act, before you roll, choose the face.' },
     loaded_die: { id: 'loaded_die', name: 'Loaded Die', tier: 'rare', text: 'Roll twice. Keep the higher face.' },
-    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', tags: ['blank'], text: 'Blanks pay 2 block, plus 1 for every blank you have rolled this fight.' },
+    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', tags: ['blank'], text: 'When a blank triggers, gain 2 block, plus 1 for every blank you have rolled this fight.' },
     tithe_box: { id: 'tithe_box', name: 'Tithe Box', tier: 'rare', text: 'When you roll a Nat 20, gain 15 gold.' },
     merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", tier: 'rare', text: 'Pay a quarter less for everything in the shop. Card removal stays at 75 gold.' },
     leaden_face: { id: 'leaden_face', name: 'Leaden Face', tier: 'rare', text: 'When you Strengthen a face, add 2 weight instead of 1.' },

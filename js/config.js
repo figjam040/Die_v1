@@ -16,7 +16,7 @@
 // F09 poison decays N, N−1 … 0, ticks at the end of its holder's turn
 // F10 Penitence 3 rounds, once per fight · F11 Nat 20 every loaded face triggers, ascending, repeatable
 // F12 Strengthen targets face 20, never face 1 · F13 Load offer is 3 mods, excluding the anchor and loaded mods
-// F14 die rewards as built: every fight win grants 1, an elite win 2, a rite 1 (or heal or removal); the boss grants none (D-22) · F15 rite heal 20
+// F14 die rewards as built: every fight win grants 1, an elite win 2, a rite 1 (or heal or removal), the act 1 and 2 boss 1 (F32); the act 3 boss grants none (D-22) · F15 rite heal 20
 // F16 lanes 2; slots per lane by act: act 1 9 (rites 2, 6, 9; slot 5 a Verger Fight, D-123), acts 2-3 8 (rites 2, 5, 8); the elite is slot 4 of the upper lane
 // F17 act 1 HP: opening 50, lane fights by position 58/65/78/85, elite 100, boss 100
 // F18 (BUILD 142) intent: opening 4–12, normals 6–18, elite 10–18, boss 10–20 — every enemy acts from a pattern (F36, F37)
@@ -40,7 +40,7 @@
 // F41 (BUILD 149) stacks of awe lower an Attack's damage to no less than 0, after Wrath, then decay by 1 at START_OF_TURN
 // F42 (BUILD 150) break numbers lowered by 4; gold (GOLD_REWARDS) from a fight win spends in the shop (SHOP) after every rite; a non-final Boss win heals BOSS_HEAL_PERCENT of max HP, rounded down (D-122); three artifacts offered after an Elite/non-final-Boss win
 // F43 (BUILD 151, 167) Purify: third die action, clears mods off a face (never 1/10/20), weight kept; Remove (D-119) deletes a blank face, not 1/10/20, above DIE_MIN_FACES 12
-// F44 (BUILD 151) lower lane index 3 is the event The Font: unresolved roll picks the outcome
+// F44 (BUILD 151) lower lane index 3 is the Anomaly The Font (D-117): unresolved roll picks the outcome; the slot type stays event
 // F45 (BUILD 153) artifacts: 13, up to ARTIFACT_MAX (8) held, offered after an Elite/non-final-Boss win and sold at SHOP.ARTIFACT_PRICE; their amounts live in ARTIFACTS
 // F46 (BUILD 154) every HP, block, poison, soul and gold change pops a number where it happened; DAMAGE_NUMBERS holds the rise, fade, step count and the six colours
 // F47 (BUILD 142) Lector reads a 6: +1 Drain; Hierophant a Nat 1: cancels, 5 poison; Pontifex reads the heaviest face: Wrath
@@ -53,7 +53,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 179,
+  BUILD: 180,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {

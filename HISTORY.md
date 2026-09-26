@@ -1503,3 +1503,18 @@ Item C (KI-53): not reproduced. #enemyHpValue's line measures 124.3 px in 175, 1
 Tests: build178.test.js (CLAUDE.md under 85,000 bytes). Corrected: build159.
 
 Verification: see paste-back.
+
+
+# BUILD 179 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 180)
+
+Stage 3.06 (BUILD 179) — D-125 wording pass, on-screen text only.
+
+Item A: every mod, card and artifact text audited against D-125. Reworded: Consecrate, Reliquary, Leaden Face. Tolling Bell kept, its wording asked as a question. No number, cost, tier or name changed.
+
+Item B: symbol hover boxes were already inside clampHoverTips()'s reach; asserted at faces 2 and 19, at 1600x900 and 1280x720.
+
+Item C: the Strengthen picker's hover shows Now and Becomes, weight and odds (.face-tip-now in --blank, .face-tip-becomes in --text).
+
+Tests: build179.test.js. Corrected: build139 (Reliquary text), build178 (--from=HEAD --compare=HEAD).
+
+Verification: see paste-back.
