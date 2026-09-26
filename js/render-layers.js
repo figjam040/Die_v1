@@ -163,9 +163,12 @@ let thirdEyeChoosing = false;
 // Consecrate is the class anchor, not a reward, per SCOPE — V1.
 const DIE_ACTION_EXCLUDED_MOD_IDS = ['consecrate'];
 
-// Which flow opened the die action panel — 'reward' (a fight win) or
-// 'rite'. Read once in closeDieActionScreen() to decide what happens next.
-let dieActionOrigin = 'reward';
+// Which flow opened the die action panel: 'reward' (a fight win), 'rite',
+// 'event' (The Font), 'shop', or 'dev' (the dev drawer, mid-fight). Read
+// once in closeDieActionScreen() to decide what happens next. No default:
+// openDieActionScreen() refuses a call that names none.
+const DIE_ACTION_ORIGINS = ['reward', 'rite', 'event', 'shop', 'dev'];
+let dieActionOrigin = null;
 
 // How many die actions the current 'reward' flow still owes the player —
 // 1 for a normal fight, 2 for the elite's extra action. Set by the caller
@@ -174,7 +177,10 @@ let dieActionOrigin = 'reward';
 let dieActionsRemaining = GAME_CONFIG.DIE_REWARDS.SINGLE;
 
 function openDieActionScreen(origin) {
-  dieActionOrigin = origin || 'reward';
+  if (DIE_ACTION_ORIGINS.indexOf(origin) === -1) {
+    throw new Error('openDieActionScreen() needs an origin, got ' + origin);
+  }
+  dieActionOrigin = origin;
   dieActionStep = 'choose';
   dieActionMods = [];
   dieActionChosenModId = null;
@@ -187,7 +193,11 @@ function closeDieActionScreen() {
   dieActionChosenModId = null;
   refreshInspector();
   const origin = dieActionOrigin;
-  dieActionOrigin = 'reward';
+  dieActionOrigin = null;
+  if (origin === 'dev') {
+    // The dev drawer's own open: back to the fight it interrupted, no reward.
+    return;
+  }
   if (origin === 'rite') {
     // A rite's die-action choice never offers a card reward — a shop opens instead.
     openShopScreen();
@@ -208,7 +218,7 @@ function closeDieActionScreen() {
   dieActionsRemaining -= 1;
   if (dieActionsRemaining > 0) {
     log('[DIE ACTION] elite reward: ' + dieActionsRemaining + ' die action(s) remaining');
-    openDieActionScreen();
+    openDieActionScreen('reward');
     return;
   }
   // Stage 1.11: the card reward screen always follows the die action panel
@@ -690,7 +700,7 @@ function openArtifactRewardScreen() {
     return gameState.run.artifacts.indexOf(id) === -1;
   });
   if (available.length < 1) {
-    openDieActionScreen();
+    openDieActionScreen('reward');
     return;
   }
   const pool = available.slice();
@@ -707,7 +717,7 @@ function closeArtifactRewardScreen() {
   artifactRewardStep = null;
   artifactRewardOptions = [];
   refreshInspector();
-  openDieActionScreen();
+  openDieActionScreen('reward');
 }
 
 function artifactRewardPick(artifactId) {

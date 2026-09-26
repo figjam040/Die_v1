@@ -1402,3 +1402,23 @@ Tests: build175.test.js (file sizes, load order, no duplicate names, map and fig
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+Stage 3.03 (BUILD 176) — face hover as the offer box, the DIE table, the weight line, roll timing, three dev controls, blanks rolled.
+
+Item A (D-128): a loaded, unsealed player face opens one faceModBox() per mod, load order left to right — symbol, name, rarity word in its tier colour, tags, text, foot "weight N". Blank, face 1, face 20 and Sealed faces keep the two-line hover.
+
+Item B (D-129): the DIE layer is an HP line, "Blanks rolled N", then one table, buildDieInfoTable(): Face, Weight, Mod, Triggered; no hr, no row borders.
+
+Item C (D-130): .face-weight-fill is gone. Weight 2+ draws .face-weight-line, 2 px per weight above 1 (weight 5 is 8 px), the face's colour, no layout height; odds and symbols sit lower by --weight-px.
+
+Item D: die_rolling is a flat 644 Hz rattle; GAME_CONFIG.ROLL_LAND_GAP_MS (250) sets the wait from the rattle's end to the landing sound and the player icon's stop.
+
+Item E: dev drawer Skip to Artifact Reward, Add card, Remove card (dev-tools.js); none writes the run record, transcript or gold.
+
+Item F (KI-52): runRecord.blanksRolled, a CSV column before build, shown in the DIE layer. Item G: two stale rendering.js comments name render-layers.js.
+
+Tests: build176.test.js. Corrected: build165, 167, 170, 172, 173, 175 (its fight shot no longer strengthens face 10).
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.

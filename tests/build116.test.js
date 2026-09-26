@@ -30,7 +30,7 @@ const { runTest, report } = createRunner();
       newFaces[1] = Object.assign({}, newFaces[1], { modId: 'smite' }); // face 2 — one slot loaded, one free
       updateDie({ faces: newFaces });
       const blankExists = gameState.die.faces.some(function(f) { return f.modId === null; });
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseLoad();
       dieActionPickMod(dieActionMods[0]);
       const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
@@ -48,7 +48,7 @@ const { runTest, report } = createRunner();
       const newFaces = gameState.die.faces.slice();
       newFaces[1] = Object.assign({}, newFaces[1], { modId: 'smite', modId2: 'blight' }); // face 2 — both slots full
       updateDie({ faces: newFaces });
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseLoad();
       dieActionPickMod(dieActionMods[0]);
       const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
@@ -68,7 +68,7 @@ const { runTest, report } = createRunner();
       newFaces[1] = Object.assign({}, newFaces[1], { modId: 'smite' });
       newFaces[2] = Object.assign({}, newFaces[2], { modId: 'blight' });
       updateDie({ faces: newFaces });
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseLoad();
       return dieActionMods.slice();
     });

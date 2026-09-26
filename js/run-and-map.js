@@ -1,7 +1,7 @@
 // Die/act builders, fight-scoped reset, run start, slot dispatch, and the
-// dev jump. Forward-references rendering.js's screen-flow functions and
+// dev jump. Forward-references render-layers.js's screen-flow functions and
 // phase-machine.js's runPhase()/autoAdvance() — safe per state.js's
-// header note; rendering.js's map code calls back into this file's
+// header note; render-map.js's map code calls back into this file's
 // enterSlot()/chooseLane()/devJumpToSlot()/advanceRun() in turn.
 
 // ---------- RUN SCAFFOLD ----------

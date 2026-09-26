@@ -85,7 +85,7 @@ async function enterPausedFight(page) {
     // not the card frame (.offer-card) — see build166.test.js.
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseLoad();
       const before = {
         cards: document.querySelectorAll('#dieActionPanel .offer-symbol').length,
@@ -128,7 +128,7 @@ async function enterPausedFight(page) {
   await runTest('Item A: Strengthen shows the face row and no cards', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseStrengthen();
       return {
         cards: document.querySelectorAll('#dieActionPanel .offer-card').length,
@@ -259,7 +259,7 @@ async function enterPausedFight(page) {
       cardRewardSkip();
 
       // Load: every mod card carries its MOD_DESCRIPTION text.
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseLoad();
       const modCard = document.querySelector('#dieActionPanel .offer-symbol');
       out.modId = modCard.dataset.offerId;
@@ -270,7 +270,7 @@ async function enterPausedFight(page) {
       const newFaces = gameState.die.faces.slice();
       newFaces[6] = Object.assign({}, newFaces[6], { modId: 'smite' });
       updateDie({ faces: newFaces });
-      openDieActionScreen();
+      openDieActionScreen('reward');
       const purify = Array.from(document.querySelectorAll('#dieActionPanel button')).find(b => b.textContent.indexOf('Purify') === 0);
       out.purifyTitle = purify ? (purify.querySelector('.hover-tip') || {}).textContent || '' : '';
       // Every face square keeps its own hover tip (die-row, BUILD 161).

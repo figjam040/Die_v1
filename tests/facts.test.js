@@ -459,7 +459,7 @@ function specOnlyDeepEqual(actual, expected, label) {
   // ---------------------------------------------------------------
   await runTest('F12 Strengthen targets face 20, never face 1', async () => {
     const page = await freshPage(browser);
-    await page.evaluate(() => { openDieActionScreen(); dieActionChooseStrengthen(); });
+    await page.evaluate(() => { openDieActionScreen('reward'); dieActionChooseStrengthen(); });
     const v = await page.evaluate(() => {
       const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
       function classesFor(num) {
@@ -476,7 +476,7 @@ function specOnlyDeepEqual(actual, expected, label) {
   await runTest('F13 Load offer is 3 mods, excluding the anchor', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseLoad();
       return dieActionMods.slice();
     });
@@ -742,7 +742,7 @@ function specOnlyDeepEqual(actual, expected, label) {
     assert.deepStrictEqual(eligibleBefore.sort(), ['penance', 'vigil'], 'test setup: exactly two loadable mods (penance, vigil) must remain unloaded');
 
     const buttons = await page.evaluate(() => {
-      openDieActionScreen();
+      openDieActionScreen('reward');
       return Array.from(document.querySelectorAll('#dieActionPanel button')).map(function(b) { return b.textContent; });
     });
     assert.strictEqual(buttons.indexOf('Load'), -1, 'the Load button must not render at all once fewer than 3 unloaded mods remain: ' + JSON.stringify(buttons));

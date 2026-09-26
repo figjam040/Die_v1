@@ -90,8 +90,9 @@ function devLoadMod() {
   }
 }
 
-// Fills every available slot with the selected mod — deliberately produces
-// the "same mod on many faces" shape the real Load flow never allows.
+// Fills every open slot on faces 2-19 with the selected mod, the anchor
+// face 10 excepted — deliberately produces the "same mod on many faces"
+// shape the real Load flow never allows. Never touches the run record.
 function devLoadAll() {
   const modId = document.getElementById('devModSelect').value;
   if (!modId || !gameState.config.mods[modId]) return;
@@ -100,7 +101,7 @@ function devLoadAll() {
   let skipped = 0;
   for (let index = 0; index < newFaces.length; index++) {
     const face = newFaces[index];
-    if (face.number === 1 || face.number === GAME_CONFIG.DIE_SIZE.PLAYER) continue;
+    if (face.number === 1 || face.number === 10 || face.number === GAME_CONFIG.DIE_SIZE.PLAYER) continue;
     if (face.modId === null) {
       newFaces[index] = Object.assign({}, face, { modId: modId });
       filled++;

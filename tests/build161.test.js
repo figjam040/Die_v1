@@ -113,7 +113,7 @@ async function enterOpeningFight(page) {
     assert.strictEqual(fightTitled, 0, fightTitled + ' element(s) on the fight screen carry a title attribute');
 
     // Open every reward layer in turn and check again.
-    await page.evaluate(() => { openDieActionScreen(); dieActionChooseLoad(); });
+    await page.evaluate(() => { openDieActionScreen('reward'); dieActionChooseLoad(); });
     let layerTitled = await page.evaluate(() =>
       Array.from(document.querySelectorAll('#dieActionPanel [title]')).filter(el => el.getAttribute('title')).length
     );

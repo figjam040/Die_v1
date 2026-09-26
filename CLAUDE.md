@@ -397,7 +397,7 @@ Enemy die — whether faces 1/N carry a Nat modId depends on the enemy, not fixe
 
 Weight display: a face above weight 1 shows ×N in the die rows, live. Weight is only ever written by strengthenFace(faceNumber) (pipeline.js) — Strengthen and Ordain's/Elevation's effect all call it. Player die only. A weight-2+ face also draws a line under its square (`.face-weight-line`, D-130), 2 px per weight above 1, in the face's own colour; it adds no layout height.
 
-Trigger-count display: a loaded player-die face that triggered at least once this fight shows a badge (`.die-trigger-count`), zero renders nothing. Player die only (reference equality with gameState.die.faces). One counter per mod slot — two-mod faces show both, slash-separated, '#N' or '#N1/N2'. Faces 1/20 also carry this badge, counting rolls this run.
+Trigger-count display: a loaded player-die face that triggered at least once this run shows a badge (`.die-trigger-count`), zero renders nothing. Player die only. One counter per mod slot — two-mod faces show both, slash-separated, '#N' or '#N1/N2'. Faces 1/20 also carry this badge, counting rolls this run.
 
 ---
 
@@ -756,11 +756,11 @@ POP NUMBERS — every HP, block, poison, soul and gold change pops a number wher
 
 MAP SCREEN (D-98) — #mapScreen shows the top bar and the map only: no ACT N MAP title (the top bar's own already says it), no YOUR DIE/PLAYER DIE/ELITE PREVIEW/ELITE DIE/BOSS PREVIEW/BOSS DIE. .map-composition draws at zoom 1.25, the widest at which Start and Boss sit inside the map panel's border at 1600px (1.4 overran it), centred; node labels one size down (10px). The lower lane's slot 3 reads Anomaly (D-117). Act 1 draws nine nodes a lane (D-123): .map-composition-long shortens the in-lane connectors from 20px to 14px, so at 1600x900 and 1920x1080 every node sits inside the panel with no scroll; acts 2/3 keep eight and 20px. Node/connector states keep their classes/colours, dev-jump nodes stay dotted/muted. Hovering the Elite or Boss node shows a .hover-tip with the same name/HP/pattern/loaded-faces text the removed panels printed (enemyPreviewHoverText()) — a dev-jump node's own tip appends rather than laying a second one over the same spot. KI-31: enterSlot() marks the slot entered before its handler runs, refuses (logged) a second call on an entered slot; an entered current node reads as completed. No map node, dev-jump included, accepts a click while the reward layer is open.
 
-INFO LAYERS (D-98) — #dieInfoBtn/#artifactsInfoBtn/#cardsInfoBtn (top bar) open #dieInfoLayer/#artifactsInfoLayer/#cardsInfoLayer, full-screen covers gated on gameState.ui.dieInfoOpen/artifactsInfoOpen/cardsInfoOpen. DIE is an HP line, a "Blanks rolled N" line (runRecord.blanksRolled), then one table (D-129): Face, Weight, Mod, Triggered, one row per face still on the die (a removed face drops out, D-119), header once, no rule lines; the Mod cell holds the symbol(s), art/mods/<id>.png at 32px, names, Bound and Sealed, the Triggered cell the count ("N / M" on a two-mod face); ARTIFACTS lists run.artifacts by name/text, each row led by a 48px art/artifacts/<id>.png icon; every icon hides on load error; CARDS draws ownedCards as the one card at mini size, one per id with its count. renderInfoLayers() runs every refreshInspector(); CLOSE or Escape closes; same buttons work on the fight screen too.
+INFO LAYERS (D-98) — #dieInfoBtn/#artifactsInfoBtn/#cardsInfoBtn (top bar) open #dieInfoLayer/#artifactsInfoLayer/#cardsInfoLayer, full-screen covers gated on gameState.ui.dieInfoOpen/artifactsInfoOpen/cardsInfoOpen. DIE is an HP line, a "Blanks rolled N" line (runRecord.blanksRolled), then one table (D-129): Face, Weight, Mod, Triggered, one row per face still on the die (a removed face drops out, D-119); the Mod cell holds the symbol(s), art/mods/<id>.png at 32px, names, Bound and Sealed, the Triggered cell the count per run, kept across fights ("N / M" on a two-mod face); ARTIFACTS lists run.artifacts by name/text, each row led by a 48px art/artifacts/<id>.png icon; every icon hides on load error; CARDS draws ownedCards as the one card at mini size, one per id with its count. renderInfoLayers() runs every refreshInspector(); CLOSE or Escape closes; same buttons work on the fight screen too.
 
 LOG PANEL — #log in .right-col, shown only while gameState.ui.logOpen; #logToggleBtn flips it, default closed every page load, works on the map as on the fight screen. Open, .right-col covers the whole play column (position fixed, inset 0, black background, 24px padding) rather than sitting beside it — the fight keeps rendering underneath, unchanged when closed — #log at 22px VT323, a #logViewToggleBtn (LOG: PLAY / LOG: ALL) and #logCloseBtn doing what #logToggleBtn does. Play view hides `.log-state`/`.log-listener` lines (still in the DOM); All view shows them.
 
-DEV DRAWER — #devChrome, below the panels, opened by #devChromeToggleBtn. Closed on every page load; #devModDescription beside the mod dropdown reads the selected mod's description; the ROLL_PHASE pause (1800ms) only applies while it is open (D-113); Mute roll sounds (#devMuteRollSoundsCheckbox) silences the four roll sounds (AUDIO MODULE); Skip to Artifact Reward ends the fight as a win and opens the artifact offer; the Add card and Remove card dropdowns (renderDevCardOptions()) put a card into the deck or take an owned copy out, none of the three writing the run record, transcript or gold; closed also makes the two dev inputs outside it (die-face force rolls, map dev-jump nodes) inert.
+DEV DRAWER — #devChrome, below the panels, opened by #devChromeToggleBtn. Closed on every page load; #devModDescription reads the selected mod's text; the ROLL_PHASE pause (1800ms) only applies while it is open (D-113); Mute roll sounds (#devMuteRollSoundsCheckbox) silences the four roll sounds (AUDIO MODULE); Skip to Artifact Reward ends the fight as a win and opens the artifact offer; Skip to Die Action opens the die action panel with origin 'dev', its close returning to the fight with no reward; Load All fills every open slot on faces 2-19 with the selected mod, the anchor face 10 excepted; the Add card and Remove card dropdowns (renderDevCardOptions()) put a card into the deck or take an owned copy out, none of the three writing the run record, transcript or gold; closed also makes the two dev inputs outside it (die-face force rolls, map dev-jump nodes) inert.
 
 ---
 
@@ -806,27 +806,24 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 174) — KI-51: facts/mods tests split by BUILD, 34 test files to 54, line caps asserted. No game change.
 (BUILD 175) — rendering.js split into four render files (F26 fifteen), name-collision and script-tag guardrails, tighter line caps. No game change.
 (BUILD 176) — D-128 face hover as the offer box, D-129 DIE table, D-130 weight line, flat 644 Hz rattle and ROLL_LAND_GAP_MS, dev Skip to Artifact Reward/Add card/Remove card, KI-52 blanksRolled. Verified: npm test green, screenshots compared.
+(BUILD 177) — KI-50 DIE count is per run (doc fixed), KI-23 Load All skips face 10, KI-21 no default die action origin, die_layer shot. Verified: guardrails, facts, mods, build177 green; screenshots compared.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 3.03 (BUILD 176) — face hover as the offer box, the DIE table, the weight line, roll timing, three dev controls, blanks rolled.
+Stage 3.04 (BUILD 177) — three known issues and housekeeping.
 
-Item A (D-128): a loaded, unsealed player face opens one faceModBox() per mod, load order left to right — symbol, name, rarity word in its tier colour, tags, text, foot "weight N". Blank, face 1, face 20 and Sealed faces keep the two-line hover.
+Item A (KI-50): the DIE layer's Triggered count is per run: modData.triggerCount/triggerCount2 survive a fight reset and only startNewRun() zeroes them. Code unchanged; CLAUDE.md corrected (Trigger-count display, INFO LAYERS).
 
-Item B (D-129): the DIE layer is an HP line, "Blanks rolled N", then one table, buildDieInfoTable(): Face, Weight, Mod, Triggered; no hr, no row borders.
+Item B (KI-23): devLoadAll() (dev-tools.js) skips the anchor face 10 as well as 1 and 20; #devLoadAllBtn was already wired. It never writes the run record.
 
-Item C (D-130): .face-weight-fill is gone. Weight 2+ draws .face-weight-line, 2 px per weight above 1 (weight 5 is 8 px), the face's colour, no layout height; odds and symbols sit lower by --weight-px.
+Item C (KI-21): openDieActionScreen(origin) has no default; a missing or unknown origin throws. Origins: reward, rite, event, shop, dev. The dev drawer's Skip to Die Action passes 'dev', and closing that returns to the fight with no card reward. Every js/ caller and every test call names its origin.
 
-Item D: die_rolling is a flat 644 Hz rattle; GAME_CONFIG.ROLL_LAND_GAP_MS (250) sets the wait from the rattle's end to the landing sound and the player icon's stop.
+Item D: tests/screenshots.js takes die_layer (the seeded fight with the DIE layer open), seven screens. Item E: three stale comments (state.js, run-and-map.js, index.html) name render-text.js, render-layers.js and render-map.js.
 
-Item E: dev drawer Skip to Artifact Reward, Add card, Remove card (dev-tools.js); none writes the run record, transcript or gold.
-
-Item F (KI-52): runRecord.blanksRolled, a CSV column before build, shown in the DIE layer. Item G: two stale rendering.js comments name render-layers.js.
-
-Tests: build176.test.js. Corrected: build165, 167, 170, 172, 173, 175 (its fight shot no longer strengthens face 10).
+Tests: build177.test.js. Corrected: build109, 116, 145, 154, 155, 156, 161, 164, 169 and facts (openDieActionScreen('reward')).
 
 Verification: see paste-back.
 

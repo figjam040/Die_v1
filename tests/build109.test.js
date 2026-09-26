@@ -26,7 +26,7 @@ const { runTest, report } = createRunner();
   await runTest('Run record: a Load offer and its pick are both recorded', async () => {
     const page = await freshPage(browser);
     const result = await page.evaluate(() => {
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseLoad();
       const offeredMods = dieActionMods.slice();
       const chosenMod = offeredMods[0];
@@ -44,7 +44,7 @@ const { runTest, report } = createRunner();
   await runTest('Run record: a Skip is recorded as a skip', async () => {
     const page = await freshPage(browser);
     const events = await page.evaluate(() => {
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseSkip();
       return gameState.runRecord.dieActionEvents.slice();
     });
@@ -73,7 +73,7 @@ const { runTest, report } = createRunner();
     const page = await freshPage(browser);
     await enterOpeningFight(page); // marks started:true, node:'opening'
     await page.evaluate(() => {
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseLoad(); // offer shown, never resolved
     });
     // BUILD 136: #startGameBtn now works even while a die-action panel is

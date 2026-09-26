@@ -71,7 +71,7 @@ document.getElementById('devSkipToDieActionBtn').addEventListener('click', funct
   if (gameState.run.status !== 'active' || gameState.run.outcome !== 'active') { return; }
   log('[DEV] skip to die action');
   dieActionsRemaining = GAME_CONFIG.DIE_REWARDS.SINGLE;
-  openDieActionScreen();
+  openDieActionScreen('dev');
 });
 
 // DEV ONLY — jumps to the card reward screen through the real

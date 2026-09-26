@@ -41,7 +41,7 @@ async function setFace20Weight(page, weight) {
 
 async function openChoose(page) {
   await page.evaluate(() => { devJumpToSlot('opening', null); });
-  await page.evaluate(() => { openDieActionScreen(); });
+  await page.evaluate(() => { openDieActionScreen('reward'); });
   await page.waitForFunction(() => dieActionStep === 'choose');
 }
 

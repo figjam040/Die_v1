@@ -305,7 +305,7 @@ const INTENT_KIND_WORDS = ['ATTACK', 'CHARGE', 'RELEASE', 'AFFLICT', 'BROKEN'];
   await runTest('Item 5: the Strengthen picker still marks eligible faces and keeps its hover text', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
-    await page.evaluate(() => { openDieActionScreen(); dieActionChooseStrengthen(); });
+    await page.evaluate(() => { openDieActionScreen('reward'); dieActionChooseStrengthen(); });
     const v = await page.evaluate(() => {
       const rows = Array.from(document.querySelectorAll('#playerDieList .die-row'));
       return {

@@ -161,7 +161,7 @@ function logStateChange(helperName, changes) {
 // ---------- POP NUMBERS (F46) ----------
 // Announced here, beside the [STATE] log line that records the same
 // change, never from a render function: rendering only owns the drawing
-// primitive (spawnFxNumber(), rendering.js). A bulk reset — a new run, a
+// primitive (spawnFxNumber(), render-text.js). A bulk reset — a new run, a
 // fight reset — raises fxSuppressDepth so its field writes pop nothing.
 
 let fxSuppressDepth = 0;

@@ -127,7 +127,7 @@ async function hoverEveryTip(page, label) {
       openArtifactRewardScreen();
       texts.push(document.getElementById('artifactRewardPanel').textContent);
       artifactRewardStep = null;
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseLoad();
       texts.push(document.getElementById('dieActionPanel').textContent);
       dieActionStep = null;
@@ -349,7 +349,7 @@ async function hoverEveryTip(page, label) {
     tally(await hoverEveryTip(page, 'fight'));
     await page.evaluate(() => { openCardRewardScreen(); });
     tally(await hoverEveryTip(page, 'card reward'));
-    await page.evaluate(() => { cardRewardStep = null; openDieActionScreen(); dieActionChooseLoad(); });
+    await page.evaluate(() => { cardRewardStep = null; openDieActionScreen('reward'); dieActionChooseLoad(); });
     tally(await hoverEveryTip(page, 'die action'));
     await page.close();
 

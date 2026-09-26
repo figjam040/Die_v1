@@ -195,7 +195,7 @@ function faceRow(page, faceNumber) {
   await runTest('Item C: with a die action open (Load, three cards), the layer sits above the face row, only one face row exists, and nothing scrolls at 1600x900', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseLoad();
       const panelRect = document.getElementById('dieActionPanel').getBoundingClientRect();
       const rowRect = document.getElementById('playerDieList').getBoundingClientRect();

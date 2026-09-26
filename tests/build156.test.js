@@ -61,7 +61,7 @@ const ONE_PX_PNG = Buffer.from(
 
     await page.evaluate(() => {
       dieActionsRemaining = GAME_CONFIG.DIE_REWARDS.SINGLE;
-      openDieActionScreen();
+      openDieActionScreen('reward');
       dieActionChooseLoad();
     });
     await page.waitForFunction(() => document.querySelectorAll('#dieActionPanel .offer-symbol').length === 3);

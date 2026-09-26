@@ -7,9 +7,10 @@
 // no test runner, no server, file:// direct. Never ships, same status as
 // tests/facts.test.js/tests/mods.test.js/tests/autoplay.js.
 //
-// Drives to six screens and saves one PNG each into verify/, overwriting
+// Drives to seven screens and saves one PNG each into verify/, overwriting
 // every run: the map, a fight with one dev-loaded two-mod face and one
-// strengthened face visible, the die action panel, the card reward panel,
+// strengthened face visible, that fight with the DIE layer open, the die
+// action panel, the card reward panel,
 // the dev drawer open, and act 1's nine-slot map at the fork. Every action taken to reach each screen is a
 // real, already-used-elsewhere function (openDieActionScreen(),
 // dieActionChooseStrengthen()/dieActionPickStrengthenFace(),
@@ -38,7 +39,7 @@ const FILE_URL = 'file://' + path.resolve(__dirname, '..', 'index.html').replace
 const VERIFY_DIR = path.resolve(__dirname, '..', 'verify');
 const PREV_DIR = path.resolve(__dirname, '..', 'verify_prev');
 
-const SCREENS = ['map', 'fight', 'die_action', 'card_reward', 'dev_drawer', 'map_act1_nine_slots'];
+const SCREENS = ['map', 'fight', 'die_layer', 'die_action', 'card_reward', 'dev_drawer', 'map_act1_nine_slots'];
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -125,8 +126,8 @@ async function shoot(page, name) {
   // sanctioned place any face's weight is ever written (dieActionPickStrengthenFace()
   // and Ordain's effect both call it too, per DIE FACE OBJECT STRUCTURE).
   // Deliberately NOT via openDieActionScreen()'s UI flow here: that
-  // function defaults dieActionOrigin to 'reward', and closing the panel
-  // on a 'reward' origin immediately cascades into the card reward panel
+  // function needs an origin, and closing the panel on a 'reward'
+  // origin immediately cascades into the card reward panel
   // — real, correct behaviour for a genuine post-win flow, but not
   // wanted yet, this fight hasn't been won. A first version of this
   // script called dieActionPickStrengthenFace() through that same UI flow
@@ -138,6 +139,11 @@ async function shoot(page, name) {
 
   // ---- 2. A fight with one two-mod face and one strengthened face visible ----
   await shoot(page, 'fight');
+
+  // ---- 2b. The same fight with the DIE layer open ----
+  await page.click('#dieInfoBtn');
+  await shoot(page, 'die_layer');
+  await page.click('#dieInfoCloseBtn');
 
   // ---- Force this fight's win the same way every other Playwright script
   // in this project does (runPhase()'s own top-of-function win guard, the

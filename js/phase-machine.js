@@ -93,7 +93,7 @@ function runPhase(phase) {
         if (wonSlot.label === 'Elite') {
           openArtifactRewardScreen();
         } else {
-          openDieActionScreen();
+          openDieActionScreen('reward');
         }
       }
       return;
