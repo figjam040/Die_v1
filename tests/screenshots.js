@@ -1,43 +1,42 @@
 // ============================================================
-// TESTS/SCREENSHOTS.JS — screenshot baseline (KI-6)
-// Same launch path every other test file in this project uses: plain Node
-// script, chromium launched directly via the raw `playwright` library
-// (const { chromium } = require('playwright'); browser = await
-// chromium.launch(); page = await browser.newPage(); page.goto(FILE_URL)),
-// no test runner, no server, file:// direct. Never ships, same status as
-// tests/facts.test.js/tests/mods.test.js/tests/autoplay.js.
+// TESTS/SCREENSHOTS.JS — screenshot baseline (KI-6, KI-54)
+// Plain Node script, chromium launched directly via the raw `playwright`
+// library, file:// direct, no test runner, no server. Never ships.
 //
 // Drives to seven screens and saves one PNG each into verify/, overwriting
 // every run: the map, a fight with one dev-loaded two-mod face and one
-// strengthened face visible, that fight with the DIE layer open, the die
-// action panel, the card reward panel,
-// the dev drawer open, and act 1's nine-slot map at the fork. Every action taken to reach each screen is a
-// real, already-used-elsewhere function (openDieActionScreen(),
-// dieActionChooseStrengthen()/dieActionPickStrengthenFace(),
-// dieActionChooseSkip(), cardRewardSkip(), devLoadMod(), the real
-// #devChromeToggleBtn) — nothing new invented for this tool, same
-// no-forcing-except-documented-dev-tools discipline tests/autoplay.js and
-// tests/facts.test.js already follow.
+// strengthened face, that fight with the DIE layer open, the die action
+// panel, the card reward panel, the dev drawer open, and act 1's nine-slot
+// map at the fork. Every step is a real function the game or its dev tools
+// already have.
 //
-// COMPARE MODE (--compare): before capturing, whatever is currently in
-// verify/ (the previous run's set) is copied into verify_prev/, then this
-// run's fresh captures overwrite verify/ as normal, then each screen's new
-// PNG is diffed against its verify_prev/ counterpart (tests/pngdiff.js —
-// a hand-rolled PNG decoder over Node's built-in zlib, no new dependency)
-// and the changed-pixel count is reported. Without --compare, this file
-// only regenerates verify/ — no previous-set bookkeeping, no diff.
+// Deterministic: Math.random is seeded with SEED at page start (the same
+// generator tests/build175.test.js uses) and #buildStamp is hidden before
+// every shot, so two runs of one tree are pixel-identical.
 //
-// Run: node tests/screenshots.js [--compare]
+// COMPARE (--compare[=HASH]): the working tree's shots are diffed against
+// the same seeded shots of a named commit, default the parent of HEAD. That
+// commit's index.html, js/, fonts/ and art/ are read out of git into a temp
+// folder outside the project. --from=HASH shoots a commit instead of the
+// working tree, so two commits can be compared; nothing then touches verify/.
+// The report gives changed pixels per screen and one line per bounding box.
+//
+// Run: node tests/screenshots.js [--compare[=HASH]] [--from=HASH]
 // ============================================================
 
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
-const { diffPNGs } = require('./pngdiff');
+const os = require('os');
+const { pathToFileURL } = require('url');
+const { execFileSync } = require('child_process');
+const { diffBoxes } = require('./pngdiff');
 
-const FILE_URL = 'file://' + path.resolve(__dirname, '..', 'index.html').replace(/\\/g, '/');
-const VERIFY_DIR = path.resolve(__dirname, '..', 'verify');
-const PREV_DIR = path.resolve(__dirname, '..', 'verify_prev');
+const ROOT = path.resolve(__dirname, '..');
+const VERIFY_DIR = path.join(ROOT, 'verify');
+const SEED = 178;
+const SETTLE_MS = 300;
+const TREE_PATHS = ['index.html', 'js', 'fonts', 'art'];
 
 const SCREENS = ['map', 'fight', 'die_layer', 'die_action', 'card_reward', 'dev_drawer', 'map_act1_nine_slots'];
 
@@ -45,46 +44,59 @@ function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-// Moves whatever the last run left in verify/ into verify_prev/, so this
-// run's fresh captures have something real to diff against. A screen with
-// no prior capture (first-ever run, or a screen added since) is reported
-// as having no previous set, not silently skipped.
-function rotatePreviousSet() {
-  ensureDir(PREV_DIR);
-  SCREENS.forEach(function(name) {
-    const src = path.join(VERIFY_DIR, name + '.png');
-    const dst = path.join(PREV_DIR, name + '.png');
-    if (fs.existsSync(src)) {
-      fs.copyFileSync(src, dst);
-    } else if (fs.existsSync(dst)) {
-      // Stale from an even-older run with no current counterpart — remove
-      // so a missing screen reads as "no previous set", not a leftover.
-      fs.unlinkSync(dst);
-    }
+function git(args, options) {
+  return execFileSync('git', args, Object.assign({ cwd: ROOT, maxBuffer: 64 * 1024 * 1024 }, options || {}));
+}
+
+function resolveCommit(name) {
+  return git(['rev-parse', '--verify', name + '^{commit}'], { encoding: 'utf8' }).trim();
+}
+
+// Writes the commit's page files into dir, byte for byte, binaries included.
+function extractTree(commit, dir) {
+  const list = git(['ls-tree', '-r', '--name-only', commit, '--'].concat(TREE_PATHS), { encoding: 'utf8' });
+  list.split('\n').filter(Boolean).forEach(function(rel) {
+    const out = path.join(dir, rel);
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, git(['show', commit + ':' + rel]));
   });
 }
 
-async function shoot(page, name) {
-  ensureDir(VERIFY_DIR);
-  const target = path.join(VERIFY_DIR, name + '.png');
-  await page.screenshot({ path: target });
-  console.log('captured verify/' + name + '.png');
+function seededRandom(seed) {
+  let s = seed >>> 0;
+  Math.random = function() {
+    s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
-(async () => {
-  const compareMode = process.argv.indexOf('--compare') !== -1;
-  ensureDir(VERIFY_DIR);
-  if (compareMode) rotatePreviousSet();
+// Hides the stamp, lets fonts and layout settle, shoots. onShot(page, name)
+// runs right after the picture is taken.
+async function shoot(page, outDir, name, onShot) {
+  ensureDir(outDir);
+  await page.evaluate(function() {
+    const stamp = document.getElementById('buildStamp');
+    if (stamp) stamp.style.visibility = 'hidden';
+    return document.fonts.ready;
+  });
+  // A pop number fades on wall-clock time, so a shot waits for #fxLayer to empty.
+  await page.waitForFunction(function() { return !document.querySelector('#fxLayer .fx-number'); }, null, { timeout: 5000 });
+  await page.waitForTimeout(SETTLE_MS);
+  await page.screenshot({ path: path.join(outDir, name + '.png') });
+  if (onShot) await onShot(page, name);
+}
 
-  const browser = await chromium.launch();
+// Takes all seven shots of the page at indexUrl into outDir, on a seeded
+// Math.random. Returns the console and page errors seen.
+async function captureAll(browser, indexUrl, outDir, onShot) {
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   const consoleErrors = [];
   const pageErrors = [];
-  // A missing art/*.png (e.g. an enemy with no portrait yet) is the
-  // expected fallback path, not a bug — dropped only when the resource
-  // path is under art/. Any other "resource not found" (a script, font,
-  // audio file) still fails the test. The failing URL lives on
-  // msg.location().url, never in msg.text() itself.
+  // A missing art/*.png is the expected fallback path, not a bug; any other
+  // failed resource (script, font, audio) still counts. The failing URL
+  // lives on msg.location().url, never in msg.text().
   page.on('console', function(msg) {
     if (msg.type() !== 'error') return;
     const isArtFailure = msg.text().indexOf('Failed to load resource') !== -1 && (msg.location().url || '').indexOf('art/') !== -1;
@@ -92,28 +104,23 @@ async function shoot(page, name) {
   });
   page.on('pageerror', function(err) { pageErrors.push(err.message); });
   page.on('dialog', function(d) { d.accept(); });
+  await page.addInitScript(seededRandom, SEED);
 
-  await page.goto(FILE_URL);
+  await page.goto(indexUrl);
   await page.waitForFunction(function() { return typeof gameState !== 'undefined' && gameState.run.screen === 'map'; });
 
-  // ---- 1. The map ----
-  await shoot(page, 'map');
+  await shoot(page, outDir, 'map', onShot);
 
-  // ---- Enter the opening fight; pause before the first roll so nothing
-  // races the phase machine (the standing autoAdvance() gotcha every
-  // multi-round Playwright script in this project works around the same
-  // way). ----
+  // Pause before the first roll so nothing races the phase machine.
   await page.evaluate(function() { devChromeOpen = true; devPauseBeforeFirstRoll = true; });
   await page.click('#devChromeToggleBtn');
   await page.evaluate(function() { enterSlot('opening', null); });
   await page.waitForFunction(function() { return gameState.turn.phase === 'START_OF_TURN'; });
-  await page.evaluate(function() { nextPhase(); }); // START_OF_TURN -> ROLL_PHASE, no auto-advance armed
+  await page.evaluate(function() { nextPhase(); });
   await page.waitForFunction(function() { return gameState.turn.phase === 'ROLL_PHASE'; });
 
-  // ---- Dev-load a two-mod face (face 2: Smite then Blight, via the real
-  // devLoadMod() dev tool, called twice — first call fills modId, second
-  // fills modId2, same as a real player's second Load onto that face
-  // would). ----
+  // Face 2 gets Smite then Blight through the real devLoadMod(), called
+  // twice: the first call fills modId, the second modId2.
   await page.selectOption('#devModSelect', 'smite');
   await page.fill('#devFaceInput', '2');
   await page.evaluate(function() { devLoadMod(); });
@@ -121,88 +128,124 @@ async function shoot(page, name) {
   await page.fill('#devFaceInput', '2');
   await page.evaluate(function() { devLoadMod(); });
 
-  // ---- Strengthen the anchor (face 10, always loaded with Consecrate on
-  // a fresh die) via strengthenFace() (pipeline.js) directly — the single
-  // sanctioned place any face's weight is ever written (dieActionPickStrengthenFace()
-  // and Ordain's effect both call it too, per DIE FACE OBJECT STRUCTURE).
-  // Deliberately NOT via openDieActionScreen()'s UI flow here: that
-  // function needs an origin, and closing the panel on a 'reward'
-  // origin immediately cascades into the card reward panel
-  // — real, correct behaviour for a genuine post-win flow, but not
-  // wanted yet, this fight hasn't been won. A first version of this
-  // script called dieActionPickStrengthenFace() through that same UI flow
-  // mid-fight and caught exactly this: the resulting "fight" screenshot
-  // showed the card reward panel's "Fight won" banner overlaid on an
-  // unwon fight. strengthenFace() alone writes the weight with no
-  // dieActionStep/screen side effect at all. ----
+  // strengthenFace() writes the weight with no die action screen behind it;
+  // going through openDieActionScreen() here would cascade into the card
+  // reward panel over a fight that is not won yet.
   await page.evaluate(function() { strengthenFace(10); });
 
-  // ---- 2. A fight with one two-mod face and one strengthened face visible ----
-  await shoot(page, 'fight');
+  await shoot(page, outDir, 'fight', onShot);
 
-  // ---- 2b. The same fight with the DIE layer open ----
   await page.click('#dieInfoBtn');
-  await shoot(page, 'die_layer');
+  await shoot(page, outDir, 'die_layer', onShot);
   await page.click('#dieInfoCloseBtn');
 
-  // ---- Force this fight's win the same way every other Playwright script
-  // in this project does (runPhase()'s own top-of-function win guard, the
-  // real win code path). This is the real post-win reward flow, so its
-  // own die-action-then-card-reward cascade is exactly what should
-  // happen here. ----
+  // Ending the fight through runPhase()'s own win guard runs the real
+  // post-win die action then card reward cascade.
   await page.evaluate(function() { updateEnemy({ hp: 0 }); nextPhase(); });
   await page.waitForFunction(function() { return dieActionStep !== null; });
-
-  // ---- 3. The die action panel — real post-win reward flow, top-level
-  // "choose Load or Strengthen" state, real die preview included. ----
-  await shoot(page, 'die_action');
-  await page.evaluate(function() { dieActionChooseSkip(); }); // real Skip, cascades into the real card reward panel
+  await shoot(page, outDir, 'die_action', onShot);
+  await page.evaluate(function() { dieActionChooseSkip(); });
   await page.waitForFunction(function() { return cardRewardStep !== null; });
 
-  // ---- 4. The card reward panel ----
-  await shoot(page, 'card_reward');
+  await shoot(page, outDir, 'card_reward', onShot);
   await page.evaluate(function() { cardRewardSkip(); });
 
-  // ---- 5. The dev drawer open (back on the map by now) ----
   await page.waitForFunction(function() { return gameState.run.screen === 'map'; });
-  await shoot(page, 'dev_drawer');
+  await shoot(page, outDir, 'dev_drawer', onShot);
 
-  // ---- 6. Act 1's map at the fork, drawer closed: nine slots a lane (D-123) ----
   await page.click('#devChromeToggleBtn');
-  await shoot(page, 'map_act1_nine_slots');
+  await shoot(page, outDir, 'map_act1_nine_slots', onShot);
 
-  console.log('\nConsole errors:', consoleErrors.length, JSON.stringify(consoleErrors));
-  console.log('Page errors:', pageErrors.length, JSON.stringify(pageErrors));
+  await page.close();
+  return { consoleErrors, pageErrors };
+}
 
-  await browser.close();
+function printErrors(label, result) {
+  console.log(label + ' console errors: ' + result.consoleErrors.length + ' ' + JSON.stringify(result.consoleErrors));
+  console.log(label + ' page errors: ' + result.pageErrors.length + ' ' + JSON.stringify(result.pageErrors));
+}
 
-  if (compareMode) {
-    console.log('\n=== COMPARE: current set vs previous set ===');
-    SCREENS.forEach(function(name) {
-      const prevPath = path.join(PREV_DIR, name + '.png');
-      const curPath = path.join(VERIFY_DIR, name + '.png');
-      if (!fs.existsSync(prevPath)) {
-        console.log(name + ': no previous screenshot to compare (first baseline for this screen)');
-        return;
-      }
-      try {
-        const result = diffPNGs(prevPath, curPath);
-        if (!result.comparable) {
-          console.log(name + ': NOT COMPARABLE — ' + result.reason);
-        } else {
-          const pct = ((result.changedPixels / result.totalPixels) * 100).toFixed(3);
-          console.log(name + ': ' + result.changedPixels + ' / ' + result.totalPixels + ' pixels changed (' + pct + '%)');
-        }
-      } catch (e) {
-        console.log(name + ': DIFF FAILED — ' + e.message);
-      }
+// Returns the report lines and the total changed pixels.
+function compareSets(baseDir, curDir) {
+  const lines = [];
+  let total = 0;
+  SCREENS.forEach(function(name) {
+    const basePath = path.join(baseDir, name + '.png');
+    const curPath = path.join(curDir, name + '.png');
+    if (!fs.existsSync(basePath) || !fs.existsSync(curPath)) {
+      lines.push(name + ': a shot is missing, nothing to compare');
+      return;
+    }
+    let result;
+    try {
+      result = diffBoxes(basePath, curPath);
+    } catch (e) {
+      lines.push(name + ': DIFF FAILED — ' + e.message);
+      return;
+    }
+    if (!result.comparable) {
+      lines.push(name + ': NOT COMPARABLE — ' + result.reason);
+      return;
+    }
+    total += result.changedPixels;
+    const pct = ((result.changedPixels / result.totalPixels) * 100).toFixed(3);
+    lines.push(name + ': ' + result.changedPixels + ' / ' + result.totalPixels + ' pixels changed (' + pct + '%), ' + result.boxes.length + ' box(es)');
+    result.boxes.forEach(function(b, i) {
+      lines.push('  box ' + (i + 1) + ': x=' + b.x + ' y=' + b.y + ' w=' + b.w + ' h=' + b.h + ' (' + b.pixels + ' px)');
     });
-  }
+  });
+  return { lines: lines, total: total };
+}
 
-  if (consoleErrors.length > 0 || pageErrors.length > 0) {
-    process.exitCode = 1;
+async function main() {
+  const compareArg = process.argv.find(function(a) { return a === '--compare' || a.indexOf('--compare=') === 0; });
+  const fromArg = process.argv.find(function(a) { return a.indexOf('--from=') === 0; });
+  if (fromArg && !compareArg) throw new Error('--from needs --compare');
+
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'die-shots-'));
+  const browser = await chromium.launch();
+  try {
+    let curLabel = 'working tree';
+    let curUrl = pathToFileURL(path.join(ROOT, 'index.html')).href;
+    let curDir = VERIFY_DIR;
+    if (fromArg) {
+      const from = resolveCommit(fromArg.slice('--from='.length));
+      const treeDir = path.join(tmpRoot, 'from-tree');
+      extractTree(from, treeDir);
+      curLabel = from.slice(0, 7);
+      curUrl = pathToFileURL(path.join(treeDir, 'index.html')).href;
+      curDir = path.join(tmpRoot, 'from-shots');
+    }
+    const cur = await captureAll(browser, curUrl, curDir, null);
+    if (!fromArg) SCREENS.forEach(function(name) { console.log('captured verify/' + name + '.png'); });
+    printErrors(curLabel, cur);
+
+    let failed = cur.consoleErrors.length > 0 || cur.pageErrors.length > 0;
+    if (compareArg) {
+      const named = compareArg.indexOf('=') === -1 ? 'HEAD^' : compareArg.slice(compareArg.indexOf('=') + 1);
+      const base = resolveCommit(named);
+      const baseTree = path.join(tmpRoot, 'base-tree');
+      const baseDir = path.join(tmpRoot, 'base-shots');
+      extractTree(base, baseTree);
+      const baseResult = await captureAll(browser, pathToFileURL(path.join(baseTree, 'index.html')).href, baseDir, null);
+      printErrors(base.slice(0, 7), baseResult);
+      console.log('\n=== COMPARE: ' + curLabel + ' vs ' + base.slice(0, 7) + ' (seed ' + SEED + ') ===');
+      const report = compareSets(baseDir, curDir);
+      report.lines.forEach(function(l) { console.log(l); });
+      console.log('total changed pixels: ' + report.total);
+    }
+    if (failed) process.exitCode = 1;
+  } finally {
+    await browser.close();
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
-})().catch(function(err) {
-  console.error('SCREENSHOTS FAILED: ' + err.stack);
-  process.exitCode = 1;
-});
+}
+
+if (require.main === module) {
+  main().catch(function(err) {
+    console.error('SCREENSHOTS FAILED: ' + err.stack);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { SCREENS, SEED, captureAll, extractTree, resolveCommit, compareSets };

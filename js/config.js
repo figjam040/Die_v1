@@ -26,7 +26,7 @@
 // F25 cards 48 (BUILD 153: +Venom, Ballast, Refrain, Second Sight, Cadence, Watchword, Blight Weight; BUILD 173: Vacancy to rare; tiers 24/16/8), each asserted by tests/facts.test.js
 // F26 files under /js/: fifteen — config, state, listener-registry, audio, pipeline, cards-mods, run-and-map, phase-machine, rendering, render-fight, render-map, render-layers, render-text, dev-tools, bootstrap
 // F27 pitch chains cap 8, reset at START_OF_TURN
-// F28 sound duration ceiling 200 ms holds for every frequent sound (roll, card plays, damage, block, end turn, mod trigger, die action, card reward, fight_start_normal/elite); nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it — all six are rare, at most once per fight-ending event, boss fight, or Nat roll
+// F28 sound duration ceiling 200 ms for every frequent sound; nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it, all rare
 // F33 (BUILD 141) at END_PLAYER_TURN, before the player's poison tick, every 5 block held removes 1 stack of poison from the player
 // F34 (KI-28) enemies act from a repeating pattern of 1 to 4 intents: Attack (a number rolled evenly in its range), Charge (a no-damage wind-up round, then a release; broken if HP lost from the wind-up's start through the wind-up round's tick reaches the break number) and Afflict (stacks of poison, no damage); an enemy Nat 1 cancels that round's intent
 // F35 (BUILD 141) any enemy can carry a die of any size from GAME_CONFIG.DIE_SIZE; buffs are poison, Wrath (adds to every Attack from the next round on), Drain (1 less soul next round) and Seal (the player's heaviest loaded face other than 1 and 20 counts as blank next round, for every rule)
@@ -34,7 +34,7 @@
 // F37 (BUILD 142) acts 2 and 3 enemies: Chorister, Cantor, Flagellant, Archdeacon, Cardinal; Anchorite, Mendicant, Inquisitor, Exarch, Pontifex; normals roll 6-sided dice, elites 12-sided, bosses 20-sided with their own Nat pair; the Pontifex reads the player's heaviest face
 // F38 (BUILD 142) Threnody's face is set once per run, 2 to 19, in gameState.run
 // F39 (BUILD 142) a Seal lasts one round: the sealed list is replaced at every START_OF_TURN and emptied at fight start
-// F31 (BUILD 125, corrected BUILD 142) three acts; per-act enemy HP multiplier 1.0/1.4/1.9, applied at enemy creation (buildAct()) with Math.ceil; the intent multiplier 1.0/1.2/1.45 no longer scales a pattern's own numbers (BUILD 142) — it sets only the enemy buff's poison-stack amount, the same way (also Math.ceil, also fixed at enemy creation); the enemy Nat 1 self-poison stays a flat, unscaled amount
+// F31 (BUILD 125) three acts; enemy HP multiplier 1.0/1.4/1.9 and intent multiplier 1.0/1.2/1.45, applied at enemy creation (buildAct()) with Math.ceil; the intent multiplier sets only the enemy buff's poison-stack amount, not a pattern's numbers; the enemy Nat 1 self-poison stays flat
 // F32 (BUILD 125) beating the act 1 or act 2 boss grants a card reward and one die reward, exactly like any other fight win; the act 3 boss is VICTORY with no reward (D-22)
 // F40 (BUILD 143) npm test runs every test file; guardrails.test.js fails on CLAUDE.md size, CONFIRMED WORKING line length, stale CURRENT SUBSTAGE, comment share, a build number in a comment, or a stray file
 // F41 (BUILD 149) stacks of awe lower an Attack's damage to no less than 0, after Wrath, then decay by 1 at START_OF_TURN
@@ -47,11 +47,13 @@
 // F48 (BUILD 153) Merchant's Seal prices are floor(base x 0.75); removal stays 75
 // F49 (BUILD 162) an enemy with a die shows a face row under its art; dev click forces a face (D-103)
 // F50 (BUILD 170) DIE_ROLL_ANIMATION 3 frames/200 ms, rattling, ROLL_LAND_GAP_MS 250 later a landing, blank or Nat sound; pause only in dev drawer (D-113)
-// F51 (BUILD 164) face 20 weight capped at FACE_TWENTY_MAX_WEIGHT 5 on every weight path, MAX shown on its caption (D-108)// ============================================================
+// F51 (BUILD 164) face 20 weight capped at FACE_TWENTY_MAX_WEIGHT 5 on every weight path, MAX shown on its caption (D-108)
+// F52 blanksRolled (run.blanksRolled, runRecord.blanksRolled) counts rolls only: a blank a card triggers is not counted
+// ============================================================
 
 const GAME_CONFIG = {
 
-  BUILD: 177,
+  BUILD: 178,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {

@@ -127,4 +127,74 @@ function diffPNGs(pathA, pathB, threshold) {
   return { comparable: true, reason: null, changedPixels: changed, totalPixels: totalPixels };
 }
 
-module.exports = { decodePNG, diffPNGs };
+// Same changed-pixel rule as diffPNGs(), plus the changed pixels grouped
+// into bounding boxes: the picture is cut into `cell`-pixel cells, cells
+// holding a changed pixel join when within `gapCells` of each other, and each
+// group reports the tight box of its own changed pixels, largest first.
+function diffBoxes(pathA, pathB, threshold, cell, gapCells) {
+  const t = threshold === undefined ? 10 : threshold;
+  const size = cell || 8;
+  const gap = gapCells === undefined ? 2 : gapCells;
+  const imgA = decodePNG(pathA);
+  const imgB = decodePNG(pathB);
+  if (imgA.width !== imgB.width || imgA.height !== imgB.height || imgA.channels !== imgB.channels) {
+    return { comparable: false, reason: 'size or channel mismatch: ' + imgA.width + 'x' + imgA.height + 'x' + imgA.channels + ' vs ' + imgB.width + 'x' + imgB.height + 'x' + imgB.channels, changedPixels: null, totalPixels: null, boxes: [] };
+  }
+  const w = imgA.width;
+  const h = imgA.height;
+  const channels = imgA.channels;
+  const cols = Math.ceil(w / size);
+  const rows = Math.ceil(h / size);
+  const cells = new Map();
+  let changed = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const base = (y * w + x) * channels;
+      let differs = false;
+      for (let ch = 0; ch < channels; ch++) {
+        if (Math.abs(imgA.pixels[base + ch] - imgB.pixels[base + ch]) > t) { differs = true; break; }
+      }
+      if (!differs) continue;
+      changed++;
+      const key = Math.floor(y / size) * cols + Math.floor(x / size);
+      let c = cells.get(key);
+      if (!c) { c = { x0: x, y0: y, x1: x, y1: y, n: 0 }; cells.set(key, c); }
+      c.x0 = Math.min(c.x0, x); c.x1 = Math.max(c.x1, x);
+      c.y0 = Math.min(c.y0, y); c.y1 = Math.max(c.y1, y);
+      c.n++;
+    }
+  }
+  const seen = new Set();
+  const boxes = [];
+  cells.forEach(function(start, startKey) {
+    if (seen.has(startKey)) return;
+    seen.add(startKey);
+    const box = { x0: start.x0, y0: start.y0, x1: start.x1, y1: start.y1, pixels: start.n };
+    const queue = [startKey];
+    while (queue.length) {
+      const key = queue.pop();
+      const cy = Math.floor(key / cols);
+      const cx = key % cols;
+      for (let dy = -gap; dy <= gap; dy++) {
+        for (let dx = -gap; dx <= gap; dx++) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+          const nk = ny * cols + nx;
+          if (seen.has(nk) || !cells.has(nk)) continue;
+          seen.add(nk);
+          const c = cells.get(nk);
+          box.x0 = Math.min(box.x0, c.x0); box.x1 = Math.max(box.x1, c.x1);
+          box.y0 = Math.min(box.y0, c.y0); box.y1 = Math.max(box.y1, c.y1);
+          box.pixels += c.n;
+          queue.push(nk);
+        }
+      }
+    }
+    boxes.push({ x: box.x0, y: box.y0, w: box.x1 - box.x0 + 1, h: box.y1 - box.y0 + 1, pixels: box.pixels });
+  });
+  boxes.sort(function(a, b) { return b.pixels - a.pixels; });
+  return { comparable: true, reason: null, changedPixels: changed, totalPixels: w * h, boxes: boxes };
+}
+
+module.exports = { decodePNG, diffPNGs, diffBoxes };

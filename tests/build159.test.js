@@ -58,16 +58,17 @@ runTest('CLAUDE.md is under ' + CLAUDE_MD_UNDER_BYTES + ' bytes', () => {
   assert.ok(CLAUDE_MD_UNDER_BYTES <= CLAUDE_MD_MAX_BYTES, 'CLAUDE_MD_MAX_BYTES (' + CLAUDE_MD_MAX_BYTES + ') must not be lower than the ' + CLAUDE_MD_UNDER_BYTES + '-byte target itself');
 });
 
-runTest('CLAUDE.md CONFIRMED WORKING has exactly one line for each build 141 to 159, and one line for builds 001 to 140', () => {
+runTest('CLAUDE.md CONFIRMED WORKING has one aggregate line for builds 001 to 169, and exactly one line for each build from 170 to the current GAME_CONFIG.BUILD', () => {
   const startIdx = claudeMd.indexOf('# CONFIRMED WORKING');
   const endIdx = claudeMd.indexOf('\n# CURRENT SUBSTAGE');
   assert.ok(startIdx !== -1 && endIdx !== -1 && endIdx > startIdx, 'could not locate the CONFIRMED WORKING section bounds');
   const section = claudeMd.slice(startIdx, endIdx);
 
-  const aggregateMatches = section.match(/^\(BUILDs 001 to 140\).*$/m) || [];
-  assert.strictEqual(aggregateMatches.length, 1, 'expected exactly one aggregate line for builds 001 to 140, found ' + aggregateMatches.length);
+  const aggregateMatches = section.match(/^\(BUILDs 001 to 169\).*HISTORY\.md.*$/gm) || [];
+  assert.strictEqual(aggregateMatches.length, 1, 'expected exactly one aggregate line for builds 001 to 169 pointing at HISTORY.md, found ' + aggregateMatches.length);
+  const currentBuild = parseInt(fs.readFileSync(path.resolve(ROOT, 'js', 'config.js'), 'utf8').match(/BUILD:\s*(\d+)/)[1], 10);
 
-  for (let n = 141; n <= 159; n++) {
+  for (let n = 170; n <= currentBuild; n++) {
     const padded = String(n).padStart(3, '0');
     const re = new RegExp('^\\(BUILD ' + padded + '\\).*$|^\\(BUILD ' + n + '\\).*$', 'm');
     const matches = section.match(new RegExp(re.source, 'gm')) || [];

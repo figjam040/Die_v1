@@ -1422,3 +1422,70 @@ Tests: build176.test.js. Corrected: build165, 167, 170, 172, 173, 175 (its fight
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+
+# BUILD 177 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 178)
+
+Stage 3.04 (BUILD 177) — three known issues and housekeeping.
+
+Item A (KI-50): the DIE layer's Triggered count is per run: modData.triggerCount/triggerCount2 survive a fight reset and only startNewRun() zeroes them. Code unchanged; CLAUDE.md corrected (Trigger-count display, INFO LAYERS).
+
+Item B (KI-23): devLoadAll() (dev-tools.js) skips the anchor face 10 as well as 1 and 20; #devLoadAllBtn was already wired. It never writes the run record.
+
+Item C (KI-21): openDieActionScreen(origin) has no default; a missing or unknown origin throws. Origins: reward, rite, event, shop, dev. The dev drawer's Skip to Die Action passes 'dev', and closing that returns to the fight with no card reward. Every js/ caller and every test call names its origin.
+
+Item D: tests/screenshots.js takes die_layer (the seeded fight with the DIE layer open), seven screens. Item E: three stale comments (state.js, run-and-map.js, index.html) name render-text.js, render-layers.js and render-map.js.
+
+Tests: build177.test.js. Corrected: build109, 116, 145, 154, 155, 156, 161, 164, 169 and facts (openDieActionScreen('reward')).
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.
+
+# Moved from CLAUDE.md at BUILD 178
+
+## CONFIRMED WORKING index lines, builds 141 to 169 (verbatim, in build order)
+
+(BUILD 141) — poison answer (F33/KI-26), enemy intent patterns (F34) and enemy dice of any size w/ Wrath/Drain/Seal (F35), foundational for BUILD 142's full enemy roster.
+(BUILD 142) — fifteen designed enemies (F36/F37) with real dice/patterns, enemy Nat sound/visual (KI-22), Hosanna/Threnody reworked, Seal now clears every round.
+(BUILD 143) — anti-bloat pass: comment rule enforced across all files, CLAUDE.md standing sections trimmed, guardrails.test.js added (byte/line-length/comment-share checks).
+(BUILD 144) — skin pass: self-hosted Press Start 2P/VT323 fonts, black palette, log-panel toggle (gameState.ui), no mechanic change.
+(BUILD 145) — layout pass: horizontal 1-20 face row, d20/enemy die icons, intent icon, portrait hand cards, restyled map, new SCREEN LAYOUT section, no mechanic change.
+(BUILD 146) — CLAUDE.md trim, window auto-scaling (applyScale()), End Turn/hand card resize, intent icon hover sentence, character art loading (none shipped).
+(BUILD 147) — intent hover box via .hover-tip (title attrs removed), console filter for missing art/ resources, blank rolled face now holds its highlight, die icon number backing box.
+(BUILD 148) — KI-28 Charge break counts the release round's own poison tick, run transcript (gameState.run.transcript), log Play/All views, log full-screen overlay.
+(BUILD 149) — the awe status (aweStacks, lowers Attack damage), Dread/Genuflect mods + Kneel/Compline/Tremendum/Mysterium cards, card art image loading (none shipped).
+(BUILD 150) — OQ-16 Charge breakAt lowered 4, card Bulwark, gold rewards, the shop (cards/artifact/Strengthen/removal), three artifacts, KI-29 threnodyFace test fix.
+(BUILD 151) — die action Purify (removes mods from a loaded face), the event slot/The Font (unresolved roll), lower lane now 6 fights via the event slot.
+(BUILD 152) — KI-30: build142.test.js's lower[3] assertions updated for the event slot, CLAUDE_MD_MAX_BYTES centralised, .claude/ gitignored, guardrails' stray-file check uses git check-ignore.
+(BUILD 153) — relics renamed artifacts (8 slots, ARTIFACT_MAX 8), ten new artifacts, sold in shop at 150, seven new cards (pool 48).
+(BUILD 154) — second UI pass: one reward panel shape (three 380x470 cards, D-86) across die action/card/artifact/shop/Font, pop numbers (D-87, F46), stamp reads BUILD only.
+(BUILD 155) — KI-31 node re-entry fix, roll odds under each face (rollOdds()), the reward layer over the fight's own face row, CLAUDE.md trimmed to a 72,000-byte ceiling.
+(BUILD 156) — KI-32 face row fix, map screen reduced to the map (D-98), DIE/ARTIFACTS/CARDS info layers, act backgrounds (D-97).
+(BUILD 157) — KI-34 NAT caption wrap, KI-35 artifact slot text wrap, KI-36 run record build column + shop-opened log line.
+(BUILD 158) — D-99 odds to one decimal, D-100 dead act 1 constants deleted, D-101 boss Nat 20 forces a Charge, D-102/KI-37 Load offer d20s.
+(BUILD 159) — KI-38/D-70: the BUILD 124 test no longer plays a bot run. CONFIRMED WORKING now one line per build 141-159, one for 001-140.
+(BUILD 160) — CLAUDE.md size cap 72,000 to 90,000 bytes (D-84); CLAUDE_MD_MAX_BYTES is the single source. No game change.
+(BUILD 161) — KI-39 Purify title case, KI-40 Font centred, D-104/KI-41 .hover-tip replaces native titles, D-105 roll strip name-only, D-106 gold pick outline.
+(BUILD 162) — D-103/KI-42 enemy die as a face row under the enemy art, dev click forces a face; D-107 stepped roll animation (DIE_ROLL_ANIMATION).
+(BUILD 163) — KI-43 standing-sections check removed; KI-44 config.js header F47-F50 reconciled. No game change.
+(BUILD 164) — D-108 face 20 weight capped at 5 (FACE_TWENTY_MAX_WEIGHT) on every weight path, MAX shown.
+(BUILD 165) — D-109 artifact and mod art in the top-bar slots, ARTIFACTS layer and DIE layer; every image hides on error.
+(BUILD 166) — D-110 Load and artifact offers as 160px symbols, dev mod description; D-113 roll pause only with the dev drawer open.
+(BUILD 167) — D-114 gold icon, D-115 Choose titles, D-116 rite screen, D-117 Anomaly, D-118 sleek pass, D-119 Remove die action.
+(BUILD 168) — D-120 poison ticks at the end of the poisoned side's turn; poison answer at END_PLAYER_TURN; KI-28 holds.
+(BUILD 169) — D-111 rarity tiers, D-112 one card component, KI-45 odds total 100.0, KI-46 hover clamp, D-121 Rite 6/6, D-122 boss heal, D-123 act 1 ninth slot, KI-47.
+
+## Standing-section history fragments (what was cut, then the original wording it sat in)
+
+- PHASE ORDER: START_OF_TURN no longer touches it — original wording: "poison ticks at the end of the poisoned side's own turn; START_OF_TURN no longer touches it. The player's"
+- ENEMY DIE PER TYPE: BUILD 158 — original wording: "ENEMY_NAT_TWENTY (D-101, BUILD 158):"
+- ENEMY DIE PER TYPE: buff faces no longer sweep — original wording: " breakable as any Charge; buff faces no longer sweep. wrathPerTrigger"
+- ACTS: D-122 amends D-27 — original wording: "(grantBossHeal(), phase-machine.js; D-122 amends D-27; log"
+- BUILD METHODOLOGY: (BUILD 143) on COMMENT RULE — original wording: "COMMENT RULE (BUILD 143):"
+- BUILD METHODOLOGY: (BUILD 143) on TESTS — original wording: "TESTS (BUILD 143):"
+- WHO EDITS THIS FILE: lowered from 80,000 by BUILD 155 — original wording: " (CLAUDE_MD_MAX_BYTES, tests/shared-constants.js — lowered from 80,000 by BUILD 155)."
+- SCREEN LAYOUT: 20 percent under the old 380 — original wording: ".offer-card-offer 304x470 (20 percent under the old 380, the three spaced 130px apart)"
+- SCREEN LAYOUT: No rite strip under the map any more. — original wording: " node completed. No rite strip under the map any more."
+- SCREEN LAYOUT: the same name/HP/pattern/loaded-faces text the removed panels printed — original wording: "with the same name/HP/pattern/loaded-faces text the removed panels printed (enemyPreviewHoverText())"
+
