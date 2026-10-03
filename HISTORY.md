@@ -1565,3 +1565,16 @@ Tests: build182.test.js. Corrected: mods, facts F45, build137, 142, 153, 167, 17
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+
+# BUILD 183 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 184)
+
+Stage 3.10 (BUILD 183) — the caps pass (D-135).
+
+Reckoning, Covenant, Gradual cap 12. Tenet rare. Exequy cost 1, Vindication cost 3, both uncapped; Jubilee uncapped. F25 tiers 24/15/9.
+
+Tests: build183.test.js. Corrected: build129, 131, 134, 139, 171.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.

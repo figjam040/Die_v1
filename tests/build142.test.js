@@ -288,7 +288,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     await page.close();
   });
 
-  await runTest('Item C-c/d/e: every normal die has 1-2 buff faces of 6, every elite has 4 of 12, Cardinal/Pontifex have 5 of 20 plus Nats', async () => {
+  await runTest('Item C-c/d/e: every normal die has 1-2 buff faces of 6, every elite has 4 of 12, Cardinal has 5 of 20 and Pontifex 7 (BUILD 184 adds Absolve), plus Nats', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
       const acts = { act2: buildAct(2), act3: buildAct(3) };
@@ -313,7 +313,7 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     });
     v.bosses.forEach(function(b) {
       assert.strictEqual(b.size, 20, b.name + '\'s die must be 20-sided');
-      assert.strictEqual(b.count, 5, b.name + '\'s die must trigger a buff on 5 faces');
+      assert.strictEqual(b.count, b.name === 'Pontifex' ? 7 : 5, b.name + '\'s die must trigger a buff on ' + (b.name === 'Pontifex' ? 7 : 5) + ' faces');
       assert.strictEqual(b.face1, 'ENEMY_NAT_ONE', b.name + ' face 1 must be ENEMY_NAT_ONE');
       assert.strictEqual(b.faceTop, 'ENEMY_NAT_TWENTY', b.name + ' top face must be ENEMY_NAT_TWENTY');
     });

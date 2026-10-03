@@ -622,5 +622,12 @@ function applyEnemyReads() {
       updateEnemy({ wrathPending: enemy.wrathPending + enemy.wrathPerTrigger });
       log('[ENEMY] Pontifex reads face ' + heaviest.number + ': Wrath triggers.');
     }
+  } else if (enemy.name === 'Cardinal') {
+    const rolledBlank = gameState.turn.rollOutcome === 'blank' ||
+      (gameState.turn.rollOutcome === 'mod' && isFaceSealed(gameState.turn.rolledFaceNumber));
+    if (rolledBlank) {
+      updateEnemy({ wrathPending: enemy.wrathPending + GAME_CONFIG.CARDINAL_WRATH_PER_BLANK });
+      log('[ENEMY] Cardinal reads the blank: Wrath +1 from next round.');
+    }
   }
 }

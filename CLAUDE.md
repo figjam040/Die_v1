@@ -547,21 +547,21 @@ The rest (Smite, Penance, Offering, Blight, Virulence, Sanctuary, Largesse, Tith
 
 Every fight-type slot's enemy is a named entry in GAME_CONFIG.ENEMIES, keyed by id (buildAct(), run-and-map.js, assembles each act's opening/lanes/elite/boss from these). Fifteen: act 1 — Verger (opening only), Thurifer, Asperser, Lector (elite), Hierophant (boss); act 2 — Chorister, Cantor, Flagellant, Archdeacon (elite), Cardinal (boss); act 3 — Anchorite, Mendicant, Inquisitor, Exarch (elite), Pontifex (boss). Each carries `name`, a literal `pattern` (ACT_INTENT_MULTIPLIER scales only buff poison, never a pattern's own numbers), and, except the three plain act-1 lane normals (hasDie:false), a `dieSpec` (buildEnemyDieFromSpec(), pipeline.js). DIE_SIZE.NORMAL (6)/ELITE (12) are real sizes; bosses stay 20-sided, both Nats. HP: Math.ceil(base × ACT_HP_MULTIPLIER) — act 1's four lane positions read ACT1_LANE_FIGHT_HP ([58,65,78,85]) directly. enemy.name (beginFightFromSlot()) is the enemy's identity, distinct from `id` ('Fight'/'Elite'/'Boss', which the panel title keys off).
 
-Enemy buff/Nat mechanics — registered unconditionally in init() (cards-mods.js): enemy_buff_poison/wrath/drain/seal via enemy_buff_dispatch, each triggering only when its own face is actually rolled; ENEMY_NAT_ONE cancels the attack + self-poisons 5, once per fight — default unless named below. ENEMY_NAT_TWENTY (D-101): every boss with Nat faces (Hierophant, Cardinal, Pontifex) forces its next intent to its own pattern's charge entry via forcedNextIntent, unless already winding up/releasing (then nothing extra happens) — winds up next round, releases the round after, breakable as any Charge. wrathPerTrigger is each enemy's own Wrath amount, falling back to ENEMY_WRATH_AMOUNT.
+Enemy buff/Nat mechanics — registered unconditionally in init() (cards-mods.js): enemy_buff_poison/wrath/drain/seal/absolve via enemy_buff_dispatch (Absolve sheds half the enemy's poison, rounded up, on Pontifex's faces 6 and 14), each triggering only when its own face is actually rolled; ENEMY_NAT_ONE cancels the attack + self-poisons 5, once per fight — default unless named below. ENEMY_NAT_TWENTY (D-101): every boss with Nat faces (Hierophant, Cardinal, Pontifex) forces its next intent to its own pattern's charge entry via forcedNextIntent, unless already winding up/releasing (then nothing extra happens) — winds up next round, releases the round after, breakable as any Charge. wrathPerTrigger is each enemy's own Wrath amount, falling back to ENEMY_WRATH_AMOUNT.
 
 Cardinal and Pontifex keep their own Nat 1 (branch on enemy.name): Cardinal's triggers the player's heaviest loaded face outside the roll, no attack cancel; Pontifex's zeroes both wrath fields, once per fight, no attack cancel. Their Nat 20 follows the shared forced-Charge behaviour above.
 
-Per-enemy "reads" — applyEnemyReads() (pipeline.js), once per round, reading the player's roll: Lector triggers Drain on face 6; Hierophant's Nat 1 also fires on a player Nat 1; Pontifex triggers Wrath on the player's heaviest loaded face.
+Per-enemy "reads" — applyEnemyReads() (pipeline.js), once per round, reading the player's roll: Lector triggers Drain on face 6; Hierophant's Nat 1 also fires on a player Nat 1; Pontifex triggers Wrath on the player's heaviest loaded face; Cardinal adds CARDINAL_WRATH_PER_BLANK Wrath per blank the player rolls, no cap.
 
 Enemy intent (F34): every enemy acts from `pattern`, a repeating Attack/Charge/Afflict list, shown at START_OF_TURN (advanceEnemyIntentForRound(), after the enemy's own tick from the round before, so a Charge's break check counts the tick that ended the wind-up round — KI-28), advanced by ENEMY_ACT_PHASE once a round resolves (Charge only after release). getIncomingIntentDamage() is the shared intent-damage reader (Interdict). The enemy's Nat 1 cancels whatever is live, wind-up included.
 
-FIGHT PANEL TITLE: #enemyPanelTitle reads ENEMY/ELITE ★/BOSS ☠ off enemy.id. #enemyNameValue shows enemy.name. Pontifex's own #enemyReadLine: "Reads the heaviest face: Wrath +N when the player rolls it."
+FIGHT PANEL TITLE: #enemyPanelTitle reads ENEMY/ELITE ★/BOSS ☠ off enemy.id. #enemyNameValue shows enemy.name. #enemyReadLine, Pontifex: "Reads the heaviest face: Wrath +N when the player rolls it."; Cardinal: "Reads blanks: Wrath +1 when the player rolls a blank."
 
 ENEMY FACE HOVER TEXT: faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount), threaded by renderDieList(). Cardinal, Pontifex, Hierophant each get custom ENEMY_NAT_ONE/TWENTY hover text; Lector's Drain face (6) appends "Also triggers when the player rolls a 6."
 
 ENEMY NAT SOUND/VISUAL: enemy_nat_20/enemy_nat_1 (audio.js) — the player's own synthesis an octave lower, ≤200ms. Visual: the rolled row pulses three times over 600ms in --nat; #enemyIntentValue reads "NAT 20" or "CANCELLED — NAT 1" (plain "NAT 1" for Cardinal/Pontifex).
 
-ENEMY DICE OF ANY SIZE, WRATH, DRAIN, SEAL (F35): buildEnemyDieFromSpec(spec) (pipeline.js) builds every act 2/3 enemy and the two non-Hierophant bosses; buildEnemyDieFaces() (run-and-map.js) is kept only for Hierophant.
+ENEMY DICE OF ANY SIZE, WRATH, DRAIN, SEAL, ABSOLVE (F35): buildEnemyDieFromSpec(spec) (pipeline.js) builds every act 2/3 enemy and the two non-Hierophant bosses; buildEnemyDieFaces() (run-and-map.js) is kept only for Hierophant.
 
 LOADED-FACE RULE / SEAL: isFaceSealed(faceNumber) (pipeline.js) is the one shared check. turn.sealedFaces is REPLACED by a copy of player.sealNextRound every START_OF_TURN (even empty), cleared at fight-start, so a Seal never survives past its round or into a new fight. Faces 1/20 are never Sealed.
 
@@ -773,25 +773,26 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 173) — D-126/D-127 blank synergy: Vacancy, Tabernacle, Tithe, Vigil, Reverberation, Tolling Bell, Gilded Die, Blank tag.
 (BUILD 174) — KI-51: facts/mods tests split by BUILD, 34 test files to 54, line caps asserted. No game change.
 (BUILD 175) — rendering.js split into four render files (F26 fifteen), name-collision and script-tag guardrails, tighter line caps. No game change.
-(BUILD 176) — D-128 face hover as the offer box, D-129 DIE table, D-130 weight line, flat rattle, dev Skip to Artifact Reward/Add card/Remove card, KI-52. Verified: npm test green, screenshots compared.
-(BUILD 177) — KI-50 DIE count per run, KI-23 Load All skips face 10, KI-21 no default die action origin, die_layer shot. Verified: four test files green; screenshots compared.
-(BUILD 178) — KI-54 seeded stamp-free screenshots, commit-based --compare, KI-55 config.js header room + F52. No game change. Verified: five test files green; screenshots 0 px vs 177.
-(BUILD 179) — D-125 wording pass, Strengthen picker Now/Becomes with odds, symbol hover box inside the viewport. Verified: npm test green, screenshots 0 px vs 178.
-(BUILD 180) — docs reconciliation, D-127 to D-126, config.js F14/F44, Tolling Bell text (D-125). Verified: npm test green, screenshots 0 px vs 179.
-(BUILD 181) — D-132 Halo gates Strengthen on face 20 (canStrengthenFace), D-133 artifact tiers 3/6/5 drawn through the offer split. Verified: npm test green, screenshots 0 px vs 179.
-(BUILD 182) — D-131 no trigger cap: guard 500, trigger queue; sweep pacing 200/50/10; D-134 chains on any Bound trigger, Rosary. Verified: npm test green, screenshots 0 px vs 180.
-(BUILD 183) — D-135 caps: Reckoning/Covenant/Gradual cap 12, Tenet rare, Exequy/Vindication/Jubilee uncapped. Verified: npm test green, screenshots 0 px vs 182.
+(BUILD 176) — D-128 face hover as the offer box, D-129 DIE table, D-130 weight line, flat rattle, dev Skip to Artifact Reward/Add card/Remove card, KI-52.
+(BUILD 177) — KI-50 DIE count per run, KI-23 Load All skips face 10, KI-21 no default die action origin, die_layer shot.
+(BUILD 178) — KI-54 seeded stamp-free screenshots, commit-based --compare, KI-55 config.js header room + F52. No game change.
+(BUILD 179) — D-125 wording pass, Strengthen picker Now/Becomes with odds, symbol hover box inside the viewport.
+(BUILD 180) — docs reconciliation, D-127 to D-126, config.js F14/F44, Tolling Bell text (D-125).
+(BUILD 181) — D-132 Halo gates Strengthen on face 20 (canStrengthenFace), D-133 artifact tiers 3/6/5 drawn through the offer split.
+(BUILD 182) — D-131 no trigger cap: guard 500, trigger queue; sweep pacing 200/50/10; D-134 chains on any Bound trigger, Rosary.
+(BUILD 183) — D-135 caps: Reckoning/Covenant/Gradual cap 12, Tenet rare, Exequy/Vindication/Jubilee uncapped.
+(BUILD 184) — D-136 boss counters: Cardinal +1 Wrath per blank rolled (applyEnemyReads), Pontifex carries Absolve on faces 6 and 14, sheds half its poison rounded up; F35, F37, F47 amended. Verified: npm test green, screenshots 0 px vs 183.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 3.10 (BUILD 183) — the caps pass (D-135).
+Stage 3.11 (BUILD 184) — the boss counters (D-136).
 
-Reckoning, Covenant, Gradual cap 12. Tenet rare. Exequy cost 1, Vindication cost 3, both uncapped; Jubilee uncapped. F25 tiers 24/15/9.
+Cardinal: +1 Wrath per blank the player rolls. Pontifex: Absolve on 6 and 14.
 
-Tests: build183.test.js. Corrected: build129, 131, 134, 139, 171.
+Tests: build184.test.js. Corrected: build142.
 
 Verification: see paste-back.
 

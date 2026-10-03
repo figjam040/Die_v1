@@ -63,7 +63,8 @@ const ENEMY_BUFF_DISPLAY_NAME = {
   enemy_buff_poison: 'POISON',
   enemy_buff_wrath: 'WRATH',
   enemy_buff_drain: 'DRAIN',
-  enemy_buff_seal: 'SEAL'
+  enemy_buff_seal: 'SEAL',
+  enemy_buff_absolve: 'ABSOLVE'
 };
 
 function modDisplayName(modId) {
@@ -108,6 +109,8 @@ function faceHoverText(face, buffPoisonStacks, enemyName, wrathAmount) {
     }
   } else if (face.modId === 'enemy_buff_seal') {
     text = 'Your heaviest loaded face counts as blank next round.';
+  } else if (face.modId === 'enemy_buff_absolve') {
+    text = 'It sheds half its stacks of poison, rounded up.';
   } else if (face.modId && MOD_DESCRIPTION[face.modId]) {
     text = MOD_DESCRIPTION[face.modId];
   }

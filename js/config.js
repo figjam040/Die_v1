@@ -29,9 +29,9 @@
 // F28 sound duration ceiling 200 ms for every frequent sound; nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it, all rare
 // F33 (BUILD 141) at END_PLAYER_TURN, before the player's poison tick, every 5 block held removes 1 stack of poison from the player
 // F34 (KI-28) enemies act from a repeating pattern of 1 to 4 intents: Attack (a number rolled evenly in its range), Charge (a no-damage wind-up round, then a release; broken if HP lost from the wind-up's start through the wind-up round's tick reaches the break number) and Afflict (stacks of poison, no damage); an enemy Nat 1 cancels that round's intent
-// F35 (BUILD 141) any enemy can carry a die of any size from GAME_CONFIG.DIE_SIZE; buffs are poison, Wrath (adds to every Attack from the next round on), Drain (1 less soul next round) and Seal (the player's heaviest loaded face other than 1 and 20 counts as blank next round, for every rule)
+// F35 (BUILD 141) any enemy may carry a die of any size from DIE_SIZE; buffs: poison, Wrath (every Attack from next round hits harder), Drain (1 less soul next round), Seal (your heaviest loaded face but 1 and 20 counts as blank next round, every rule), Absolve (sheds half its stacks of poison, rounded up; BUILD 184)
 // F36 act 1 enemies: Verger (opening, 6–9), Thurifer (lane positions 1, 3), Asperser (lane positions 2, 4), Lector (elite), Hierophant (boss); an enemy Nat 20 or Nat 1 has its own sound and a pulse on the rolled row (KI-22)
-// F37 (BUILD 142) acts 2 and 3 enemies: Chorister, Cantor, Flagellant, Archdeacon, Cardinal; Anchorite, Mendicant, Inquisitor, Exarch, Pontifex; normals roll 6-sided dice, elites 12-sided, bosses 20-sided with their own Nat pair; the Pontifex reads the player's heaviest face
+// F37 (BUILD 142) acts 2 and 3 enemies: Chorister, Cantor, Flagellant, Archdeacon, Cardinal; Anchorite, Mendicant, Inquisitor, Exarch, Pontifex; normals roll 6-sided dice, elites 12-sided, bosses 20-sided with their own Nat pair
 // F38 (BUILD 142) Threnody's face is set once per run, 2 to 19, in gameState.run
 // F39 (BUILD 142) a Seal lasts one round: the sealed list is replaced at every START_OF_TURN and emptied at fight start
 // F31 (BUILD 125) three acts; enemy HP multiplier 1.0/1.4/1.9 and intent multiplier 1.0/1.2/1.45, applied at enemy creation (buildAct()) with Math.ceil; the intent multiplier sets only the enemy buff's poison-stack amount, not a pattern's numbers; the enemy Nat 1 self-poison stays flat
@@ -43,7 +43,7 @@
 // F44 (BUILD 151) lower lane index 3 is the Anomaly The Font (D-117): unresolved roll picks the outcome; the slot type stays event
 // F45 (BUILD 153) artifacts 15 (Halo 181, Rosary 182), ARTIFACT_MAX 8 held, offered after an Elite or non-final Boss win and sold at SHOP.ARTIFACT_PRICE
 // F46 (BUILD 154) every HP, block, poison, soul and gold change pops a number where it happened; DAMAGE_NUMBERS holds the rise, fade, step count and the six colours
-// F47 (BUILD 142) Lector reads a 6: +1 Drain; Hierophant a Nat 1: cancels, 5 poison; Pontifex reads the heaviest face: Wrath
+// F47 (BUILD 142) Lector reads a 6: +1 Drain; Hierophant a Nat 1: cancels, 5 poison; Pontifex reads the heaviest face: Wrath; Cardinal reads blanks: +1 Wrath each, no cap (BUILD 184)
 // F48 (BUILD 153) Merchant's Seal prices are floor(base x 0.75); removal stays 75
 // F49 (BUILD 162) an enemy with a die shows a face row under its art; dev click forces a face (D-103)
 // F50 (BUILD 170) DIE_ROLL_ANIMATION 3 frames/200 ms, rattling, ROLL_LAND_GAP_MS 250 later a landing, blank or Nat sound; pause only in dev drawer (D-113)
@@ -53,7 +53,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 183,
+  BUILD: 184,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -149,6 +149,7 @@ const GAME_CONFIG = {
   DIE_MIN_FACES: 12,
 
   ENEMY_WRATH_AMOUNT: 2,
+  CARDINAL_WRATH_PER_BLANK: 1,
 
   DEV_TEST_DIE_SIZES: [6, 12, 20],
 
@@ -230,7 +231,7 @@ const GAME_CONFIG = {
     pontifex: {
       name: 'Pontifex',
       pattern: [{ kind: 'attack', min: 21, max: 25 }, { kind: 'afflict', stacks: 6 }, { kind: 'attack', min: 21, max: 25 }, { kind: 'charge', release: 41, breakAt: 31 }],
-      dieSpec: { sizeKey: 'BOSS', faces: { 4: 'enemy_buff_poison', 16: 'enemy_buff_poison', 8: 'enemy_buff_seal', 19: 'enemy_buff_seal', 12: 'enemy_buff_wrath' }, nats: true },
+      dieSpec: { sizeKey: 'BOSS', faces: { 4: 'enemy_buff_poison', 16: 'enemy_buff_poison', 6: 'enemy_buff_absolve', 14: 'enemy_buff_absolve', 8: 'enemy_buff_seal', 19: 'enemy_buff_seal', 12: 'enemy_buff_wrath' }, nats: true },
       wrathPerTrigger: 3
     }
   },

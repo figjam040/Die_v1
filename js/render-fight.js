@@ -649,7 +649,7 @@ function renderStats() {
   document.getElementById('enemyHpValue').textContent = shownHp(gameState.enemy.hp) + ' / ' + gameState.enemy.maxHp;
   const nameEl = document.getElementById('enemyNameValue');
   if (nameEl) { nameEl.textContent = gameState.enemy.name || '—'; }
-  // Pontifex's own panel line: reads the player's heaviest loaded face.
+  // Pontifex and Cardinal each show one panel line naming what they read.
   const readLine = document.getElementById('enemyReadLine');
   if (readLine) {
     if (gameState.enemy.name === 'Pontifex') {
@@ -657,6 +657,11 @@ function renderStats() {
       const readValueEl = document.getElementById('enemyReadValue');
       readValueEl.textContent = 'Reads the heaviest face: Wrath +' + gameState.enemy.wrathPerTrigger + ' when the player rolls it.';
       setHoverTip(readValueEl, 'When the player rolls their heaviest loaded face, Wrath triggers.');
+    } else if (gameState.enemy.name === 'Cardinal') {
+      readLine.style.display = '';
+      const readValueEl = document.getElementById('enemyReadValue');
+      readValueEl.textContent = 'Reads blanks: Wrath +' + GAME_CONFIG.CARDINAL_WRATH_PER_BLANK + ' when the player rolls a blank.';
+      setHoverTip(readValueEl, 'Every blank the player rolls adds Wrath from next round. No cap.');
     } else {
       readLine.style.display = 'none';
     }

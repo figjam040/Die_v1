@@ -916,6 +916,14 @@ function init() {
       } else {
         log('[ENEMY] Seal triggers: no loaded face to seal');
       }
+    } else if (data.buffId === 'enemy_buff_absolve') {
+      const shed = Math.ceil(gameState.enemy.poisonStacks / 2);
+      updateEnemy({ poisonStacks: gameState.enemy.poisonStacks - shed });
+      if (shed > 0) {
+        log('[ENEMY] Absolve triggers: sheds ' + shed + ' stacks of poison.');
+      } else {
+        log('[ENEMY] Absolve triggers: no stacks of poison to shed.');
+      }
     }
   }, 'permanent');
 
