@@ -1548,3 +1548,20 @@ Tests: build181.test.js. Corrected: build145, 153, 154, 164, 165, 170, 171, 173,
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+
+# BUILD 182 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 183)
+
+Stage 3.09 (BUILD 182) — no trigger cap, the chains, Rosary.
+
+Item A (D-131): the cap, its exemption and the once-per-round refusal deleted; TRIGGER_FREEZE_GUARD 500; nested triggers queued, not recursed.
+
+Item B: SWEEP_PACING 200/50/10.
+
+Item C (D-134): Reliquary Chain on any Bound trigger; Rosary, rare, the mirror.
+
+Tests: build182.test.js. Corrected: mods, facts F45, build137, 142, 153, 167, 173, 179, 180, 181.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.

@@ -157,17 +157,17 @@ const { runTest, report } = createRunner();
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 131: Vindication — damage equal to twice block (block read, not spent), capped at 24', async () => {
+  await runTest('BUILD 131: Vindication — damage equal to twice block (block read, not spent), no cap', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
     await page.evaluate(() => { forcePlayerRoll(3); });
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
-    await page.evaluate(() => { updatePlayer({ hand: ['vindication'], soul: 5, block: 20 }); }); // 2*20 = 40, caps at 24
+    await page.evaluate(() => { updatePlayer({ hand: ['vindication'], soul: 5, block: 20 }); }); // 2*20 = 40, no cap
     const before = await page.evaluate(() => ({ hp: gameState.enemy.hp, block: gameState.player.block }));
     await page.evaluate(() => { playCard(0); });
     const after = await page.evaluate(() => ({ hp: gameState.enemy.hp, block: gameState.player.block }));
-    assert.strictEqual(before.hp - after.hp, 24, 'expected damage capped at 24 despite 40 raw (2x20 block)');
+    assert.strictEqual(before.hp - after.hp, 40, 'expected 40 damage, uncapped (2x20 block)');
     assert.strictEqual(after.block, before.block, 'expected block to be read only, never spent');
     await liveBrowser.close();
   });
@@ -186,17 +186,17 @@ const { runTest, report } = createRunner();
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 131: Exequy — damage equal to the enemy\'s stacks of poison, not removed, capped at 12', async () => {
+  await runTest('BUILD 131: Exequy — damage equal to the enemy\'s stacks of poison, not removed, no cap', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
     await page.evaluate(() => { forcePlayerRoll(3); });
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
-    await page.evaluate(() => { updateEnemy({ poisonStacks: 20 }); updatePlayer({ hand: ['exequy'], soul: 5 }); }); // caps at 12
+    await page.evaluate(() => { updateEnemy({ poisonStacks: 20 }); updatePlayer({ hand: ['exequy'], soul: 5 }); }); // no cap
     const before = await page.evaluate(() => gameState.enemy.hp);
     await page.evaluate(() => { playCard(0); });
     const after = await page.evaluate(() => ({ hp: gameState.enemy.hp, poison: gameState.enemy.poisonStacks }));
-    assert.strictEqual(before - after.hp, 12, 'expected damage capped at 12 despite 20 stacks of poison');
+    assert.strictEqual(before - after.hp, 20, 'expected 20 damage, uncapped (20 stacks of poison)');
     assert.strictEqual(after.poison, 20, 'expected poison stacks unchanged — not removed');
     await liveBrowser.close();
   });
@@ -275,12 +275,12 @@ const { runTest, report } = createRunner();
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 131: Jubilee — 4 damage +2 per weight added to the die this run, capped at 24', async () => {
+  await runTest('BUILD 131: Jubilee — 4 damage +2 per weight added to the die this run, no cap', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
     await page.evaluate(() => {
-      // 12 weight added: 4 + 2*12 = 28, caps at 24.
+      // 12 weight added: 4 + 2*12 = 28, no cap.
       updateRun({ weightAdded: 12 });
     });
     await page.evaluate(() => { forcePlayerRoll(9); }); // face 9, untouched, still blank
@@ -289,7 +289,7 @@ const { runTest, report } = createRunner();
     const before = await page.evaluate(() => gameState.enemy.hp);
     await page.evaluate(() => { playCard(0); });
     const after = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(before - after, 24, 'expected damage capped at 24 despite 28 raw (4 + 2x12 weight added)');
+    assert.strictEqual(before - after, 28, 'expected 28 damage, uncapped (4 + 2x12 weight added)');
     await liveBrowser.close();
   });
 

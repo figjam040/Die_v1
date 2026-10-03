@@ -136,13 +136,13 @@ async function reachCardPhase(page) {
     await page.close();
   });
 
-  await runTest('Item B: Jubilee caps at 24 from weightAdded 12 and 13', async () => {
+  await runTest('Item B: Jubilee has no cap, 28 from weightAdded 12 and 30 from 13', async () => {
     const page = await freshFight(browser);
     await reachCardPhase(page);
     await page.evaluate(() => { updateRun({ weightAdded: 12 }); });
-    assert.strictEqual(await playJubilee(page), 24);
+    assert.strictEqual(await playJubilee(page), 28);
     await page.evaluate(() => { updateRun({ weightAdded: 13 }); });
-    assert.strictEqual(await playJubilee(page), 24);
+    assert.strictEqual(await playJubilee(page), 30);
     await page.close();
   });
 

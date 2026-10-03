@@ -68,7 +68,7 @@ const { runTest, report } = createRunner();
       // BUILD 131 — checkpoint 3 cards, sixteen new cards.
       chastise: 'basic', cloister: 'basic', psalm: 'basic', reliquary: 'basic',
       vacancy: 'rare', lauds: 'basic', hosanna: 'basic', tabernacle: 'basic',
-      tenet: 'uncommon', gradual: 'uncommon', myrrh: 'uncommon', gloria: 'uncommon',
+      tenet: 'rare', gradual: 'uncommon', myrrh: 'uncommon', gloria: 'uncommon',
       vindication: 'rare', exequy: 'rare', oblation: 'rare', jubilee: 'rare',
       // BUILD 132 — checkpoint 3, trigger a face outside a roll (prompt D).
       threnody: 'uncommon', reverberation: 'rare',

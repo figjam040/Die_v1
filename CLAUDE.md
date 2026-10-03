@@ -11,7 +11,7 @@ Read this file at the start of every session before doing anything else.
 
 Single HTML file (index.html) plus fifteen plain JavaScript files under /js/, loaded via ordinary `<script src>` tags in a fixed order: config.js, state.js, listener-registry.js, audio.js, pipeline.js, cards-mods.js, run-and-map.js, phase-machine.js, rendering.js, render-fight.js, render-map.js, render-layers.js, render-text.js, dev-tools.js, bootstrap.js. rendering.js holds log(), refreshInspector() and renderCard(); render-fight.js the fight screen and face rows; render-map.js the map; render-layers.js the reward and info layers, shop, rite and The Font; render-text.js hover boxes, pops, the roll animation and the text tables. No ES modules — file:// origins are null and module scripts are CORS-blocked, a hard constraint, not a style choice. No build step. No npm. No server.
 
-config.js is the one constants file, loaded first, before state.js. Every tunable number/structural constant lives on one object, GAME_CONFIG — every other file reads it from there instead of repeating a literal. Its header comment carries the FACTS block (F01-F39+) verbatim from the 2 Register's F-rows, one line per fact beside the GAME_CONFIG field(s) implementing it — the one place F-numbers live in code.
+config.js is the one constants file, loaded first, before state.js. Every tunable number/structural constant lives on one object, GAME_CONFIG — every other file reads it from there instead of repeating a literal. Its header comment carries the FACTS block (F01-F52) verbatim from the 2 Register's F-rows, one line per fact beside the GAME_CONFIG field(s) implementing it — the one place F-numbers live in code.
 
 All fifteen files share one global lexical scope, as one giant inline `<script>` block would, so a top-level name declared in two files silently overwrites the first; guardrails.test.js fails on any duplicate. The only eager trigger anywhere is `window.addEventListener('DOMContentLoaded', init)` in bootstrap.js — nothing calls a game function at parse time, so cross-file references are safe regardless of script tag order.
 
@@ -48,7 +48,7 @@ One class only: The Ordained. Dante, Obelisk and EX-0 are deferred and must not 
 
 Blank faces are not empty. Rolling a blank face generates 2 block for The Ordained. This is what makes loading a mod a real decision rather than a free upgrade.
 
-Four die actions only: Load (place a mod on a blank face), Strengthen (add 1 weight to a face), Purify (remove every mod from a chosen loaded face) and Remove (delete one blank face from the die for the run, D-119) — see MULTI-MOD FACES. Enchant and Expand are deferred.
+Four die actions only: Load (place a mod on a blank face), Strengthen (add 1 weight to a face), Purify (remove every mod from a chosen loaded face) and Remove (delete one blank face from the die for the run, D-119) — see MULTI-MOD FACES. Expand is deferred; Enchant is a dead word for Strengthen.
 
 Design floor: every mod must clearly outperform a guaranteed 2 block, measured on the turn it triggers, not scaled by trigger frequency. Frequency cancels out of this comparison: a mod and a blank on the same face are gated by identical roll chance, so their per-trigger value compares directly. Do not multiply mod value by trigger rate — that arithmetic is wrong. Current band: 10 to 16 points of value on the triggering turn — the standard every future mod is checked against.
 
@@ -393,7 +393,7 @@ Player die — face 1 is always 'NAT_ONE', face DIE_SIZE.PLAYER (20) always 'NAT
 
 Enemy die — whether faces 1/N carry a Nat modId depends on the enemy, not fixed like the player's — see ENEMY DIE PER TYPE. buildEnemyDieFaces(poisonFaceNumbers, includeNats, dieSize) and buildEnemyDieFromSpec(spec) build every enemy die; includeNats/spec.nats switches faces 1/dieSize between blank and Nat.
 
-Weight display: a face above weight 1 shows ×N in the die rows, live. Weight is only ever written by strengthenFace(faceNumber) (pipeline.js) — Strengthen and Ordain's/Elevation's effect all call it. Player die only. A weight-2+ face also draws a line under its square (`.face-weight-line`, D-130), 2 px per weight above 1, in the face's own colour; it adds no layout height.
+Weight shows as the D-130 line under the face and in the DIE table; the hidden .die-mod-wrap keeps the ×N text. Weight is only ever written by strengthenFace(faceNumber) (pipeline.js) — Strengthen and Ordain's/Elevation's effect all call it. Player die only. A weight-2+ face also draws a line under its square (`.face-weight-line`, D-130), 2 px per weight above 1, in the face's own colour; it adds no layout height.
 
 Trigger-count display: a loaded player-die face that triggered at least once this run shows a badge (`.die-trigger-count`), zero renders nothing. Player die only. One counter per mod slot — two-mod faces show both, slash-separated, '#N' or '#N1/N2'. Faces 1/20 also carry this badge, counting rolls this run.
 
@@ -692,7 +692,7 @@ Every other change to this file — mechanics, rulings, schema, numbers, structu
 
 OWNERSHIP RULE. Any build that changes a mechanic, a number, a file, or a structure updates the standing section describing it in the same build, and says so explicitly in its paste-back. The log (CONFIRMED WORKING/HISTORY.md) records that the change happened; the standing section records what is now true. A build touching only CONFIRMED WORKING/CURRENT SUBSTAGE has nothing else to update.
 
-A build that changes any GAME_CONFIG value updates the F-line comment beside it in config.js's header and the FACTS block on the Notion page in the same build, and runs tests/facts.test.js before pasting back.
+A build that changes any GAME_CONFIG value updates the F-line comment beside it in config.js's header and the F-row on 2 Register in the same build, and runs tests/facts.test.js before pasting back.
 
 Every build updates #buildStamp (index.html) to its own stage/build number, whether or not it touches any other part of index.html — the one standing exception to "don't touch files the build doesn't need to." It's how a player or future session tells what code is running.
 
@@ -780,21 +780,18 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 180) — docs reconciliation, D-127 to D-126, config.js F14/F44, Tolling Bell text (D-125). Verified: npm test green, screenshots 0 px vs 179.
 (BUILD 181) — D-132 Halo gates Strengthen on face 20 (canStrengthenFace), D-133 artifact tiers 3/6/5 drawn through the offer split. Verified: npm test green, screenshots 0 px vs 179.
 (BUILD 182) — D-131 no trigger cap: guard 500, trigger queue; sweep pacing 200/50/10; D-134 chains on any Bound trigger, Rosary. Verified: npm test green, screenshots 0 px vs 180.
+(BUILD 183) — D-135 caps: Reckoning/Covenant/Gradual cap 12, Tenet rare, Exequy/Vindication/Jubilee uncapped. Verified: npm test green, screenshots 0 px vs 182.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 3.09 (BUILD 182) — no trigger cap, the chains, Rosary.
+Stage 3.10 (BUILD 183) — the caps pass (D-135).
 
-Item A (D-131): the cap, its exemption and the once-per-round refusal deleted; TRIGGER_FREEZE_GUARD 500; nested triggers queued, not recursed.
+Reckoning, Covenant, Gradual cap 12. Tenet rare. Exequy cost 1, Vindication cost 3, both uncapped; Jubilee uncapped. F25 tiers 24/15/9.
 
-Item B: SWEEP_PACING 200/50/10.
-
-Item C (D-134): Reliquary Chain on any Bound trigger; Rosary, rare, the mirror.
-
-Tests: build182.test.js. Corrected: mods, facts F45, build137, 142, 153, 167, 173, 179, 180, 181.
+Tests: build183.test.js. Corrected: build129, 131, 134, 139, 171.
 
 Verification: see paste-back.
 

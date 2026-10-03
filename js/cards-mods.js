@@ -260,7 +260,7 @@ function init() {
     id: 'reckoning', name: 'Reckoning', soulCost: 1, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['poison'],
     effect: function(gameState) {
       const stacks = gameState.enemy.poisonStacks;
-      const damage = dealDamage('enemy', 3 + (2 * stacks), 'attack', 'reckoning');
+      const damage = dealDamage('enemy', Math.min(GAME_CONFIG.RECKONING_DAMAGE_CAP, 3 + (2 * stacks)), 'attack', 'reckoning');
       log('[CARD] reckoning: ' + damage + ' damage, ' + stacks + ' poison stacks');
     }
   };
@@ -288,7 +288,7 @@ function init() {
     id: 'covenant', name: 'Covenant', soulCost: 1, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['mass'],
     effect: function(gameState) {
       const weight = gameState.turn.rolledFaceWeight;
-      const damage = dealDamage('enemy', 2 + (3 * weight), 'attack', 'covenant');
+      const damage = dealDamage('enemy', Math.min(GAME_CONFIG.COVENANT_DAMAGE_CAP, 2 + (3 * weight)), 'attack', 'covenant');
       log('[CARD] covenant: ' + damage + ' damage (face weight ' + weight + ')');
     }
   };
@@ -333,7 +333,7 @@ function init() {
   // face carries no modData, so the read falls through to 0. Faces 1/20
   // carry this same field, so a Nat roll reads its own count too.
   gameState.config.cards['tenet'] = {
-    id: 'tenet', name: 'Tenet', soulCost: 2, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['growth', 'mass'],
+    id: 'tenet', name: 'Tenet', soulCost: 2, type: 'attack', classRestriction: null, tier: 'rare', tags: ['growth', 'mass'],
     effect: function(gameState) {
       const faceNumber = gameState.turn.rolledFaceNumber;
       const face = faceNumber ? getPlayerFace(faceNumber) : null;
@@ -350,7 +350,7 @@ function init() {
       const heaviest = gameState.die.faces.reduce(function(max, f) {
         return (f.modId !== null && !isFaceSealed(f.number) && f.weight > max) ? f.weight : max;
       }, 0);
-      const damage = dealDamage('enemy', 3 + heaviest, 'attack', 'gradual');
+      const damage = dealDamage('enemy', Math.min(GAME_CONFIG.GRADUAL_DAMAGE_CAP, 3 + heaviest), 'attack', 'gradual');
       log('[CARD] gradual: ' + damage + ' damage (heaviest loaded face weight ' + heaviest + ')');
     }
   };
@@ -431,19 +431,13 @@ function init() {
     }
   };
 
-  // Block is read only, never spent, doubled and capped higher.
+  // Block is read only, never spent, doubled, uncapped.
   gameState.config.cards['vindication'] = {
-    id: 'vindication', name: 'Vindication', soulCost: 2, type: 'attack', classRestriction: null, tier: 'rare', tags: ['bastion'],
+    id: 'vindication', name: 'Vindication', soulCost: 3, type: 'attack', classRestriction: null, tier: 'rare', tags: ['bastion'],
     effect: function(gameState) {
       const block = gameState.player.block;
-      const raw = 2 * block;
-      const capped = raw > 24;
-      const damage = dealDamage('enemy', capped ? 24 : raw, 'attack', 'vindication');
-      if (capped) {
-        log('[CARD] vindication: ' + damage + ' damage (capped, block ' + block + ')');
-      } else {
-        log('[CARD] vindication: ' + damage + ' damage (block ' + block + ')');
-      }
+      const damage = dealDamage('enemy', 2 * block, 'attack', 'vindication');
+      log('[CARD] vindication: ' + damage + ' damage (block ' + block + ')');
     }
   };
 
@@ -463,18 +457,13 @@ function init() {
     }
   };
 
-  // Reads enemy poison stacks without removing them.
+  // Reads enemy poison stacks without removing them, uncapped.
   gameState.config.cards['exequy'] = {
-    id: 'exequy', name: 'Exequy', soulCost: 0, type: 'attack', classRestriction: null, tier: 'rare', tags: ['poison'],
+    id: 'exequy', name: 'Exequy', soulCost: 1, type: 'attack', classRestriction: null, tier: 'rare', tags: ['poison'],
     effect: function(gameState) {
       const stacks = gameState.enemy.poisonStacks;
-      const capped = stacks > 12;
-      const damage = dealDamage('enemy', capped ? 12 : stacks, 'attack', 'exequy');
-      if (capped) {
-        log('[CARD] exequy: ' + damage + ' damage (capped, ' + stacks + ' stacks of poison)');
-      } else {
-        log('[CARD] exequy: ' + damage + ' damage (' + stacks + ' stacks of poison)');
-      }
+      const damage = dealDamage('enemy', stacks, 'attack', 'exequy');
+      log('[CARD] exequy: ' + damage + ' damage (' + stacks + ' stacks of poison)');
     }
   };
 
@@ -542,14 +531,8 @@ function init() {
     id: 'jubilee', name: 'Jubilee', soulCost: 2, type: 'attack', classRestriction: null, tier: 'rare', tags: ['growth', 'mass'],
     effect: function(gameState) {
       const weightAdded = gameState.run.weightAdded;
-      const raw = 4 + (2 * weightAdded);
-      const capped = raw > 24;
-      const damage = dealDamage('enemy', capped ? 24 : raw, 'attack', 'jubilee');
-      if (capped) {
-        log('[CARD] jubilee: ' + damage + ' damage (capped, ' + weightAdded + ' weight added)');
-      } else {
-        log('[CARD] jubilee: ' + damage + ' damage (' + weightAdded + ' weight added)');
-      }
+      const damage = dealDamage('enemy', 4 + (2 * weightAdded), 'attack', 'jubilee');
+      log('[CARD] jubilee: ' + damage + ' damage (' + weightAdded + ' weight added)');
     }
   };
 

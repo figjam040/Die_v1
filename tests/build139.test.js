@@ -153,13 +153,13 @@ const { runTest, report } = createRunner();
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 139: Gradual — 3 damage +1 per weight of the heaviest loaded face, no cap', async () => {
+  await runTest('BUILD 139: Gradual — 3 damage +1 per weight of the heaviest loaded face, up to 12', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
     await page.evaluate(() => {
       const newFaces = gameState.die.faces.slice();
-      newFaces[4] = Object.assign({}, newFaces[4], { modId: 'smite', weight: 18 }); // face 5, weight 18: 3 + 18 = 21
+      newFaces[4] = Object.assign({}, newFaces[4], { modId: 'smite', weight: 18 }); // face 5, weight 18: 3 + 18 = 21, capped at 12
       updateDie({ faces: newFaces });
     });
     await page.evaluate(() => { forcePlayerRoll(3); });
@@ -168,7 +168,7 @@ const { runTest, report } = createRunner();
     const before = await page.evaluate(() => gameState.enemy.hp);
     await page.evaluate(() => { playCard(0); });
     const after = await page.evaluate(() => gameState.enemy.hp);
-    assert.strictEqual(before - after, 21, 'expected 21 damage (3 + 18 heaviest loaded weight), no cap');
+    assert.strictEqual(before - after, 12, 'expected 12 damage (3 + 18 heaviest loaded weight = 21, capped at 12)');
     await liveBrowser.close();
   });
 
@@ -192,7 +192,7 @@ const { runTest, report } = createRunner();
       anathema: MOD_DESCRIPTION['anathema']
     }));
     assert.strictEqual(texts.tenet, 'Deal 6 damage, plus 1 for each time the rolled face has triggered.');
-    assert.strictEqual(texts.gradual, "Deal 3 damage, plus 1 per weight on your heaviest face that isn't blank.");
+    assert.strictEqual(texts.gradual, 'Deal 3 damage, plus 1 per weight of your heaviest loaded face, up to 12.');
     assert.strictEqual(texts.magnificat, 'Trigger your heaviest other loaded face.');
     // BUILD 142: Threnody's own text assertion moved to tests/build142.test.js
     // (item F) — it now names the live, run-fixed threnodyFace number via
@@ -204,8 +204,8 @@ const { runTest, report } = createRunner();
     assert.strictEqual(texts.congregation, 'Deal 8 damage. If another mod on your die has Growth, deal 16 instead.');
     assert.strictEqual(texts.lauds, 'Deal 4 damage, plus 3 per Growth mod on your die, up to 13.');
     assert.strictEqual(texts.reliquary, 'If you have 10 or more block, deal 5 damage. Gain 6 block.');
-    assert.strictEqual(texts.vindication, 'Deal damage equal to twice your block, up to 24.');
-    assert.strictEqual(texts.exequy, "Deal damage equal to the enemy's stacks of poison, up to 12.");
+    assert.strictEqual(texts.vindication, 'Deal damage equal to twice your block.');
+    assert.strictEqual(texts.exequy, "Deal damage equal to the enemy's stacks of poison.");
     assert.strictEqual(texts.oblation, 'Spend all your soul. Deal 7 damage per soul spent, up to 42.');
     assert.strictEqual(texts.tithe, 'Gain 1 block per blank face on your die.');
     assert.strictEqual(texts.anathema, 'When this turn ends, deal damage equal to your block, up to 16.');

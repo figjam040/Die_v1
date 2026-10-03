@@ -206,9 +206,9 @@ async function playCardPhase(page) {
         case 'censer': return 0;
         case 'purge': return s.enemy.poisonStacks > 0 ? 10 : 6;
         case 'interdict': return s.enemy.intent >= 12 ? 10 : 5;
-        case 'reckoning': return 3 + (2 * s.enemy.poisonStacks);
+        case 'reckoning': return Math.min(12, 3 + (2 * s.enemy.poisonStacks));
         case 'retribution': return s.player.block > 12 ? 12 : s.player.block;
-        case 'covenant': return 2 + (3 * (s.turn.rolledFaceWeight || 0));
+        case 'covenant': return Math.min(12, 2 + (3 * (s.turn.rolledFaceWeight || 0)));
         case 'rapture': return 12;
         case 'orison': return s.turn.rollOutcome === 'blank' ? 9 : 5;
         default: return 0;
@@ -317,9 +317,9 @@ async function resolveCardReward(page) {
         case 'censer': return 0;
         case 'purge': return s.enemy.poisonStacks > 0 ? 10 : 6;
         case 'interdict': return s.enemy.intent >= 12 ? 10 : 5;
-        case 'reckoning': return 3 + (2 * s.enemy.poisonStacks);
+        case 'reckoning': return Math.min(12, 3 + (2 * s.enemy.poisonStacks));
         case 'retribution': return s.player.block > 12 ? 12 : s.player.block;
-        case 'covenant': return 2 + (3 * (s.turn.rolledFaceWeight || 0));
+        case 'covenant': return Math.min(12, 2 + (3 * (s.turn.rolledFaceWeight || 0)));
         case 'rapture': return 12;
         case 'orison': return s.turn.rollOutcome === 'blank' ? 9 : 5;
         default: return 0;
