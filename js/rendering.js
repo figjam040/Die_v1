@@ -44,7 +44,7 @@ function log(message) {
   logEl.appendChild(entry);
   logEl.scrollTop = logEl.scrollHeight;
 
-  if (message === '[PHASE] START_OF_TURN') {
+  if (message === '[PHASE] START_OF_TURN' || message === '[WIN] enemy defeated') {
     resetRollHero();
   } else if (message.indexOf('[ROLL] face: ') === 0) {
     const match = message.match(/^\[ROLL\] face: (\d+) modId: (.+)$/);

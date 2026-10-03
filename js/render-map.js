@@ -210,4 +210,5 @@ function renderMapScreen() {
   composition.appendChild(bossBtn);
 
   container.appendChild(composition);
+  if (hasArtifact('third_eye')) { container.appendChild(buildThirdEyeMapIcon()); }
 }

@@ -181,9 +181,15 @@ function clearFightScopedState() {
   updateTurn({ round: 0, cardsPlayedThisTurn: 0 });
   updateTurn({ sealedFaces: [], secondChanceUsedThisFight: false, enemyRoundSkippedThisTurn: false });
   updateFight({ blanksRolled: 0 });
-  // A Bound grant lasts one fight only, unlike the rest of a face's
-  // modData (trigger counts, Zeal's/Cope's accumulators), which is
-  // run-scoped and deliberately untouched here.
+  clearGrantedBound();
+  updateRun({ status: 'active' });
+  fxSuppressDepth--;
+}
+
+// A Bound grant lasts one fight only, unlike the rest of a face's modData
+// (trigger counts, Zeal's/Cope's accumulators), which is run-scoped and
+// deliberately untouched. Also called the moment a fight is won or lost.
+function clearGrantedBound() {
   const boundClearedFaces = gameState.die.faces.map(function(f) {
     if (!f.modData || !f.modData.boundGranted) { return f; }
     const newModData = Object.assign({}, f.modData);
@@ -191,8 +197,6 @@ function clearFightScopedState() {
     return Object.assign({}, f, { modData: newModData });
   });
   updateDie({ faces: boundClearedFaces });
-  updateRun({ status: 'active' });
-  fxSuppressDepth--;
 }
 
 // Starts a brand new run from scratch: full HP, a freshly built die and
@@ -243,6 +247,7 @@ function startNewRun() {
     shop: null,
     removalPrice: GAME_CONFIG.SHOP.REMOVAL_BASE_PRICE,
     thirdEyeUsedThisAct: false,
+    thirdEyeArmed: false,
     weightAdded: 0,
     blanksRolled: 0
   });

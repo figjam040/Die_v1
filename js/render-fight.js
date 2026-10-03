@@ -295,7 +295,7 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
     // DEV ONLY — force-roll click handler, only wired while dev chrome is
     // open. The Load/Strengthen picker is untouched: it passes forceRollFn
     // null and wires its click via pickConfig below instead. Remove before any real release.
-    if (forceRollFn && devChromeOpen) {
+    if (forceRollFn && devChromeOpen && !(containerId === 'playerDieList' && thirdEyeChoosingNow())) {
       const faceNumber = face.number;
       btn.addEventListener('click', function() {
         forceRollFn(faceNumber);
@@ -304,10 +304,9 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
 
     // Third Eye — while choosing, a click on the real player die's own
     // row picks that face for the roll instead of the dev force-roll path.
-    if (containerId === 'playerDieList' && thirdEyeChoosing) {
+    if (containerId === 'playerDieList' && thirdEyeChoosingNow()) {
       const faceNumber = face.number;
       btn.addEventListener('click', function() {
-        thirdEyeChoosing = false;
         thirdEyeChooseFace(faceNumber);
       });
     }
@@ -368,6 +367,12 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       boundSpan.className = 'die-weight die-bound-badge';
       boundSpan.textContent = 'Bound';
       modWrap.appendChild(boundSpan);
+      if (isHorizontal && isPlayerDie) {
+        const faceBadge = document.createElement('span');
+        faceBadge.className = 'face-bound-badge';
+        faceBadge.textContent = 'BOUND';
+        btn.appendChild(faceBadge);
+      }
     }
 
     // Player die only. Zero triggers appends nothing. Single-mod faces
@@ -782,17 +787,57 @@ function renderArtBoxes() {
     (enemyName ? enemyName.toUpperCase() + ' ' : '') + 'ART');
 }
 
-// No gold mechanic exists in V1; the field is read if it is ever added.
-// Shown only while Third Eye is held, unused this act, and a roll is
-// actually pending — the one window thirdEyeChooseFace() itself accepts.
+// null until the art file loads or fails once; the map's rebuilt icon reads
+// it so a loaded picture does not flash the EYE text on every render.
+let thirdEyeArtLoaded = null;
+
+// The Third Eye icon (KI-61): shown while the artifact is held, lit once
+// armed, dimmed once spent for the act. The fight screen's copy is static
+// HTML wired on first paint; the map's is built fresh by buildThirdEyeMapIcon().
+function paintThirdEyeIcon(el) {
+  if (!el) return;
+  const held = hasArtifact('third_eye');
+  el.style.display = held ? '' : 'none';
+  if (!held) return;
+  if (!el.dataset.wired) {
+    el.dataset.wired = '1';
+    const label = document.createElement('span');
+    label.className = 'third-eye-label';
+    label.textContent = 'EYE';
+    const img = document.createElement('img');
+    img.className = 'third-eye-img';
+    img.alt = '';
+    const showArt = function(ok) { img.style.display = ok ? 'block' : 'none'; label.style.display = ok ? 'none' : ''; };
+    showArt(thirdEyeArtLoaded === true);
+    img.onload = function() { thirdEyeArtLoaded = true; showArt(true); };
+    img.onerror = function() { thirdEyeArtLoaded = false; showArt(false); };
+    img.src = 'art/artifacts/third_eye.png';
+    el.appendChild(label);
+    el.appendChild(img);
+    el.addEventListener('click', function() {
+      log('[CLICK] Third Eye');
+      if (armThirdEye()) { refreshInspector(); }
+    });
+    const def = gameState.config.artifacts.third_eye;
+    setHoverTip(el, [def.name, def.text]);
+  }
+  const spent = gameState.run.thirdEyeUsedThisAct;
+  el.classList.toggle('third-eye-armed', !spent && gameState.run.thirdEyeArmed);
+  el.classList.toggle('third-eye-spent', spent);
+}
+
+function buildThirdEyeMapIcon() {
+  const el = document.createElement('div');
+  el.className = 'third-eye-icon third-eye-map-icon';
+  el.id = 'thirdEyeMapIcon';
+  paintThirdEyeIcon(el);
+  return el;
+}
+
 function renderThirdEyeButton() {
-  const btn = document.getElementById('thirdEyeBtn');
-  if (!btn) return;
-  const eligible = hasArtifact('third_eye') && !gameState.run.thirdEyeUsedThisAct &&
-    gameState.turn.phase === 'ROLL_PHASE' && !playerRollResolved;
-  btn.style.display = eligible ? '' : 'none';
-  btn.classList.toggle('choosing', thirdEyeChoosing);
-  if (!eligible) { thirdEyeChoosing = false; }
+  paintThirdEyeIcon(document.getElementById('thirdEyeIcon'));
+  const note = document.getElementById('thirdEyeInstruction');
+  if (note) { note.style.display = thirdEyeChoosingNow() ? '' : 'none'; }
 
   const rerollBtn = document.getElementById('secondChanceBtn');
   if (rerollBtn) {

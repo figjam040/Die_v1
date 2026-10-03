@@ -8,14 +8,14 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 const { execFileSync } = require('child_process');
-const { createRunner } = require('./shared-constants');
+const { createRunner, CLAUDE_MD_MAX_BYTES } = require('./shared-constants');
 const { diffBoxes } = require('./pngdiff');
 const { SCREENS, SEED, captureAll } = require('./screenshots');
 
 const ROOT = path.resolve(__dirname, '..');
 const { pathToFileURL } = require('url');
 const INDEX_URL = pathToFileURL(path.join(ROOT, 'index.html')).href;
-const CLAUDE_MD_BYTE_LIMIT = 85000;
+const CLAUDE_MD_BYTE_LIMIT = CLAUDE_MD_MAX_BYTES;
 const CONFIG_COMMENT_CEILING = 0.50;
 
 const { runTest, report } = createRunner();

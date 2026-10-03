@@ -110,7 +110,8 @@ async function enterOpeningFight(page) {
     // Fight (opening).
     await enterOpeningFight(page);
     await page.evaluate(() => { updateEnemy({ hp: 0 }); checkWinNow(); });
-    const fightGold = await page.evaluate(() => gameState.run.gold);
+    await page.waitForFunction(() => dieActionStep !== null);
+    const fightGold =await page.evaluate(() => gameState.run.gold);
     assert.ok(fightGold >= 12 && fightGold <= 20, 'expected 12-20 gold from a Fight win, got ' + fightGold);
     await page.evaluate(() => { dieActionChooseSkip(); });
     await page.evaluate(() => { cardRewardSkip(); });
@@ -120,7 +121,8 @@ async function enterOpeningFight(page) {
     await page.evaluate(() => { devJumpToSlot('upper', 3); });
     await page.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
     await page.evaluate(() => { updateEnemy({ hp: 0 }); checkWinNow(); });
-    const eliteDelta = await page.evaluate((before) => gameState.run.gold - before, goldBeforeElite);
+    await page.waitForFunction(() => artifactRewardStep !== null);
+    const eliteDelta =await page.evaluate((before) => gameState.run.gold - before, goldBeforeElite);
     assert.ok(eliteDelta >= 30 && eliteDelta <= 40, 'expected 30-40 gold from an Elite win, got ' + eliteDelta);
     await page.evaluate(() => { artifactRewardSkip(); });
     await page.evaluate(() => { dieActionChooseSkip(); });
@@ -131,7 +133,8 @@ async function enterOpeningFight(page) {
     await page.evaluate(() => { devJumpToSlot('boss', null); });
     await page.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
     await page.evaluate(() => { updateEnemy({ hp: 0 }); checkWinNow(); });
-    const bossDelta = await page.evaluate((before) => gameState.run.gold - before, goldBeforeBoss);
+    await page.waitForFunction(() => artifactRewardStep !== null);
+    const bossDelta =await page.evaluate((before) => gameState.run.gold - before, goldBeforeBoss);
     assert.strictEqual(bossDelta, 60, 'expected exactly 60 gold from a non-final Boss win, got ' + bossDelta);
     await page.close();
 
@@ -209,14 +212,14 @@ async function enterOpeningFight(page) {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => { updateRun({ artifacts: ['third_eye'] }); });
-    await page.evaluate(() => { thirdEyeChooseFace(5); });
+    await page.evaluate(() => { armThirdEye(); thirdEyeChooseFace(5); });
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
     const afterChoose = await page.evaluate(() => ({ rolled: gameState.turn.rolledFaceNumber, used: gameState.run.thirdEyeUsedThisAct }));
     assert.strictEqual(afterChoose.rolled, 5, 'expected the chosen face 5 to be the one rolled');
     assert.strictEqual(afterChoose.used, true, 'expected thirdEyeUsedThisAct to be true after one use');
 
     // A second attempt the same act must refuse (rolledFaceNumber unchanged).
-    await page.evaluate(() => { thirdEyeChooseFace(9); });
+    await page.evaluate(() => { armThirdEye(); thirdEyeChooseFace(9); });
     const stillFive = await page.evaluate(() => gameState.turn.rolledFaceNumber);
     assert.strictEqual(stillFive, 5, 'expected a second Third Eye use this act to be refused');
 
@@ -289,6 +292,7 @@ async function enterOpeningFight(page) {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => { updateEnemy({ hp: 0 }); checkWinNow(); });
+    await page.waitForFunction(() => dieActionStep !== null);
     const afterFight = await page.evaluate(() => artifactRewardStep);
     assert.strictEqual(afterFight, null, 'expected no artifact panel after a plain Fight win');
     await page.evaluate(() => { dieActionChooseSkip(); });
@@ -297,6 +301,7 @@ async function enterOpeningFight(page) {
     await page.evaluate(() => { devJumpToSlot('upper', 3); }); // Elite
     await page.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
     await page.evaluate(() => { updateEnemy({ hp: 0 }); checkWinNow(); });
+    await page.waitForFunction(() => artifactRewardStep !== null);
     const afterElite = await page.evaluate(() => artifactRewardStep);
     assert.strictEqual(afterElite, 'choose', 'expected the artifact panel after an Elite win');
     await page.evaluate(() => { artifactRewardSkip(); });
@@ -306,6 +311,7 @@ async function enterOpeningFight(page) {
     await page.evaluate(() => { devJumpToSlot('boss', null); });
     await page.waitForFunction(() => gameState.turn.phase === 'ROLL_PHASE');
     await page.evaluate(() => { updateEnemy({ hp: 0 }); checkWinNow(); });
+    await page.waitForFunction(() => artifactRewardStep !== null);
     const afterBoss = await page.evaluate(() => artifactRewardStep);
     assert.strictEqual(afterBoss, 'choose', 'expected the artifact panel after the act 1 Boss win');
     await page.close();

@@ -18,17 +18,8 @@ document.getElementById('startGameBtn').addEventListener('click', function() {
   artifactRewardStep = null;
   shopStep = null;
   shopRemovingCard = false;
-  thirdEyeChoosing = false;
   flushRunRecord('abandoned');
   startNewRun();
-});
-
-// Third Eye — toggles face-choosing mode; a face-btn click on the real
-// player die (renderDieList()) while this is on calls thirdEyeChooseFace().
-document.getElementById('thirdEyeBtn').addEventListener('click', function() {
-  thirdEyeChoosing = !thirdEyeChoosing;
-  log('[CLICK] Third Eye' + (thirdEyeChoosing ? ' — choose a face' : ' — cancelled'));
-  refreshInspector();
 });
 
 // Second Chance — one reroll a fight, taken before the roll resolves.
@@ -154,6 +145,32 @@ document.addEventListener('keydown', function(e) {
   if (gameState.ui.dieInfoOpen || gameState.ui.artifactsInfoOpen || gameState.ui.cardsInfoOpen) {
     updateUi({ dieInfoOpen: false, artifactsInfoOpen: false, cardsInfoOpen: false });
   }
+});
+
+// D-138: keys 1-9 click the hand card at that position, Enter clicks End Turn.
+// Only a live CARD_PHASE on the fight screen with no layer open; a focused
+// input, dropdown or textarea keeps its own keys.
+function keyboardPlayAllowed(e) {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat) { return false; }
+  const t = e.target;
+  if (t && t.tagName && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) { return false; }
+  const s = gameState;
+  if (s.run.status !== 'active' || s.run.outcome !== 'active' || s.run.screen !== 'fight') { return false; }
+  if (s.turn.phase !== 'CARD_PHASE') { return false; }
+  if (dieActionStep !== null || cardRewardStep !== null || artifactRewardStep !== null
+    || shopStep !== null || riteStep !== null || eventStep !== null) { return false; }
+  return !(s.ui.dieInfoOpen || s.ui.artifactsInfoOpen || s.ui.cardsInfoOpen);
+}
+
+document.addEventListener('keydown', function(e) {
+  const isDigit = e.key.length === 1 && e.key >= '1' && e.key <= '9';
+  if (!isDigit && e.key !== 'Enter') { return; }
+  if (!keyboardPlayAllowed(e)) { return; }
+  const target = isDigit ? document.getElementById('handRow').children[parseInt(e.key, 10) - 1]
+    : document.getElementById('endTurnBtn');
+  if (!target) { return; }
+  e.preventDefault();
+  target.click();
 });
 
 document.getElementById('devPauseBeforeRollCheckbox').addEventListener('change', function() {

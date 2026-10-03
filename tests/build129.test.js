@@ -64,7 +64,7 @@ const { runTest, report } = createRunner();
       rebuke: 'basic', censure: 'basic', vestment: 'basic', litany: 'basic', scripture: 'basic',
       interdict: 'basic', orison: 'basic', censer: 'basic', purge: 'basic',
       judgement: 'uncommon', reckoning: 'uncommon', communion: 'uncommon', rapture: 'uncommon',
-      covenant: 'uncommon', retribution: 'uncommon',
+      covenant: 'uncommon', retribution: 'rare',
       // BUILD 131 — checkpoint 3 cards, sixteen new cards.
       chastise: 'basic', cloister: 'basic', psalm: 'basic', reliquary: 'basic',
       vacancy: 'rare', lauds: 'basic', hosanna: 'basic', tabernacle: 'basic',

@@ -4,10 +4,10 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const { createRunner } = require('./shared-constants');
+const { createRunner, CLAUDE_MD_MAX_BYTES } = require('./shared-constants');
 
 const ROOT = path.resolve(__dirname, '..');
-const CLAUDE_MD_BYTE_LIMIT = 85000;
+const CLAUDE_MD_BYTE_LIMIT = CLAUDE_MD_MAX_BYTES;
 const TOLLING_BELL_TEXT = 'When a blank triggers, gain 2 block, plus 1 for every blank you have rolled this fight.';
 const STALE_CLAUDE_MD_STRINGS = [
   'no art ships this build',

@@ -14,7 +14,7 @@
 // F01 player HP 70 · F02 soul 3 · F03 draw 5 · F04 starting deck 5 Strike 4 Ward 1 Rite · F05 blank roll 2 block
 // F06 Strike 1 soul 5 dmg · F07 Ward 1 soul 5 block · F08 Rite 2 soul 6 dmg 6 block (D-121)
 // F09 poison decays N, N−1 … 0, ticks at the end of its holder's turn
-// F10 Penitence 3 rounds, once per fight · F11 Nat 20 every loaded face triggers, ascending, repeatable
+// F10 Penitence 2 rounds, once per fight (D-137) · F11 Nat 20 every loaded face triggers, ascending, repeatable
 // F12 Strengthen targets any loaded face, and face 20 only while Halo is held (D-132); never face 1 · F13 Load offer is 3 mods, excluding the anchor and loaded mods
 // F14 die rewards as built: every fight win grants 1, an elite win 2, a rite 1 (or heal or removal), the act 1 and 2 boss 1 (F32); the act 3 boss grants none (D-22) · F15 rite heal 20
 // F16 lanes 2; slots per lane by act: act 1 9 (rites 2, 6, 9; slot 5 a Verger Fight, D-123), acts 2-3 8 (rites 2, 5, 8); the elite is slot 4 of the upper lane
@@ -23,7 +23,7 @@
 // F19 enemy buff applies 3 stacks of poison (act 1), scaled per act to 4 (act 2) and 5 (act 3) · F20 act 1 elite (Lector) buff faces 3 and 9, both poison, 12-sided, no Nat faces · F21 act 1 boss (Hierophant) buff faces 5, 10, 15, all poison, plus Nat 20 and Nat 1
 // F22 enemy Nat 20 forces the boss's Charge next round (forcedNextIntent, breakable as any Charge); buff faces trigger only when rolled · F23 enemy Nat 1 attack cancelled, self-applies a flat 5 stacks of poison, once per fight
 // F24 mods 27 (BUILD 149: +Dread, Genuflect; 26 offerable plus Consecrate, tiers 13/9/4), each asserted by tests/mods.test.js
-// F25 cards 48, tiers 24/15/9 (Tenet to rare, BUILD 183), asserted by tests/facts.test.js
+// F25 cards 48, tiers 24/14/10 (Retribution to rare, D-139), asserted by tests/facts.test.js
 // F26 files under /js/: fifteen — config, state, listener-registry, audio, pipeline, cards-mods, run-and-map, phase-machine, rendering, render-fight, render-map, render-layers, render-text, dev-tools, bootstrap
 // F27 pitch chains cap 8, reset at START_OF_TURN
 // F28 sound duration ceiling 200 ms for every frequent sound; nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it, all rare
@@ -53,7 +53,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 184,
+  BUILD: 185,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -81,6 +81,7 @@ const GAME_CONFIG = {
     SHAKE_STEP_MS: 40
   },
   ROLL_LAND_GAP_MS: 250,
+  FX_SETTLE_POLL_MS: 50,
 
   // F46 — COLOURS keys are the announcement kinds state.js sends.
   DAMAGE_NUMBERS: {
@@ -111,7 +112,7 @@ const GAME_CONFIG = {
   RECKONING_DAMAGE_CAP: 12,
   COVENANT_DAMAGE_CAP: 12,
   GRADUAL_DAMAGE_CAP: 12,
-  PENITENCE_TURNS: 3,
+  PENITENCE_TURNS: 2,
   RITE_HEAL: 20,
   BOSS_HEAL_PERCENT: 20,
 

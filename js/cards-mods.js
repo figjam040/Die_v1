@@ -265,20 +265,13 @@ function init() {
     }
   };
 
-  // Capped at 12 — uncapped, a Consecrate turn reaches the mid-20s to
-  // mid-30s off one 1-soul card.
+  // D-139: 2 soul, rare, uncapped.
   gameState.config.cards['retribution'] = {
-    id: 'retribution', name: 'Retribution', soulCost: 1, type: 'attack', classRestriction: null, tier: 'uncommon', tags: ['bastion'],
+    id: 'retribution', name: 'Retribution', soulCost: 2, type: 'attack', classRestriction: null, tier: 'rare', tags: ['bastion'],
     effect: function(gameState) {
       const block = gameState.player.block;
-      const capped = block > 12;
-      const rawDamage = capped ? 12 : block;
-      const damage = dealDamage('enemy', rawDamage, 'attack', 'retribution');
-      if (capped) {
-        log('[CARD] retribution: ' + damage + ' damage (capped, block ' + block + ')');
-      } else {
-        log('[CARD] retribution: ' + damage + ' damage (block ' + block + ')');
-      }
+      const damage = dealDamage('enemy', block, 'attack', 'retribution');
+      log('[CARD] retribution: ' + damage + ' damage (block ' + block + ')');
     }
   };
 

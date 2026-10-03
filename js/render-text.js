@@ -162,9 +162,11 @@ function faceModBox(face, modId) {
     ['face-tip-title', mod.name],
     ['face-tip-rarity', (tier || 'mod').toUpperCase()],
     ['face-tip-tags', offerTagText(mod.tags)],
-    ['face-tip-text', MOD_DESCRIPTION[modId] || ''],
-    ['face-tip-foot', 'weight ' + face.weight + (isFaceTwentyAtCap(face.number) ? ' MAX' : '') + (isBoundFace(face) ? ' · Bound' : '')]
+    ['face-tip-text', MOD_DESCRIPTION[modId] || '']
   ];
+  const bound = boundSource(face);
+  if (bound) { rows.push(['face-tip-bound', bound === 'printed' ? 'Bound' : 'Bound this fight']); }
+  rows.push(['face-tip-foot', 'weight ' + face.weight + (isFaceTwentyAtCap(face.number) ? ' MAX' : '')]);
   rows.forEach(function(r) {
     const line = document.createElement('div');
     line.className = r[0];
@@ -409,6 +411,12 @@ function dieRollAnimationsIdle() {
   return !dieRollAnims.player && !dieRollAnims.enemy;
 }
 
+// True once no die icon is still spinning and no damage/block/poison pop is
+// held or still fading, so a fight's last numbers have all been shown.
+function fightFxSettled() {
+  return !dieRollHolding('player') && !dieRollHolding('enemy') && heldFxNumbers.length === 0 && Object.keys(fxLivePops).length === 0;
+}
+
 // One icon's current look: the spinning frame's number and turn, or the
 // resting number (null pre-roll) upright, plus any flash or shake.
 function dieIconFrame(side, restingNumber, restingColour) {
@@ -453,7 +461,7 @@ const CARD_EFFECT_TEXT = {
   interdict: "Gain 5 block. If the enemy's intent deals 12 or more damage this round, gain 10 instead.",
   bulwark: 'Gain 6 block. If the enemy is winding up or releasing, gain 16 instead.',
   reckoning: 'Deal 3 damage, plus 2 per stack of poison on the enemy, up to 12.',
-  retribution: 'Deal damage equal to your block, up to 12.',
+  retribution: 'Deal damage equal to your block.',
   covenant: 'Deal 2 damage, plus 3 per weight of the rolled face, up to 12.',
   rapture: 'Deal 12 damage. If a mod has triggered this turn, this costs 0 soul.',
   orison: 'Deal 5 damage. If you rolled a blank, deal 9 instead.',
@@ -536,7 +544,7 @@ const MOD_DESCRIPTION = {
 
 const NAT_DESCRIPTION = {
   NAT_TWENTY: 'Trigger every loaded face, lowest first.',
-  NAT_ONE: 'Lose 1 soul at the start of each of your next 3 turns. Once per fight, then a 1 is blank.'
+  NAT_ONE: 'Lose 1 soul at the start of each of your next 2 turns. Once per fight, then a 1 is blank.'
   // ENEMY_NAT_ONE/ENEMY_NAT_TWENTY intentionally absent — their text needs
   // the current act's buffPoisonStacks number; faceHoverText() builds it inline.
 };

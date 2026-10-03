@@ -436,13 +436,17 @@ async function hoverEveryTip(page, label) {
           updatePlayer({ hp: hp });
           updateEnemy({ hp: 0 });
           runPhase('CARD_PHASE');
-          res({
-            hp: gameState.player.hp,
-            outcome: gameState.run.outcome,
-            artifactStep: artifactRewardStep,
-            transcript: gameState.run.transcript.filter(l => l.indexOf('BOSS HEAL') === 0),
-            logLines: Array.from(document.querySelectorAll('#log div')).map(d => d.textContent).filter(t => t.indexOf('[HEAL]') === 0)
-          });
+          const settle = function() {
+            if (gameState.run.outcome !== 'won' && artifactRewardStep === null) { setTimeout(settle, 20); return; }
+            res({
+              hp: gameState.player.hp,
+              outcome: gameState.run.outcome,
+              artifactStep: artifactRewardStep,
+              transcript: gameState.run.transcript.filter(l => l.indexOf('BOSS HEAL') === 0),
+              logLines: Array.from(document.querySelectorAll('#log div')).map(d => d.textContent).filter(t => t.indexOf('[HEAL]') === 0)
+            });
+          };
+          settle();
         };
         wait();
       });

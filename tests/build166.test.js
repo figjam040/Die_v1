@@ -187,12 +187,12 @@ async function hoverFirst(page, selector) {
     await page.close();
   });
 
-  await runTest('a held Third Eye keeps the ROLL_PHASE pause with the drawer closed', async () => {
+  await runTest('an armed Third Eye holds ROLL_PHASE with the drawer closed', async () => {
     const page = await freshPage(browser);
-    await page.evaluate(() => { devChromeOpen = false; updateRun({ artifacts: ['third_eye'] }); enterSlot('opening', null); });
-    await page.waitForTimeout(600);
+    await page.evaluate(() => { devChromeOpen = false; updateRun({ artifacts: ['third_eye'] }); armThirdEye(); enterSlot('opening', null); });
+    await page.waitForTimeout(2200);
     const phase = await page.evaluate(() => gameState.turn.phase);
-    assert.strictEqual(phase, 'ROLL_PHASE', 'pre-roll control still has its window');
+    assert.strictEqual(phase, 'ROLL_PHASE', 'the armed roll waits for the face choice, past the old window');
     await page.close();
   });
 

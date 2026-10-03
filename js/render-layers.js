@@ -156,10 +156,6 @@ let dieActionStep = null; // null | 'choose' | 'load_pick_mod' | 'load_pick_face
 let dieActionMods = []; // the (up to) 3 mod ids offered this pass
 let dieActionChosenModId = null;
 
-// Third Eye's own UI-flow flag, same convention — true while the button is
-// toggled on and the next real player-die face click chooses the roll.
-let thirdEyeChoosing = false;
-
 // Consecrate is the class anchor, not a reward, per SCOPE — V1.
 const DIE_ACTION_EXCLUDED_MOD_IDS = ['consecrate'];
 

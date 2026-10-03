@@ -205,14 +205,33 @@ function rollWithArtifacts(faces) {
 // Third Eye — mirrors forcePlayerRoll() (dev-tools.js) but player-facing,
 // gated on the artifact and its once-per-act use instead of dev chrome.
 function thirdEyeChooseFace(faceNumber) {
-  if (!hasArtifact('third_eye')) { return; }
-  if (gameState.run.thirdEyeUsedThisAct) { return; }
-  if (gameState.turn.phase !== 'ROLL_PHASE' || playerRollResolved) { return; }
+  if (!thirdEyeChoosingNow()) { return; }
+  if (!getPlayerFace(faceNumber)) { return; }
   playerRollResolved = true;
-  updateRun({ thirdEyeUsedThisAct: true });
+  updateRun({ thirdEyeUsedThisAct: true, thirdEyeArmed: false });
   const face = getPlayerFace(faceNumber);
   log('[ARTIFACT] Third Eye: face ' + faceNumber + ' chosen');
   resolvePlayerRoll(face);
+  // The armed roll waited for this choice, so no timer is pending to carry
+  // the phase machine on.
+  nextPhase();
+  continueAutoAdvance();
+}
+
+// True while an armed Third Eye holds the roll for the player's face choice.
+function thirdEyeChoosingNow() {
+  return hasArtifact('third_eye') && gameState.run.thirdEyeArmed && !gameState.run.thirdEyeUsedThisAct &&
+    gameState.run.screen === 'fight' && gameState.run.status === 'active' &&
+    gameState.turn.phase === 'ROLL_PHASE' && !playerRollResolved;
+}
+
+// Arms Third Eye from the icon, on the map or in a fight. Spent for the act
+// once the face is chosen; arming again before that changes nothing.
+function armThirdEye() {
+  if (!hasArtifact('third_eye') || gameState.run.thirdEyeUsedThisAct || gameState.run.thirdEyeArmed) { return false; }
+  updateRun({ thirdEyeArmed: true });
+  log('[ARTIFACT] Third Eye armed');
+  return true;
 }
 
 // Second Chance — one reroll a fight. The first face is thrown away
@@ -285,14 +304,20 @@ function resolvePlayerRoll(face) {
 // (permanent), or if it was granted Bound for the fight
 // (grantBoundToFace() below, stored in modData.boundGranted).
 function isBoundFace(face) {
+  return boundSource(face) !== null;
+}
+
+// 'printed' when a loaded mod carries the Bound tag, else 'granted' when the
+// fight-scoped grant is set, else null. Printed wins when both hold.
+function boundSource(face) {
   // A Sealed face counts as blank for every rule, including Bound.
-  if (isFaceSealed(face.number)) { return false; }
-  if (face.modData && face.modData.boundGranted) { return true; }
+  if (isFaceSealed(face.number)) { return null; }
   const mod = face.modId !== null ? gameState.config.mods[face.modId] : null;
-  if (mod && mod.tags && mod.tags.indexOf('bound') !== -1) { return true; }
+  if (mod && mod.tags && mod.tags.indexOf('bound') !== -1) { return 'printed'; }
   const mod2 = face.modId2 ? gameState.config.mods[face.modId2] : null;
-  if (mod2 && mod2.tags && mod2.tags.indexOf('bound') !== -1) { return true; }
-  return false;
+  if (mod2 && mod2.tags && mod2.tags.indexOf('bound') !== -1) { return 'printed'; }
+  if (face.modData && face.modData.boundGranted) { return 'granted'; }
+  return null;
 }
 
 // Grants Bound to a loaded face for the rest of the current fight. Refuses

@@ -390,9 +390,9 @@ function specOnlyDeepEqual(actual, expected, label) {
   });
 
   // ---------------------------------------------------------------
-  // F10 — Penitence: 3 rounds, once per fight.
+  // F10 — Penitence: 2 rounds, once per fight (D-137).
   // ---------------------------------------------------------------
-  await runTest('F10 Penitence 3 rounds, once per fight', async () => {
+  await runTest('F10 Penitence 2 rounds, once per fight', async () => {
     const page = await freshPage(browser);
     await enterOpeningFight(page);
     await page.evaluate(() => { forcePlayerRoll(1); }); // face 1 = NAT_ONE
@@ -404,10 +404,10 @@ function specOnlyDeepEqual(actual, expected, label) {
       fired: gameState.player.natOneFiredThisFight,
       outcome: gameState.turn.rollOutcome
     }));
-    specOnlyEqual(onset.cfg, 3, 'F10: GAME_CONFIG.PENITENCE_TURNS === 3 (documented fact, no independent oracle)');
+    specOnlyEqual(onset.cfg, 2, 'F10: GAME_CONFIG.PENITENCE_TURNS === 2 (documented fact, no independent oracle)');
     assert.strictEqual(onset.outcome, 'nat_one');
     assert.strictEqual(onset.active, true);
-    assert.strictEqual(onset.remaining, 3);
+    assert.strictEqual(onset.remaining, 2);
     assert.strictEqual(onset.fired, true);
 
     // Advance to next round's ROLL_PHASE (one START_OF_TURN tick spent) and
@@ -421,7 +421,7 @@ function specOnlyDeepEqual(actual, expected, label) {
     await page.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
     const second = await page.evaluate(() => ({ outcome: gameState.turn.rollOutcome, remaining: gameState.player.penitenceTurnsRemaining }));
     assert.strictEqual(second.outcome, 'blank', 'a second Nat 1 this fight must resolve as a plain blank');
-    assert.strictEqual(second.remaining, 2, 'the one START_OF_TURN tick since onset must have ticked the counter down');
+    assert.strictEqual(second.remaining, 1, 'the one START_OF_TURN tick since onset must have ticked the counter down');
     await page.close();
   });
 
@@ -672,7 +672,8 @@ function specOnlyDeepEqual(actual, expected, label) {
     // panel first (same as an Elite win), then the die action panel.
     await page.evaluate(() => { devJumpToSlot('boss', null); });
     await page.evaluate(() => { updateEnemy({ hp: 0 }); nextPhase(); });
-    const afterAct1Boss = await page.evaluate(() => ({ outcome: gameState.run.outcome, artifactRewardStep: artifactRewardStep, dieActionStep: dieActionStep }));
+    await page.waitForFunction(() => artifactRewardStep !== null || dieActionStep !== null);
+    const afterAct1Boss =await page.evaluate(() => ({ outcome: gameState.run.outcome, artifactRewardStep: artifactRewardStep, dieActionStep: dieActionStep }));
     assert.notStrictEqual(afterAct1Boss.outcome, 'won', 'act 1 boss win must not end the run');
     assert.ok(afterAct1Boss.artifactRewardStep !== null || afterAct1Boss.dieActionStep !== null, 'act 1 boss win must open the artifact or die action reward panel, same as any fight win');
     await skipThroughRewardFlow();
@@ -686,7 +687,8 @@ function specOnlyDeepEqual(actual, expected, label) {
     // Act 2 boss.
     await page.evaluate(() => { devJumpToSlot('boss', null); });
     await page.evaluate(() => { updateEnemy({ hp: 0 }); nextPhase(); });
-    const afterAct2Boss = await page.evaluate(() => ({ outcome: gameState.run.outcome, artifactRewardStep: artifactRewardStep, dieActionStep: dieActionStep }));
+    await page.waitForFunction(() => artifactRewardStep !== null || dieActionStep !== null);
+    const afterAct2Boss =await page.evaluate(() => ({ outcome: gameState.run.outcome, artifactRewardStep: artifactRewardStep, dieActionStep: dieActionStep }));
     assert.notStrictEqual(afterAct2Boss.outcome, 'won', 'act 2 boss win must not end the run either');
     assert.ok(afterAct2Boss.artifactRewardStep !== null || afterAct2Boss.dieActionStep !== null, 'act 2 boss win must also open a reward panel');
     await skipThroughRewardFlow();

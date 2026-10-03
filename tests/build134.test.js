@@ -40,7 +40,7 @@ const { runTest, report } = createRunner();
     });
     // D-111 (BUILD 169): the common tier is named basic.
     assert.deepStrictEqual(totals.modTotals, { basic: 13, uncommon: 9, rare: 4 }, 'offerable mods must be 13 basic, 9 uncommon, 4 rare (Consecrate excluded, it carries no tier)');
-    assert.deepStrictEqual(totals.cardTotals, { basic: 24, uncommon: 15, rare: 9 }, 'reward cards must be 24 basic, 15 uncommon, 9 rare (Vacancy and Tenet are rare)');
+    assert.deepStrictEqual(totals.cardTotals, { basic: 24, uncommon: 14, rare: 10 }, 'reward cards must be 24 basic, 14 uncommon, 10 rare (Vacancy, Tenet and Retribution are rare)');
     await liveBrowser.close();
   });
 

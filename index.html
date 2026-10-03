@@ -215,7 +215,6 @@
     object-fit: contain;
   }
 
-  #thirdEyeBtn,
   #secondChanceBtn {
     font-family: var(--game-font);
     font-size: calc(11px * var(--ui-scale));
@@ -226,9 +225,55 @@
     margin-top: 4px;
   }
 
-  #thirdEyeBtn.choosing {
+  /* KI-61: the Third Eye icon, ready / armed (lit) / spent (dimmed). */
+  .third-eye-icon {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    margin: 3px 0;
+    border: 1px solid var(--nat);
+    background: var(--panel-bg);
+    color: var(--nat);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-family: var(--game-font);
+    font-size: calc(10px * var(--ui-scale));
+  }
+
+  .third-eye-icon .third-eye-img {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    object-fit: contain;
+  }
+
+  .third-eye-icon.third-eye-armed {
     background: var(--nat);
     color: #1a1500;
+    box-shadow: 0 0 6px var(--nat);
+  }
+
+  .third-eye-icon.third-eye-spent {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .third-eye-map-icon {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    margin: 0;
+  }
+
+  #mapScreen { position: relative; }
+
+  #thirdEyeInstruction {
+    font-family: var(--game-font);
+    font-size: calc(11px * var(--ui-scale));
+    color: var(--nat);
+    margin-top: 4px;
   }
 
   /* D-104/KI-41 — the -webkit-line-clamp that used to sit directly on
@@ -778,6 +823,23 @@
   .face-num {
     position: relative;
     z-index: 1;
+  }
+
+  /* KI-60: a Bound face's visible mark, a bar along the square's foot. */
+  .face-bound-badge {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    font-family: var(--game-font-2);
+    font-weight: normal;
+    font-size: 11px;
+    line-height: 12px;
+    text-align: center;
+    background: var(--player-mod);
+    color: #000;
+    pointer-events: none;
   }
 
   .die-mod {
@@ -1583,6 +1645,7 @@
 
   .face-tip-symbol { display: block; margin: 0 auto 4px; image-rendering: pixelated; object-fit: contain; }
   .face-tip-tags { color: var(--muted); }
+  .face-tip-bound { color: var(--player-mod); }
   .face-tip-foot { color: var(--blank); margin-top: 4px; }
   .face-tip-now { color: var(--blank); margin-top: 4px; }
   .face-tip-becomes { color: var(--text); }
@@ -2228,6 +2291,7 @@
         <div class="side-col" id="playerPanel">
           <div class="side-title">ORDAINED</div>
           <div class="stat-row"><span class="stat-label">HP:</span><span class="stat-value" id="playerHpValue">— / —</span></div>
+          <div class="third-eye-icon" id="thirdEyeIcon" style="display:none;"></div>
           <!-- D-104: sit right after HP, above the hand row's own footprint,
                so they read without a hover even when the hand runs wide. -->
           <div class="side-note-label">Active debuffs <span class="side-note" id="playerDebuffsValue">—</span></div>
@@ -2287,7 +2351,7 @@
           <div class="roll-hero roll-hero-empty" id="rollHero">
             <span class="roll-hero-number" id="rollResultNumber"></span>
             <span class="roll-hero-label" id="rollResultLabel">AWAITING ROLL</span>
-            <button id="thirdEyeBtn" style="display:none;">THIRD EYE — choose the face</button>
+            <span id="thirdEyeInstruction" style="display:none;">Choose a face</span>
             <button id="secondChanceBtn" style="display:none;">REROLL</button>
           </div>
           <div class="die-col player-die die-col-h" id="playerDieList"></div>

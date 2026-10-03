@@ -1578,3 +1578,15 @@ Tests: build183.test.js. Corrected: build129, 131, 134, 139, 171.
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+# BUILD 184 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 185)
+
+Stage 3.11 (BUILD 184) — the boss counters (D-136).
+
+Cardinal: +1 Wrath per blank the player rolls. Pontifex: Absolve on 6 and 14.
+
+Tests: build184.test.js. Corrected: build142.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.

@@ -107,6 +107,7 @@ const gameState = {
     shop: null,
     removalPrice: GAME_CONFIG.SHOP.REMOVAL_BASE_PRICE,
     thirdEyeUsedThisAct: false,
+    thirdEyeArmed: false,
     weightAdded: 0,
     blanksRolled: 0
   },

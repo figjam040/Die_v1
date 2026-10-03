@@ -62,11 +62,23 @@ function grantBossHeal() {
   appendTranscript('BOSS HEAL ' + healed + ' | you ' + shownHp(after) + '/' + gameState.player.maxHp);
 }
 
+// A win's rewards wait until the round's last numbers and sounds have
+// played, so no hit number is dropped and no sound starts under the layer.
+// A New Run or restart in the meantime leaves status 'active' and cancels it.
+function afterFightFxSettle(fn) {
+  if (fightFxSettled()) { fn(); return; }
+  setTimeout(function() {
+    if (gameState.run.status === 'win') { afterFightFxSettle(fn); }
+  }, GAME_CONFIG.FX_SETTLE_POLL_MS);
+}
+
 function runPhase(phase) {
   if (gameState.run.status === 'active') {
     if (gameState.enemy.hp <= 0) {
       updateRun({ status: 'win' });
       log('[WIN] enemy defeated');
+      updateTurn({ rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, hoppedFaces: [] });
+      clearGrantedBound();
       recordFightRoundEnd(gameState.enemy.id);
       appendTranscript('WON r' + gameState.turn.round + ' | you ' + shownHp(gameState.player.hp) + '/' + gameState.player.maxHp);
       // A boss win only ends the run (VICTORY, D-22) on the FINAL act.
@@ -80,21 +92,25 @@ function runPhase(phase) {
           return;
         }
         log('[RUN] act ' + gameState.run.actNumber + ' boss defeated');
-        grantBossHeal();
-        grantGoldForWin('Boss');
-        dieActionsRemaining = GAME_CONFIG.DIE_REWARDS.SINGLE;
-        openArtifactRewardScreen();
+        afterFightFxSettle(function() {
+          grantBossHeal();
+          grantGoldForWin('Boss');
+          dieActionsRemaining = GAME_CONFIG.DIE_REWARDS.SINGLE;
+          openArtifactRewardScreen();
+        });
       } else {
         playAudioEvent('fight_won');
         const cs = gameState.run.currentSlot;
         const wonSlot = cs === 'opening' ? gameState.run.act.opening : gameState.run.act[cs.lane][cs.index];
-        grantGoldForWin(wonSlot.label);
-        dieActionsRemaining = (wonSlot.label === 'Elite') ? GAME_CONFIG.DIE_REWARDS.ELITE : GAME_CONFIG.DIE_REWARDS.SINGLE;
-        if (wonSlot.label === 'Elite') {
-          openArtifactRewardScreen();
-        } else {
-          openDieActionScreen('reward');
-        }
+        afterFightFxSettle(function() {
+          grantGoldForWin(wonSlot.label);
+          dieActionsRemaining = (wonSlot.label === 'Elite') ? GAME_CONFIG.DIE_REWARDS.ELITE : GAME_CONFIG.DIE_REWARDS.SINGLE;
+          if (wonSlot.label === 'Elite') {
+            openArtifactRewardScreen();
+          } else {
+            openDieActionScreen('reward');
+          }
+        });
       }
       return;
     }
@@ -102,6 +118,7 @@ function runPhase(phase) {
       updateRun({ status: 'loss', outcome: 'lost' });
       log('[LOSS] player defeated');
       log('[RUN] run over');
+      clearGrantedBound();
       playAudioEvent('fight_lost');
       recordFightRoundEnd(gameState.enemy.id);
       appendTranscript('LOST r' + gameState.turn.round + ' | you ' + shownHp(gameState.player.hp) + '/' + gameState.player.maxHp);
@@ -327,8 +344,7 @@ function nextPhase() {
 const ROLL_PHASE_PAUSE_MS = 1800;
 
 function preRollControlLive() {
-  return (hasArtifact('third_eye') && !gameState.run.thirdEyeUsedThisAct) ||
-    (hasArtifact('second_chance') && !gameState.turn.secondChanceUsedThisFight);
+  return hasArtifact('second_chance') && !gameState.turn.secondChanceUsedThisFight;
 }
 
 // Auto-advances through every phase needing no player input, stopping at
@@ -341,9 +357,15 @@ function autoAdvance() {
 }
 
 function autoAdvanceStep() {
+  // An armed Third Eye holds the roll without a timer: the face click
+  // (thirdEyeChooseFace()) is what carries the phase machine on.
+  if (thirdEyeChoosingNow()) {
+    refreshInspector();
+    return;
+  }
   if (gameState.turn.phase === 'ROLL_PHASE' && !playerRollResolved && (devChromeOpen || preRollControlLive())) {
     setTimeout(function() {
-      if (gameState.turn.phase !== 'ROLL_PHASE') return;
+      if (gameState.turn.phase !== 'ROLL_PHASE' || thirdEyeChoosingNow()) return;
       nextPhase();
       continueAutoAdvance();
     }, ROLL_PHASE_PAUSE_MS);

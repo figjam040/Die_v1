@@ -139,14 +139,14 @@ function setFace(page, faceNumber, changes) {
     await page.close();
   });
 
-  await runTest('reward-pool card tiers count 24 basic, 15 uncommon, 9 rare', async () => {
+  await runTest('reward-pool card tiers count 24 basic, 14 uncommon, 10 rare', async () => {
     const page = await freshFight(browser);
     const poolTierCounts = await page.evaluate(() => {
       const out = { basic: 0, uncommon: 0, rare: 0 };
       Object.keys(gameState.config.cardPool).forEach(function(id) { out[gameState.config.cardPool[id].tier] += 1; });
       return out;
     });
-    assert.deepStrictEqual(poolTierCounts, { basic: 24, uncommon: 15, rare: 9 });
+    assert.deepStrictEqual(poolTierCounts, { basic: 24, uncommon: 14, rare: 10 });
     await page.close();
   });
 
