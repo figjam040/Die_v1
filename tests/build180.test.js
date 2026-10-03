@@ -31,8 +31,10 @@ const headerLine = function(prefix) {
     assert.deepStrictEqual(found, []);
   });
 
-  await runTest('CLAUDE.md names D-126 for the Reverberation cap exemption', async () => {
-    assert.ok(claudeMd.indexOf("Reverberation's blank sweep, D-126)") !== -1);
+  // D-131 (BUILD 182) deleted the cap and its Reverberation exemption.
+  await runTest('CLAUDE.md no longer names capExempt or ROUND_TRIGGER_CAP', async () => {
+    assert.strictEqual(claudeMd.indexOf('capExempt'), -1);
+    assert.strictEqual(claudeMd.indexOf('ROUND_TRIGGER_CAP'), -1);
   });
 
   await runTest('config.js header has one F44 line naming the Anomaly', async () => {

@@ -657,19 +657,19 @@ async function advanceUntilPhase(page, targetPhase, maxSteps) {
     const afterBlank = await page2.evaluate(() => gameState.player.block);
     assert.strictEqual(afterBlank - beforeBlank, 2, 'expected a blank threnodyFace to give 2 block');
 
-    // Round cap: exhaust the cap with mod triggers, then Threnody must refuse.
+    // D-131: no cap, but once the round's freeze guard is reached Threnody must refuse.
     const page3 = await freshPage(browser);
     await enterOpeningFight(page3);
     await page3.evaluate(() => { updateRun({ threnodyFace: 7 }); });
     const faceNumber3 = await page3.evaluate(() => gameState.run.threnodyFace);
     await page3.evaluate((fn) => { forcePlayerRoll(fn === 9 ? 8 : 9); }, faceNumber3);
     await page3.waitForFunction(() => gameState.turn.phase === 'CARD_PHASE');
-    await page3.evaluate(() => { updateTurn({ roundTriggerCount: GAME_CONFIG.ROUND_TRIGGER_CAP }); });
+    await page3.evaluate(() => { updateTurn({ roundTriggerCount: GAME_CONFIG.TRIGGER_FREEZE_GUARD }); });
     await page3.evaluate(() => { updatePlayer({ hand: ['threnody'], soul: 5 }); });
     const beforeCap = await page3.evaluate(() => ({ hp: gameState.enemy.hp, block: gameState.player.block }));
     await page3.evaluate(() => { playCard(0); });
     const afterCap = await page3.evaluate(() => ({ hp: gameState.enemy.hp, block: gameState.player.block }));
-    assert.deepStrictEqual(afterCap, beforeCap, 'Threnody must refuse once the round trigger cap is already reached');
+    assert.deepStrictEqual(afterCap, beforeCap, 'Threnody must refuse once the round trigger guard is already reached');
     await page.close();
     await page2.close();
     await page3.close();

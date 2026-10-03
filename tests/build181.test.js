@@ -17,10 +17,10 @@ const FACE_TWENTY = 20;
 const EXPECTED_TIERS = {
   basic: ['gilded_die', 'tithe_box', 'merchants_seal'],
   uncommon: ['bone_counter', 'alms', 'plague_bell', 'second_chance', 'hourglass', 'third_eye'],
-  rare: ['tolling_bell', 'loaded_die', 'leaden_face', 'reliquary_chain', 'halo']
+  rare: ['tolling_bell', 'loaded_die', 'leaden_face', 'reliquary_chain', 'halo', 'rosary']
 };
-const EXPECTED_TIER_COUNTS = { basic: 3, uncommon: 6, rare: 5 };
-const EXPECTED_ARTIFACT_COUNT = 14;
+const EXPECTED_TIER_COUNTS = { basic: 3, uncommon: 6, rare: 6 };
+const EXPECTED_ARTIFACT_COUNT = 15;
 
 const { runTest, report } = createRunner();
 
@@ -303,7 +303,7 @@ function face20Weight(page) {
     assert.strictEqual(f45.length, 1, 'F45 lines');
     assert.strictEqual(f51.length, 1, 'F51 lines');
     assert.ok(f12[0].indexOf('// F12 Strengthen targets any loaded face, and face 20 only while Halo is held (D-132); never face 1') === 0, f12[0]);
-    assert.ok(f45[0].indexOf('artifacts: 14,') !== -1, f45[0]);
+    assert.ok(f45[0].indexOf('artifacts 15 (Halo 181, Rosary 182)') !== -1, f45[0]);
     assert.ok(f51[0] === '// F51 (BUILD 164) face 20 weight cap FACE_TWENTY_MAX_WEIGHT 5 with Halo held (D-108, D-132)', f51[0]);
   });
 

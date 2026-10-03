@@ -294,21 +294,22 @@ function snapshot(page) {
     await rung.close();
   });
 
-  await runTest('Item C: Reverberation leaves Alms, Vigil and Gilded Die alone, and is exempt from the round trigger cap', async () => {
+  // D-131 (BUILD 182): no cap and no exemption; the sweep is counted.
+  await runTest('Item C: Reverberation leaves Alms, Vigil and Gilded Die alone, and its blanks all pay past ten triggers', async () => {
     const page = await freshFight(browser, ['alms', 'gilded_die']);
     await loadFaces(page, [[2, 'vigil'], [3, 'smite']]);
     assert.strictEqual(await leaveBlanks(page, 15), 15);
     await rollTo(page, 3);
-    await page.evaluate(() => { updateTurn({ roundTriggerCount: GAME_CONFIG.ROUND_TRIGGER_CAP }); });
+    await page.evaluate(() => { updateTurn({ roundTriggerCount: 10 }); });
     const before = await snapshot(page);
     await playFromHand(page, 'reverberation');
     const after = await snapshot(page);
-    assert.strictEqual(after.block - before.block, 30, 'all 15 blanks pay even at the cap');
+    assert.strictEqual(after.block - before.block, 30, 'all 15 blanks pay past ten triggers this round');
     assert.strictEqual(after.soul, 3, 'no Alms soul: soul 5 less the card cost of 2');
     assert.strictEqual(after.gold, before.gold, 'no Gilded Die gold');
     assert.strictEqual(after.hp, before.hp, 'Vigil does not trigger');
     assert.deepStrictEqual(after.modsTriggered, before.modsTriggered);
-    assert.strictEqual(after.roundTriggers, before.roundTriggers, 'the cap counter did not move');
+    assert.strictEqual(after.roundTriggers - before.roundTriggers, 15, 'the round trigger count records all 15 blanks');
     await page.close();
   });
 

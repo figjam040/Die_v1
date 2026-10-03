@@ -88,6 +88,13 @@ function nextFaceNumberAbove(faceNumber) {
   return above.reduce(function(min, f) { return f.number < min ? f.number : min; }, above[0].number);
 }
 
+// "The face below": the next lower number still on the die, or null.
+function nextFaceNumberBelow(faceNumber) {
+  const below = gameState.die.faces.filter(function(f) { return f.number < faceNumber; });
+  if (below.length === 0) return null;
+  return below.reduce(function(max, f) { return f.number > max ? f.number : max; }, below[0].number);
+}
+
 // Blank faces still on the die, ascending: no mod, or Sealed this round.
 // Faces 1 and 20 are Nat faces, never blank.
 function blankFaceNumbers() {
@@ -258,10 +265,12 @@ function resolvePlayerRoll(face) {
   } else if (face.modId !== null && !isFaceSealed(face.number)) {
     // A face can hold up to two mods; both trigger, first-loaded first,
     // each resolving fully before the next begins.
-    callListeners('MOD_TRIGGER', { modId: face.modId, faceNumber: face.number });
-    if (face.modId2) {
-      callListeners('MOD_TRIGGER', { modId: face.modId2, faceNumber: face.number });
-    }
+    runTriggerQueue(function() {
+      callListeners('MOD_TRIGGER', { modId: face.modId, faceNumber: face.number });
+      if (face.modId2) {
+        callListeners('MOD_TRIGGER', { modId: face.modId2, faceNumber: face.number });
+      }
+    });
     // No separate checkWinNow() needed here — see runBoundScan()'s own
     // onComplete for the async-dispatch case.
     runBoundScan(face);
@@ -325,18 +334,23 @@ function runBoundScan(rolledFace) {
 
 // ---------- FAST SWEEP TIMING ----------
 
+// Gap before a round's play at playIndex (0-based), from SWEEP_PACING.
+function sweepStepDelay(playIndex) {
+  const pacing = GAME_CONFIG.SWEEP_PACING;
+  if (playIndex < 3) { return pacing.FIRST_MS; }
+  return playIndex < 19 ? pacing.NEXT_MS : pacing.LATER_MS;
+}
+
 // Paces WHEN each face in a multi-face sweep plays (state itself still
-// updates the instant each dispatch runs). The first three plays in a
-// round land SWEEP_TRIGGER_DELAY_MS apart; every play after the third
-// lands at a quarter of that delay. onComplete fires once every dispatch
-// has actually run (not merely scheduled) — a kill from an early step
-// doesn't cut the rest of the sweep short — or synchronously if empty.
+// updates the instant each dispatch runs), gaps from sweepStepDelay().
+// onComplete fires once every dispatch has actually run (not merely
+// scheduled) — a kill from an early step doesn't cut the rest of the
+// sweep short — or synchronously if empty.
 function playSweep(faceNumbers, dispatchFn, onComplete) {
   let cumulativeDelay = 0;
   let completedCount = 0;
   faceNumbers.forEach(function(faceNumber, index) {
-    const playIndex = gameState.turn.roundSweepPlays + index;
-    const stepDelay = playIndex < 3 ? GAME_CONFIG.SWEEP_TRIGGER_DELAY_MS : (GAME_CONFIG.SWEEP_TRIGGER_DELAY_MS / 4);
+    const stepDelay = sweepStepDelay(gameState.turn.roundSweepPlays + index);
     if (index > 0) { cumulativeDelay += stepDelay; }
     setTimeout(function() {
       dispatchFn(faceNumber);
@@ -394,15 +408,44 @@ function buildEnemyDieFromSpec(spec) {
 
 // ---------- OUTSIDE-ROLL TRIGGER ----------
 
-// The one shared function every "trigger a face without rolling it"
-// card/mod goes through (Threnody, Reverberation, Magnificat). Refuses
-// face 1/20 and a face already triggered this way this round. Counts
-// toward ROUND_TRIGGER_CAP: a loaded face through mod_dispatch, a blank
-// here directly. Exempt: Nat 20's sweep (natTwentySweep), and a call with
-// options.capExempt, which skips the cap check and the blank's count.
-// Never touches rolledFaceNumber/rollOutcome/rolledFaceWeight.
-function triggerFaceOutsideRoll(faceNumber, options) {
-  const capExempt = !!(options && options.capExempt);
+// D-131: no cap. At TRIGGER_FREEZE_GUARD triggers in a round (Nat 20's
+// sweep uncounted) triggering stops until the next START_OF_TURN.
+function triggerGuardReached() {
+  return gameState.turn.roundTriggerCount >= GAME_CONFIG.TRIGGER_FREEZE_GUARD;
+}
+
+function countRoundTrigger() {
+  updateTurn({ roundTriggerCount: gameState.turn.roundTriggerCount + 1 });
+  if (gameState.turn.roundTriggerCount === GAME_CONFIG.TRIGGER_FREEZE_GUARD) {
+    log('[GUARD] ' + GAME_CONFIG.TRIGGER_FREEZE_GUARD + ' triggers this round, stopped');
+    appendTranscript('GUARD ' + GAME_CONFIG.TRIGGER_FREEZE_GUARD + ' triggers');
+  }
+}
+
+// A trigger raised inside another is queued and played after it, in
+// order, never recursed, so a long chain keeps a flat stack. Play stops
+// when the enemy dies or the guard is reached.
+let triggerQueue = [];
+let triggerQueueOpen = false;
+
+function runTriggerQueue(dispatchFn) {
+  if (triggerQueueOpen) { dispatchFn(); return; }
+  triggerQueueOpen = true;
+  try {
+    dispatchFn();
+    while (triggerQueue.length > 0 && gameState.enemy.hp > 0 && !triggerGuardReached()) {
+      playOutsideTrigger(triggerQueue.shift());
+    }
+  } finally {
+    triggerQueue = [];
+    triggerQueueOpen = false;
+  }
+}
+
+// Every "trigger a face without rolling it" goes through here. Refuses
+// face 1/20, a removed face, and anything past the guard; never touches
+// rolledFaceNumber/rollOutcome/rolledFaceWeight.
+function triggerFaceOutsideRoll(faceNumber) {
   if (faceNumber === 1 || faceNumber === GAME_CONFIG.DIE_SIZE.PLAYER) {
     log('[TRIGGER] outside-roll trigger refused: face ' + faceNumber + ' is a Nat face');
     return false;
@@ -411,23 +454,21 @@ function triggerFaceOutsideRoll(faceNumber, options) {
     log('[TRIGGER] outside-roll trigger refused: face ' + faceNumber + ' was removed');
     return false;
   }
-  if (gameState.turn.outsideTriggeredFaces.indexOf(faceNumber) !== -1) {
-    log('[TRIGGER] outside-roll trigger refused: face ' + faceNumber + ' already triggered outside a roll this round');
-    return false;
+  if (triggerGuardReached()) { return false; }
+  if (triggerQueueOpen) {
+    triggerQueue.push(faceNumber);
+    return true;
   }
-  if (!capExempt && gameState.turn.roundTriggerCount >= GAME_CONFIG.ROUND_TRIGGER_CAP) {
-    // Logs at most once per round, to avoid flooding the log.
-    if (!gameState.turn.roundTriggerCapLogged) {
-      log('[TRIGGER] outside-roll trigger refused: round trigger cap (' + GAME_CONFIG.ROUND_TRIGGER_CAP + ') reached');
-      updateTurn({ roundTriggerCapLogged: true });
-    }
-    return false;
-  }
+  runTriggerQueue(function() { playOutsideTrigger(faceNumber); });
+  return true;
+}
 
-  updateTurn({ outsideTriggeredFaces: gameState.turn.outsideTriggeredFaces.concat(faceNumber) });
-  markFaceHopped(faceNumber);
-
+// A loaded face dispatches MOD_TRIGGER per mod (counted by mod_dispatch),
+// a blank or Sealed face BLANK_ROLL, counted here.
+function playOutsideTrigger(faceNumber) {
   const face = getPlayerFace(faceNumber);
+  if (!face) { return; }
+  markFaceHopped(faceNumber);
   if (face.modId !== null && !isFaceSealed(faceNumber)) {
     log('[TRIGGER] face ' + faceNumber + ' triggered outside a roll (modId: ' + face.modId + ')');
     callListeners('MOD_TRIGGER', { modId: face.modId, faceNumber: face.number });
@@ -435,12 +476,24 @@ function triggerFaceOutsideRoll(faceNumber, options) {
       callListeners('MOD_TRIGGER', { modId: face.modId2, faceNumber: face.number });
     }
   } else {
-    if (!capExempt) { updateTurn({ roundTriggerCount: gameState.turn.roundTriggerCount + 1 }); }
+    countRoundTrigger();
     log('[TRIGGER] face ' + faceNumber + ' triggered outside a roll (blank)');
     // outsideRoll keeps Alms off a blank a card reached for.
     callListeners('BLANK_ROLL', { outsideRoll: true });
   }
-  return true;
+}
+
+// D-134: when a Bound face triggers, Reliquary Chain (step 1) triggers the
+// loaded face above, Rosary (step -1) the one below; never 1 or 20.
+function chainToNeighbour(data, artifactId, step) {
+  if (!hasArtifact(artifactId)) { return; }
+  const face = getPlayerFace(data.faceNumber);
+  if (!face || !isBoundFace(face)) { return; }
+  const neighbour = step > 0 ? nextFaceNumberAbove(data.faceNumber) : nextFaceNumberBelow(data.faceNumber);
+  if (neighbour === null || neighbour <= 1 || neighbour >= GAME_CONFIG.DIE_SIZE.PLAYER) { return; }
+  if (getPlayerFace(neighbour).modId === null) { return; }
+  log('[ARTIFACT] ' + gameState.config.artifacts[artifactId].name + ': face ' + neighbour + ' triggers too');
+  triggerFaceOutsideRoll(neighbour);
 }
 
 // ---------- ENEMY INTENT PATTERN ----------

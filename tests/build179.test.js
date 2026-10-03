@@ -11,7 +11,7 @@ const { runTest, report } = createRunner();
 
 const EXPECTED_MOD_COUNT = 27;
 const EXPECTED_CARD_COUNT = 51;
-const EXPECTED_ARTIFACT_COUNT = 14;
+const EXPECTED_ARTIFACT_COUNT = 15;
 
 async function freshFight(browser, viewport) {
   const page = await browser.newPage({ viewport: viewport || { width: 1600, height: 900 } });

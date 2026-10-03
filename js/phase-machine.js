@@ -166,7 +166,7 @@ function runPhase(phase) {
     log('[START] turn listeners cleared');
 
     // Clears every per-turn/per-round roll flag so none leaks forward.
-    updateTurn({ rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, enemyRollOutcome: null, enemyRolledFaceNumber: null, modTriggeredThisTurn: false, enemyAttackCancelledThisTurn: false, outsideTriggeredFaces: [], roundTriggerCount: 0, roundSweepPlays: 0, roundTriggerCapLogged: false, hoppedFaces: [], cardsPlayed: [], modsTriggered: [], boundTriggeredThisRound: false, enemyRoundSkippedThisTurn: false });
+    updateTurn({ rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, enemyRollOutcome: null, enemyRolledFaceNumber: null, modTriggeredThisTurn: false, enemyAttackCancelledThisTurn: false, roundTriggerCount: 0, roundSweepPlays: 0, hoppedFaces: [], cardsPlayed: [], modsTriggered: [], boundTriggeredThisRound: false, enemyRoundSkippedThisTurn: false });
 
     drawCards(GAME_CONFIG.DRAW_COUNT);
   }

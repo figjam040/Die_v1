@@ -570,7 +570,7 @@ function init() {
       const loaded = !!face && face.modId !== null && !isFaceSealed(faceNumber);
       const triggered = triggerFaceOutsideRoll(faceNumber);
       if (!triggered) {
-        log('[CARD] Threnody: face ' + faceNumber + ' could not trigger (removed, already triggered outside a roll this round, or the round trigger cap was reached)');
+        log('[CARD] Threnody: face ' + faceNumber + ' could not trigger (removed, or the trigger guard stopped this round)');
         return;
       }
       if (loaded) {
@@ -582,16 +582,14 @@ function init() {
   };
 
   // Triggers every blank face, ascending, through triggerFaceOutsideRoll():
-  // each pays the blank payout as a non-roll (no Alms, Vigil or Gilded Die),
-  // exempt from the round trigger cap. A face already triggered outside a
-  // roll this round is skipped.
+  // each pays the blank payout as a non-roll (no Alms, Vigil or Gilded Die).
   gameState.config.cards['reverberation'] = {
     id: 'reverberation', name: 'Reverberation', soulCost: 2, type: 'utility', classRestriction: null, tier: 'rare', tags: ['blank'],
     effect: function(gameState) {
       const blankNumbers = blankFaceNumbers();
       let triggered = 0;
       blankNumbers.forEach(function(faceNumber) {
-        if (triggerFaceOutsideRoll(faceNumber, { capExempt: true })) { triggered++; }
+        if (triggerFaceOutsideRoll(faceNumber)) { triggered++; }
       });
       log('[CARD] reverberation: ' + triggered + ' of ' + blankNumbers.length + ' blank faces triggered');
     }
@@ -828,21 +826,22 @@ function init() {
         return f.modId !== null && f.modId !== 'NAT_ONE' && f.modId !== 'NAT_TWENTY' && !isFaceSealed(f.number);
       });
       log('[ROLL] Nat 20: ' + loadedFaces.length + ' loaded face' + (loadedFaces.length === 1 ? '' : 's') + ' trigger' + (loadedFaces.length === 1 ? 's' : ''));
-      // Tagged natTwentySweep so mod_dispatch's D-51 counter skips these
-      // calls — the one exemption, since this can trigger far more than
-      // ten faces in one pass. Faces are looked up fresh at dispatch time
-      // (not the loadedFaces snapshot) in case an earlier trigger in this
-      // sweep wrote to another face. checkWinNow() as onComplete lets every
-      // remaining face trigger before the fight is declared won.
+      // Tagged natTwentySweep so mod_dispatch's round count skips these
+      // calls — the one exemption. Faces are looked up fresh at dispatch
+      // time (not the loadedFaces snapshot) in case an earlier trigger in
+      // this sweep wrote to another face. checkWinNow() as onComplete lets
+      // every remaining face trigger before the fight is declared won.
       playSweep(loadedFaces.map(function(f) { return f.number; }), function(faceNumber) {
         // This sweep path dispatches directly rather than through
         // triggerFaceOutsideRoll(), so it needs its own hop mark.
         markFaceHopped(faceNumber);
         const f = getPlayerFace(faceNumber);
-        callListeners('MOD_TRIGGER', { modId: f.modId, faceNumber: f.number, natTwentySweep: true });
-        if (f.modId2) {
-          callListeners('MOD_TRIGGER', { modId: f.modId2, faceNumber: f.number, natTwentySweep: true });
-        }
+        runTriggerQueue(function() {
+          callListeners('MOD_TRIGGER', { modId: f.modId, faceNumber: f.number, natTwentySweep: true });
+          if (f.modId2) {
+            callListeners('MOD_TRIGGER', { modId: f.modId2, faceNumber: f.number, natTwentySweep: true });
+          }
+        });
       }, checkWinNow);
     },
     // Nat 1 — Penitence, fight-scoped. The 1-soul loss happens once per
@@ -1003,13 +1002,12 @@ function init() {
   registerListener('MOD_TRIGGER', 'mod_dispatch', function(data) {
     const mod = gameState.config.mods[data.modId];
     if (mod) {
+      // D-131: once the guard is reached nothing more triggers this round.
+      if (triggerGuardReached()) { return; }
       updateTurn({ modTriggeredThisTurn: true });
       playAudioEvent('mod_trigger');
-      // Nat 20's own sweep tags its calls natTwentySweep so this funnel
-      // can skip counting them toward the round trigger cap.
-      if (!data.natTwentySweep) {
-        updateTurn({ roundTriggerCount: gameState.turn.roundTriggerCount + 1 });
-      }
+      // Nat 20's own sweep tags its calls natTwentySweep, never counted.
+      if (!data.natTwentySweep) { countRoundTrigger(); }
       // Bump this specific mod's own trigger count, folded into the
       // triggering face's own modData — data.modId tells us which of this
       // face's (up to two) mod slots just fired. Merges into any existing
@@ -1399,7 +1397,7 @@ function init() {
       if (triggered) {
         log('[MOD] magnificat: face ' + heaviest.number + ' triggered (weight ' + heaviest.weight + ')');
       } else {
-        log('[MOD] magnificat: face ' + heaviest.number + ' could not trigger (already triggered outside a roll this round, or the round trigger cap was reached)');
+        log('[MOD] magnificat: face ' + heaviest.number + ' could not trigger (the trigger guard stopped this round)');
       }
     }
   };
@@ -1532,7 +1530,8 @@ function init() {
     tithe_box: { id: 'tithe_box', name: 'Tithe Box', tier: 'basic', text: 'When you roll a Nat 20, gain 15 gold.' },
     merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", tier: 'basic', text: 'Pay a quarter less for everything in the shop. Card removal stays at 75 gold.' },
     leaden_face: { id: 'leaden_face', name: 'Leaden Face', tier: 'rare', text: 'When you Strengthen a face, add 2 weight instead of 1.' },
-    reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', tier: 'rare', text: 'When you roll a Bound face and the face above it is loaded, trigger that face too.' },
+    reliquary_chain: { id: 'reliquary_chain', name: 'Reliquary Chain', tier: 'rare', text: 'When a Bound face triggers and the face above it is loaded, trigger that face too.' },
+    rosary: { id: 'rosary', name: 'Rosary', tier: 'rare', text: 'When a Bound face triggers and the face below it is loaded, trigger that face too.' },
     plague_bell: { id: 'plague_bell', name: 'Plague Bell', tier: 'uncommon', text: 'When a fight starts, apply 1 stack of poison to the enemy for every 2 loaded faces other than face 10.' },
     alms: { id: 'alms', name: 'Alms', tier: 'uncommon', tags: ['blank'], text: 'When you roll a blank, gain 1 soul instead of 2 block.' },
     hourglass: { id: 'hourglass', name: 'Hourglass', tier: 'uncommon', text: "Skip the enemy's first round of every fight." },
@@ -1590,7 +1589,7 @@ function init() {
     if (!face) { return; }
     log('[MOD] vigil: triggers on a blank roll');
     markFaceHopped(face.number);
-    callListeners('MOD_TRIGGER', { modId: 'vigil', faceNumber: face.number });
+    runTriggerQueue(function() { callListeners('MOD_TRIGGER', { modId: 'vigil', faceNumber: face.number }); });
   }, 'permanent');
 
   registerListener('BLANK_ROLL', 'artifact_gilded_die', function(data) {
@@ -1617,19 +1616,14 @@ function init() {
     updateTurn({ enemyRoundSkippedThisTurn: true });
   }, 'permanent');
 
-  // Only the face actually rolled starts the chain, so a face the chain
-  // itself triggers never starts another one.
+  // D-134: any Bound face's trigger, rolled or not, chains to its loaded
+  // neighbour — chainToNeighbour(), pipeline.js.
   registerListener('MOD_TRIGGER', 'artifact_reliquary_chain', function(data) {
-    if (!hasArtifact('reliquary_chain')) { return; }
-    if (data.faceNumber !== gameState.turn.rolledFaceNumber) { return; }
-    const face = getPlayerFace(data.faceNumber);
-    if (!isBoundFace(face)) { return; }
-    // D-119: the next number still on the die, not data.faceNumber + 1.
-    const aboveNumber = nextFaceNumberAbove(data.faceNumber);
-    if (aboveNumber === null || aboveNumber >= GAME_CONFIG.DIE_SIZE.PLAYER) { return; }
-    if (getPlayerFace(aboveNumber).modId === null) { return; }
-    log('[ARTIFACT] Reliquary Chain: face ' + aboveNumber + ' triggers too');
-    triggerFaceOutsideRoll(aboveNumber);
+    chainToNeighbour(data, 'reliquary_chain', 1);
+  }, 'permanent');
+
+  registerListener('MOD_TRIGGER', 'artifact_rosary', function(data) {
+    chainToNeighbour(data, 'rosary', -1);
   }, 'permanent');
 
   renderDevModOptions(); // DEV ONLY — remove before any real release

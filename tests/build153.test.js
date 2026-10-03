@@ -111,7 +111,7 @@ const NEW_CARD_IDS = ['venom', 'ballast', 'refrain', 'second_sight', 'cadence', 
     }));
     assert.strictEqual(v.slots, 8, 'the artifact row must hold eight slots');
     assert.strictEqual(v.max, 8, 'ARTIFACT_MAX must be 8');
-    assert.strictEqual(v.total, 14, 'there must be fourteen artifacts');
+    assert.strictEqual(v.total, 15, 'there must be fifteen artifacts');
     await page.close();
   });
 
@@ -184,7 +184,7 @@ const NEW_CARD_IDS = ['venom', 'ballast', 'refrain', 'second_sight', 'cadence', 
     await forceRoll(page2, 19);
     const v = await page2.evaluate(() => ({
       hp: gameState.enemy.hp,
-      outside: gameState.turn.outsideTriggeredFaces.slice()
+      outside: gameState.turn.hoppedFaces.slice()
     }));
     assert.strictEqual(hp2Before - v.hp, 6, 'only Unison may land from face 19, dealt ' + (hp2Before - v.hp));
     assert.strictEqual(v.outside.indexOf(20), -1, 'face 20 must never be chained into');

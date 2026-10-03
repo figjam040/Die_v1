@@ -92,7 +92,9 @@ const { runTest, report } = createRunner();
     await liveBrowser.close();
   });
 
-  await runTest('BUILD 137: the round-trigger-cap log line appears once even when the cap is hit many times in one round', async () => {
+  // D-131 (BUILD 182): the cap is gone; eighteen triggers in one round all
+  // land and no refusal or guard line prints below the guard.
+  await runTest('BUILD 137: eighteen outside triggers in one round all land, with no refusal or guard log line', async () => {
     const liveBrowser = await chromium.launch();
     const page = await freshPage(liveBrowser);
     await enterOpeningFight(page);
@@ -102,13 +104,13 @@ const { runTest, report } = createRunner();
       updateDie({ faces: newFaces });
       const results = [];
       for (let n = 2; n <= 19; n++) { results.push(triggerFaceOutsideRoll(n)); }
-      const capLines = Array.from(document.querySelectorAll('#log > div')).filter(function(d) {
-        return d.textContent.indexOf('round trigger cap (' + GAME_CONFIG.ROUND_TRIGGER_CAP + ') reached') !== -1;
+      const stopLines = Array.from(document.querySelectorAll('#log > div')).filter(function(d) {
+        return d.textContent.indexOf('outside-roll trigger refused') !== -1 || d.textContent.indexOf('[GUARD]') !== -1;
       });
-      return { refusedCount: results.filter(function(r) { return r === false; }).length, capLineCount: capLines.length, cap: GAME_CONFIG.ROUND_TRIGGER_CAP };
+      return { refusedCount: results.filter(function(r) { return r === false; }).length, stopLineCount: stopLines.length };
     });
-    assert.ok(v.refusedCount > 1, 'this batch must refuse the cap more than once, or the test proves nothing (got ' + v.refusedCount + ')');
-    assert.strictEqual(v.capLineCount, 1, 'the cap-reached log line must appear exactly once despite ' + v.refusedCount + ' refusals this round');
+    assert.strictEqual(v.refusedCount, 0, 'no outside trigger may be refused below the guard');
+    assert.strictEqual(v.stopLineCount, 0, 'no refusal or guard line may print below the guard');
     await liveBrowser.close();
   });
 

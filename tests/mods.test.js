@@ -553,7 +553,7 @@ const { results, runModTest: runTest } = createRunner();
     await page.close();
   });
 
-  await runTest(browser, 'triggerFaceOutsideRoll: refuses a second outside trigger of the same face in one round', async (browser) => {
+  await runTest(browser, 'triggerFaceOutsideRoll: a face may trigger outside a roll twice in one round (D-131)', async (browser) => {
     const page = await freshFightPage(browser);
     await page.evaluate((faceNum) => {
       devChromeOpen = true;
@@ -567,28 +567,26 @@ const { results, runModTest: runTest } = createRunner();
       return { first: first, second: second };
     }, TEST_FACE);
     assert.strictEqual(v.first, true, 'the first outside trigger this round must succeed');
-    assert.strictEqual(v.second, false, 'a second outside trigger of the same face in the same round must be refused');
+    assert.strictEqual(v.second, true, 'a second outside trigger of the same face in the same round must succeed (D-131)');
     assertNoErrors(page);
     await page.close();
   });
 
-  await runTest(browser, 'triggerFaceOutsideRoll: stops at the round trigger cap', async (browser) => {
+  await runTest(browser, 'triggerFaceOutsideRoll: eleven triggers in one round all land, no cap (D-131)', async (browser) => {
     const page = await freshFightPage(browser);
     const v = await page.evaluate(() => {
       // Faces 2-12 (eleven faces), each single-mod (smite): eleven separate
-      // outside triggers attempted, one per face (never repeating a face,
-      // so the "once per round" rule above can't be what stops the last
-      // one) — only GAME_CONFIG.ROUND_TRIGGER_CAP (10) of them may succeed.
+      // outside triggers, one more than the old cap of 10 — all succeed.
       const newFaces = gameState.die.faces.slice();
       for (let n = 2; n <= 12; n++) { newFaces[n - 1] = Object.assign({}, newFaces[n - 1], { modId: 'smite' }); }
       updateDie({ faces: newFaces });
+      const countBefore = gameState.turn.roundTriggerCount;
       const results = [];
       for (let n = 2; n <= 12; n++) { results.push(triggerFaceOutsideRoll(n)); }
-      return { results: results, cap: GAME_CONFIG.ROUND_TRIGGER_CAP, count: gameState.turn.roundTriggerCount };
+      return { results: results, triggersThisRoundAdded: gameState.turn.roundTriggerCount - countBefore };
     });
-    assert.strictEqual(v.results.filter(function(r) { return r === true; }).length, v.cap, 'exactly ' + v.cap + ' triggers should succeed before the cap stops the rest');
-    assert.strictEqual(v.results[v.results.length - 1], false, 'the eleventh outside trigger this round must be refused by the cap');
-    assert.strictEqual(v.count, v.cap, 'the round trigger counter must not exceed the cap for these single-mod faces');
+    assert.strictEqual(v.results.filter(function(r) { return r === true; }).length, 11, 'all eleven outside triggers must succeed');
+    assert.strictEqual(v.triggersThisRoundAdded, 11, 'the round trigger count must record all eleven');
     assertNoErrors(page);
     await page.close();
   });

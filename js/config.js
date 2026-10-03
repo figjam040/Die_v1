@@ -41,7 +41,7 @@
 // F42 (BUILD 150) break numbers lowered by 4; gold (GOLD_REWARDS) from a fight win spends in the shop (SHOP) after every rite; a non-final Boss win heals BOSS_HEAL_PERCENT of max HP, rounded down (D-122); three artifacts offered after an Elite/non-final-Boss win
 // F43 (BUILD 151, 167) Purify: third die action, clears mods off a face (never 1/10/20), weight kept; Remove (D-119) deletes a blank face, not 1/10/20, above DIE_MIN_FACES 12
 // F44 (BUILD 151) lower lane index 3 is the Anomaly The Font (D-117): unresolved roll picks the outcome; the slot type stays event
-// F45 (BUILD 153) artifacts: 14, up to ARTIFACT_MAX (8) held, offered after an Elite/non-final-Boss win and sold at SHOP.ARTIFACT_PRICE; their amounts live in ARTIFACTS
+// F45 (BUILD 153) artifacts 15 (Halo 181, Rosary 182), ARTIFACT_MAX 8 held, offered after an Elite or non-final Boss win and sold at SHOP.ARTIFACT_PRICE
 // F46 (BUILD 154) every HP, block, poison, soul and gold change pops a number where it happened; DAMAGE_NUMBERS holds the rise, fade, step count and the six colours
 // F47 (BUILD 142) Lector reads a 6: +1 Drain; Hierophant a Nat 1: cancels, 5 poison; Pontifex reads the heaviest face: Wrath
 // F48 (BUILD 153) Merchant's Seal prices are floor(base x 0.75); removal stays 75
@@ -53,7 +53,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 181,
+  BUILD: 182,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -234,9 +234,9 @@ const GAME_CONFIG = {
 
   CHAIN_STEP_CAP: 8,
 
-  ROUND_TRIGGER_CAP: 10,
+  TRIGGER_FREEZE_GUARD: 500,
 
-  SWEEP_TRIGGER_DELAY_MS: 200,
+  SWEEP_PACING: { FIRST_MS: 200, NEXT_MS: 50, LATER_MS: 10 },
 
   // D-106 — a clicked offer card/die frame/artifact holds its gold
   // outline this long before the layer moves on.

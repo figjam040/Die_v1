@@ -1533,3 +1533,18 @@ Item C: build178 checks HEAD's parent against HEAD with a box report, and the tr
 Tests: build180.test.js. Corrected: build173 (Tolling Bell text), build178 (compare assertion).
 
 Verification: see paste-back.
+
+
+# BUILD 181 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 182)
+
+Stage 3.08 (BUILD 181) — Halo and artifact tiers.
+
+Item A (D-132): the artifact Halo. Strengthen may target face 20 only while it is held; canStrengthenFace() is the one rule for the picker, shop, Leaden Face and strengthenFace().
+
+Item B (D-133): every artifact has a tier, and the artifact offer draws through the card offer's tier split.
+
+Tests: build181.test.js. Corrected: build145, 153, 154, 164, 165, 170, 171, 173, 179, facts F12.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.

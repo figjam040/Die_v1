@@ -166,9 +166,7 @@ gameState = {
     enemyRolledFaceNumber: null, // enemy-side mirror
     modTriggeredThisTurn: false, // true from a normal roll or Nat 20's loop
     enemyAttackCancelledThisTurn: false, // set by the enemy's own Nat 1
-    outsideTriggeredFaces: [], // faces already triggered outside a roll this round
-    roundTriggerCount: 0, // toward GAME_CONFIG.ROUND_TRIGGER_CAP
-    roundTriggerCapLogged: false, // prints once per round
+    roundTriggerCount: 0, // toward GAME_CONFIG.TRIGGER_FREEZE_GUARD (D-131)
     roundSweepPlays: 0, // see BOUND ENGINE
     hoppedFaces: [], // see THE HOP
     sealedFaces: [], // this round's Sealed faces — see ENEMY DIE PER TYPE, SEAL
@@ -377,7 +375,7 @@ Rite — 2 soul, attack, Ordained-only — 6 damage + 6 block (D-121).
 
 Pool (config.cardPool) carries a tier ('basic'/'uncommon'/'rare'; D-111's 'mythic'/'void' hold no pieces yet, offer weight 0) and a tags list per card; the Ring 0 cards carry none and read basic (cardTier()). Every card's text lives in CARD_EFFECT_TEXT (render-text.js), not this file; code reads it only through getCardEffectText(), which live-numbers Threnody's face.
 
-Tags in use: poison, soul, bastion, mass, growth, bound, awe, die, blank (D-126). BLANK PIECES (D-126, D-127): a blank face is a face on the die with no mod, or Sealed this round, never face 1 or 20 nor a removed face (blankFaceNumbers(), pipeline.js). Rolling a blank is any resolved player roll landing on one, a spent Nat 1 and a Second Sight or Loaded Die roll included; a blank a card triggers is not a roll. Vacancy (rare, 2 soul) deals 1 damage per blank face, Tabernacle (basic, 1 soul) gains 2 block per blank face, both uncapped; Reverberation (rare, 2 soul) triggers every blank face, ascending, through triggerFaceOutsideRoll(face, { capExempt: true }) — each pays the blank payout as an outside-roll blank, so Alms, Vigil, Gilded Die and the blank counters do not react, and none counts toward ROUND_TRIGGER_CAP. Orison is unchanged. Each carries the Blank tag with its old ones (Vigil and Tithe drop bastion and soul; Vacancy, Tabernacle and Reverberation drop mass). Every number is in GAME_CONFIG (BLANK_GOLD, VIGIL_BASE_DAMAGE, VIGIL_BLANKS_PER_POINT, TITHE_BLOCK_PER_BLANK, VACANCY_DAMAGE_PER_BLANK, TABERNACLE_BLOCK_PER_BLANK, ARTIFACTS.TOLLING_BELL_BLOCK_PER_BLANK).
+Tags in use: poison, soul, bastion, mass, growth, bound, awe, die, blank (D-126). BLANK PIECES (D-126, D-127): a blank face is a face on the die with no mod, or Sealed this round, never face 1 or 20 nor a removed face (blankFaceNumbers(), pipeline.js). Rolling a blank is any resolved player roll landing on one, a spent Nat 1 and a Second Sight or Loaded Die roll included; a blank a card triggers is not a roll. Vacancy (rare, 2 soul) deals 1 damage per blank face, Tabernacle (basic, 1 soul) gains 2 block per blank face, both uncapped; Reverberation (rare, 2 soul) triggers every blank face, ascending, through triggerFaceOutsideRoll() — each pays the blank payout as an outside-roll blank, so Alms, Vigil, Gilded Die and the blank counters do not react. Orison is unchanged. Each carries the Blank tag with its old ones (Vigil and Tithe drop bastion and soul; Vacancy, Tabernacle and Reverberation drop mass). Every number is in GAME_CONFIG (BLANK_GOLD, VIGIL_BASE_DAMAGE, VIGIL_BLANKS_PER_POINT, TITHE_BLOCK_PER_BLANK, VACANCY_DAMAGE_PER_BLANK, TABERNACLE_BLOCK_PER_BLANK, ARTIFACTS.TOLLING_BELL_BLOCK_PER_BLANK).
 
 ---
 
@@ -429,13 +427,11 @@ TRIGGER COUNTS: in each face's modData — triggerCount for modId, triggerCount2
 
 # OUTSIDE-ROLL TRIGGER
 
-triggerFaceOutsideRoll(faceNumber) (pipeline.js) is the one shared function every "trigger a face without rolling it" card/mod uses — Threnody, Reverberation, Magnificat, Novena today; any future piece with the same shape uses this, never a second dispatch copy.
+triggerFaceOutsideRoll(faceNumber) (pipeline.js) is the one shared function every "trigger a face without rolling it" card/mod/artifact uses — Threnody, Refrain, Reverberation, Magnificat, Novena, the chains today; any future piece with the same shape uses this, never a second dispatch copy.
 
-Refuses outright (no state change, returns false) for face 1 or DIE_SIZE.PLAYER (20) — both Nat stubs, never a real mod or blank.
+Refuses outright (no state change, returns false) for face 1 or DIE_SIZE.PLAYER (20) — both Nat stubs, never a real mod or blank — and a removed face. A face may trigger any number of times in a round.
 
-Refuses a face already triggered this way once this round — turn.outsideTriggeredFaces (state.js), cleared to [] at START_OF_TURN. A face rolled normally then re-triggered outside a roll (Reverberation) isn't blocked — the record only tracks outside triggers, not the roll itself.
-
-D-51 — per-round trigger cap. ROUND_TRIGGER_CAP (config.js) is 10. turn.roundTriggerCount counts every real MOD_TRIGGER dispatch this round — mod_dispatch increments it on every call except a Nat 20 sweep's own (tagged natTwentySweep: true), the one exemption. A blank face bumps the same counter directly in triggerFaceOutsideRoll(). Refuses once the counter reaches the cap, unless the call passes { capExempt: true } (Reverberation's blank sweep, D-126), which neither checks nor bumps it; cleared to 0 at START_OF_TURN. The "round trigger cap reached" log line prints at most once per round (roundTriggerCapLogged).
+D-131 — no cap. turn.roundTriggerCount counts each mod_dispatch run (natTwentySweep calls excepted) and each blank outside trigger, cleared at START_OF_TURN. At TRIGGER_FREEZE_GUARD (500) countRoundTrigger() logs `[GUARD] 500 triggers this round, stopped` and transcript `GUARD 500 triggers` once; nothing more triggers that round. QUEUE: runTriggerQueue() wraps every root dispatch; a trigger raised inside one waits in triggerQueue and plays after, in order, each resolving fully, no recursion, until empty, the enemy dead or the guard reached.
 
 Dispatch: a loaded face triggers through the identical MOD_TRIGGER dispatch a rolled face uses — modId first, then modId2 — so permanent per-face growth accrues exactly as on a roll. A blank face dispatches BLANK_ROLL for the same BLANK_ROLL_BLOCK (2) block. Never writes rolledFaceNumber/rollOutcome/rolledFaceWeight.
 
@@ -461,9 +457,11 @@ grantBoundToFace(faceNumber) (pipeline.js) is the one setter — grants Bound to
 
 Display: every Bound face — printed or granted — shows a "Bound" badge on its die row (`.die-bound-badge`, same box/font as `.die-weight`, D-28), on every container, not gated by showTriggerBadges.
 
-Bound scan: runBoundScan(rolledFace) (pipeline.js), only from resolvePlayerRoll()'s mod-trigger branch, never during a Nat 20. When the rolled face is itself Bound, every other loaded Bound face triggers via triggerFaceOutsideRoll(), ascending order. A face triggered this way never starts a further scan. Counts toward ROUND_TRIGGER_CAP (D-51), no exemption.
+Bound scan: runBoundScan(rolledFace) (pipeline.js), only from resolvePlayerRoll()'s mod-trigger branch, never during a Nat 20. When the rolled face is itself Bound, every other loaded Bound face triggers via triggerFaceOutsideRoll(), ascending order. A face triggered this way never starts a further scan (D-64). Counted toward the round's trigger count.
 
-Fast sweep timing: playSweep(faceNumbers, dispatchFn) (pipeline.js) paces WHEN each face in a sweep plays — state updates the instant each dispatch runs. turn.roundSweepPlays counts every sweep-played trigger this round, cleared at START_OF_TURN. The first three plays land SWEEP_TRIGGER_DELAY_MS (200ms) apart; after, a quarter of that (50ms).
+Fast sweep timing: playSweep(faceNumbers, dispatchFn) (pipeline.js) paces WHEN each face in a sweep plays — state updates the instant each dispatch runs. turn.roundSweepPlays counts every sweep-played trigger this round, cleared at START_OF_TURN. sweepStepDelay() reads GAME_CONFIG.SWEEP_PACING: plays 1-3 FIRST_MS (200) apart, the next sixteen NEXT_MS (50), from the twentieth LATER_MS (10). Queued chain triggers play at once, not paced.
+
+CHAINS (D-134): chainToNeighbour() (pipeline.js). On any Bound face's MOD_TRIGGER, rolled or not, Reliquary Chain triggers the loaded face above (nextFaceNumberAbove()), never 20; Rosary the one below (nextFaceNumberBelow()), never 1. Two adjacent Bound faces with both held loop until the enemy dies or the guard stops it, by design.
 
 Bound mods/cards: Unison (6 damage), Accord (10 block), Kinship (4 poison) are plain Bound. Kyrie — 5 damage, 10 if the rolled face has Bound. Novena — every loaded Bound face triggers. Canticle — 6 block; if the rolled face is loaded, it gains Bound for the fight (never face 1/20). Concord — Bound, +1 soul, 3 block. Herald — Bound, 6 damage; one other random loaded non-Bound face gains Bound for the fight (pickRandom(), state.js).
 
@@ -535,7 +533,7 @@ Twenty-seven mods, all in config.mods. Consecrate is excluded from the reward po
 
 Consecrate (anchor) — +2 soul this turn; each card played this turn also generates 3 block, turn-scoped.
 Fervour — turn-scoped DAMAGE_MULTIPLIER listener doubling damage tagged 'attack' only (poison untouched). The first and only mod using the pipeline's multiplier stage.
-Vigil — 4 damage plus 1 per 3 blanks rolled this run (gameState.run.blanksRolled, whole points), and it also triggers on every blank roll: the permanent 'vigil_blank_trigger' listener on BLANK_ROLL dispatches MOD_TRIGGER for the face carrying it (one trigger per roll, counted against ROUND_TRIGGER_CAP, skipped for an outside-roll blank or a Sealed face), after the roll's blank is counted. Tithe — 1 block per blank face on the die, on the trigger.
+Vigil — 4 damage plus 1 per 3 blanks rolled this run (gameState.run.blanksRolled, whole points), and it also triggers on every blank roll: the permanent 'vigil_blank_trigger' listener on BLANK_ROLL dispatches MOD_TRIGGER for the face carrying it (one trigger per roll, counted in the round's trigger count, skipped for an outside-roll blank or a Sealed face), after the roll's blank is counted. Tithe — 1 block per blank face on the die, on the trigger.
 Zeal — 10 damage plus a bonus that permanently increases by 4 each further trigger from the same face; stored per-face on that face's modData (updateDie()), not a global counter, so Zeal on two faces accrues independently.
 Ordain — 10 damage, then permanently +1 weight to the face it triggered from.
 Elevation — 10 damage; the face above (the next number still on the die, nextFaceNumberAbove()) permanently gains +1 weight, only if loaded and not face 20. Blank-above or face 20: just the 10 damage, no write, no error. Weight write goes through the shared strengthenFace() (pipeline.js), the only place weight is ever written.
@@ -599,9 +597,9 @@ GOLD: a fight win grants gold within GOLD_REWARDS (Fight 12-20, Elite 30-40, Bos
 
 SHOP (GAME_CONFIG.SHOP): opens after every rite, in #shopPanel. Stock (gameState.run.shop, built once per visit): 3 cards at the Elite tier split, one artifact at ARTIFACT_PRICE (150) from the artifacts not held, one Strengthen (opens the real face picker, returns to shop), one removal at shopRemovalPrice() (gameState.run.removalPrice, starting REMOVAL_BASE_PRICE, +REMOVAL_PRICE_STEP/purchase, run-scoped). Every price but removal runs through shopPriceWithArtifacts() (cards-mods.js). Unaffordable disabled; Leave is free.
 
-ARTIFACTS (F45): gameState.run.artifacts, max ARTIFACT_MAX (8), defs in config.artifacts, fourteen total, each with a tier (basic 3, uncommon 6, rare 5, D-133); amounts in GAME_CONFIG.ARTIFACTS. #artifactRewardPanel (pick 1 of 3, Skip allowed) opens after an Elite win and a non-final Boss win, before the die reward, drawing 3 unheld through the card offer's tier split (D-60), the shop's slot flat. Each with a hook of its own registers a permanent listener in init(), gated on hasArtifact(); the rest gate at the roll path or shop price they act on.
+ARTIFACTS (F45): gameState.run.artifacts, max ARTIFACT_MAX (8), defs in config.artifacts, fifteen total, each with a tier (basic 3, uncommon 6, rare 6, D-133); amounts in GAME_CONFIG.ARTIFACTS. #artifactRewardPanel (pick 1 of 3, Skip allowed) opens after an Elite win and a non-final Boss win, before the die reward, drawing 3 unheld through the card offer's tier split (D-60), the shop's slot flat. Each with a hook of its own registers a permanent listener in init(), gated on hasArtifact(); the rest gate at the roll path or shop price they act on.
 
-Third Eye (thirdEyeChooseFace()) forces one chosen face per act. Loaded Die (rollWithArtifacts()) rolls twice, higher stands. Tolling Bell (BLANK_ROLL) pays 1 block per blank rolled earlier this fight (gameState.fight.blanksRolled) on top of the blank payout, an outside-roll blank included, and pays it beside Alms. Tithe Box (NAT_TWENTY) pays TITHE_BOX_GOLD per Nat 20. Merchant's Seal lowers every shop price a quarter, rounded down, freezes removal at REMOVAL_BASE_PRICE while held. Leaden Face makes dieActionPickStrengthenFace() call strengthenFace() twice — Ordain/Elevation untouched. Reliquary Chain (rolled face only) triggers the loaded face above a rolled Bound face (the next number still on the die) via triggerFaceOutsideRoll(), never face 20, counting toward ROUND_TRIGGER_CAP. Plague Bell (FIGHT_START) poisons the enemy for half its loaded faces, rounded down, 1/10/20 excluded. Alms (BLANK_ROLL) replaces the blank passive with ALMS_SOUL soul — an outside-roll blank (Threnody, Reverberation, Refrain) still gives its block. Hourglass (ENEMY_ACT_PHASE) skips round 1's intent, pattern still advances, die still rolls. Second Chance rerolls once a fight — the first face never resolves. Gilded Die (BLANK_ROLL) pays BLANK_GOLD gold on a blank roll, never on an outside-roll blank. Alms, Tolling Bell, Gilded Die, Vigil, Tithe, Vacancy, Tabernacle, Reverberation and Orison carry the Blank tag (D-126, D-127). Bone Counter takes BONE_COUNTER_GOLD instead of arming Penitence, when the gold is there. Halo lets Strengthen target face 20 (D-132).
+Third Eye (thirdEyeChooseFace()) forces one chosen face per act. Loaded Die (rollWithArtifacts()) rolls twice, higher stands. Tolling Bell (BLANK_ROLL) pays 1 block per blank rolled earlier this fight (gameState.fight.blanksRolled) on top of the blank payout, an outside-roll blank included, and pays it beside Alms. Tithe Box (NAT_TWENTY) pays TITHE_BOX_GOLD per Nat 20. Merchant's Seal lowers every shop price a quarter, rounded down, freezes removal at REMOVAL_BASE_PRICE while held. Leaden Face makes dieActionPickStrengthenFace() call strengthenFace() twice — Ordain/Elevation untouched. Reliquary Chain triggers the loaded face above any triggering Bound face, never 20; Rosary (rare) the one below, never 1 (D-134, BOUND ENGINE). Plague Bell (FIGHT_START) poisons the enemy for half its loaded faces, rounded down, 1/10/20 excluded. Alms (BLANK_ROLL) replaces the blank passive with ALMS_SOUL soul — an outside-roll blank (Threnody, Reverberation, Refrain) still gives its block. Hourglass (ENEMY_ACT_PHASE) skips round 1's intent, pattern still advances, die still rolls. Second Chance rerolls once a fight — the first face never resolves. Gilded Die (BLANK_ROLL) pays BLANK_GOLD gold on a blank roll, never on an outside-roll blank. Alms, Tolling Bell, Gilded Die, Vigil, Tithe, Vacancy, Tabernacle, Reverberation and Orison carry the Blank tag (D-126, D-127). Bone Counter takes BONE_COUNTER_GOLD instead of arming Penitence, when the gold is there. Halo lets Strengthen target face 20 (D-132).
 
 ---
 
@@ -781,19 +779,22 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 179) — D-125 wording pass, Strengthen picker Now/Becomes with odds, symbol hover box inside the viewport. Verified: npm test green, screenshots 0 px vs 178.
 (BUILD 180) — docs reconciliation, D-127 to D-126, config.js F14/F44, Tolling Bell text (D-125). Verified: npm test green, screenshots 0 px vs 179.
 (BUILD 181) — D-132 Halo gates Strengthen on face 20 (canStrengthenFace), D-133 artifact tiers 3/6/5 drawn through the offer split. Verified: npm test green, screenshots 0 px vs 179.
+(BUILD 182) — D-131 no trigger cap: guard 500, trigger queue; sweep pacing 200/50/10; D-134 chains on any Bound trigger, Rosary. Verified: npm test green, screenshots 0 px vs 180.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 3.08 (BUILD 181) — Halo and artifact tiers.
+Stage 3.09 (BUILD 182) — no trigger cap, the chains, Rosary.
 
-Item A (D-132): the artifact Halo. Strengthen may target face 20 only while it is held; canStrengthenFace() is the one rule for the picker, shop, Leaden Face and strengthenFace().
+Item A (D-131): the cap, its exemption and the once-per-round refusal deleted; TRIGGER_FREEZE_GUARD 500; nested triggers queued, not recursed.
 
-Item B (D-133): every artifact has a tier, and the artifact offer draws through the card offer's tier split.
+Item B: SWEEP_PACING 200/50/10.
 
-Tests: build181.test.js. Corrected: build145, 153, 154, 164, 165, 170, 171, 173, 179, facts F12.
+Item C (D-134): Reliquary Chain on any Bound trigger; Rosary, rare, the mirror.
+
+Tests: build182.test.js. Corrected: mods, facts F45, build137, 142, 153, 167, 173, 179, 180, 181.
 
 Verification: see paste-back.
 

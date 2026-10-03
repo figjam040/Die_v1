@@ -585,7 +585,7 @@ function stringLiterals(src) {
     await page.evaluate(() => { devChromeOpen = true; updateRun({ artifacts: ['reliquary_chain'] }); enterSlot('opening', null); });
     const hp = await page.evaluate(() => gameState.enemy.hp);
     await forceRoll(page, 5);
-    const v = await page.evaluate(() => ({ hp: gameState.enemy.hp, outside: gameState.turn.outsideTriggeredFaces.slice() }));
+    const v = await page.evaluate(() => ({ hp: gameState.enemy.hp, outside: gameState.turn.hoppedFaces.slice() }));
     assert.strictEqual(hp - v.hp, 22, 'Unison (6) plus the chained Smite on 7 (16)');
     assert.deepStrictEqual(v.outside, [7], 'face 7 chained, not the removed 6');
     await page.close();

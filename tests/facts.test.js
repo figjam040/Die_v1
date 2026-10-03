@@ -479,6 +479,15 @@ function specOnlyDeepEqual(actual, expected, label) {
     await page.close();
   });
 
+  await runTest('F45 artifacts 15, ARTIFACT_MAX 8, Rosary among them', async () => {
+    const page = await freshPage(browser);
+    const v = await page.evaluate(() => ({ ids: Object.keys(gameState.config.artifacts), max: GAME_CONFIG.ARTIFACT_MAX }));
+    assert.strictEqual(v.ids.length, 15);
+    assert.strictEqual(v.max, 8);
+    assert.ok(v.ids.indexOf('rosary') !== -1, 'Rosary must be an artifact');
+    await page.close();
+  });
+
   await runTest('F13 Load offer is 3 mods, excluding the anchor', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => {
