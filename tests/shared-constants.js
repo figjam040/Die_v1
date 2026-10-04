@@ -1,7 +1,6 @@
 // Shared limits and page helpers used by more than one test file, so they
-// can never disagree. CLAUDE_MD_MAX_BYTES matches CLAUDE.md's own standing
-// rule (SIZE RULE: this file stays at or under 90,000 bytes) and F40,
-// asserted in tests/guardrails.test.js. TEST_FILE_MAX_LINES caps every .js
+// can never disagree. CLAUDE_MD_MAX_BYTES is the cap CLAUDE.md's WHO EDITS
+// THIS FILE names and F40, asserted in tests/guardrails.test.js. TEST_FILE_MAX_LINES caps every .js
 // file under tests/; JS_FILE_MAX_LINES caps every file under js/, held just
 // above js/cards-mods.js until that file is split, then lowered to 1500.
 // Both are asserted in tests/guardrails.test.js.
@@ -178,6 +177,34 @@ function topLevelNames(src) {
   return names;
 }
 
+// FACTS block: js/config.js's top-of-file comment, line 1 up to the
+// `const GAME_CONFIG` line, exempt from the comment-share, run-length and
+// build-number checks. withoutFactsBlock() is the source the share check
+// measures; factsBlockProblems() lists why a source lacks the block on top.
+function factsBlockLineRange(src) {
+  const idx = src.indexOf('const GAME_CONFIG');
+  if (idx === -1) return { startLine: 0, endLine: 0 };
+  return { startLine: 1, endLine: src.slice(0, idx).split('\n').length };
+}
+
+function withoutFactsBlock(src) {
+  const range = factsBlockLineRange(src);
+  if (range.endLine === 0) return src;
+  return src.split('\n').slice(range.endLine - 1).join('\n');
+}
+
+function factsBlockProblems(src) {
+  const range = factsBlockLineRange(src);
+  if (range.endLine === 0) return ['no const GAME_CONFIG line'];
+  const block = src.split('\n').slice(0, range.endLine - 1).map(function(l) { return l.trim(); });
+  const problems = [];
+  if (!(block[0] || '').startsWith('//')) problems.push('line 1 is not a comment');
+  if (block.some(function(l) { return l !== '' && !l.startsWith('//'); })) problems.push('a code line sits above const GAME_CONFIG');
+  if (!block.some(function(l) { return /^\/\/ FACTS\b/.test(l); })) problems.push('no // FACTS line');
+  if (!block.some(function(l) { return /^\/\/ F01 /.test(l); })) problems.push('no // F01 line');
+  return problems;
+}
+
 // Lines of a test file's source that set a byte, line or character limit as
 // a literal instead of importing it from this file: a *BYTE(S)/*LINE(S)
 // constant assigned a number, a bytes/lines/byteLength comparison against a
@@ -201,13 +228,16 @@ function limitLiteralLines(src) {
 }
 
 module.exports = {
-  CLAUDE_MD_MAX_BYTES: 90000,
+  CLAUDE_MD_MAX_BYTES: 32000,
   TEST_FILE_MAX_LINES: 800,
   JS_FILE_MAX_LINES: 1700,
   RENDER_FILE_MAX_LINES: 1500,
   CONFIRMED_WORKING_LINE_MAX_CHARS: 300,
   CURRENT_SUBSTAGE_MAX_BYTES: 4000,
   limitLiteralLines,
+  factsBlockLineRange,
+  withoutFactsBlock,
+  factsBlockProblems,
   FILE_URL,
   createRunner,
   TEST_FACE,

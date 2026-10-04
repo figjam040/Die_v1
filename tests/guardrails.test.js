@@ -8,7 +8,7 @@ const assert = require('assert');
 const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const { CLAUDE_MD_MAX_BYTES, TEST_FILE_MAX_LINES, JS_FILE_MAX_LINES, CONFIRMED_WORKING_LINE_MAX_CHARS, CURRENT_SUBSTAGE_MAX_BYTES, topLevelNames, limitLiteralLines } = require('./shared-constants');
+const { CLAUDE_MD_MAX_BYTES, TEST_FILE_MAX_LINES, JS_FILE_MAX_LINES, CONFIRMED_WORKING_LINE_MAX_CHARS, CURRENT_SUBSTAGE_MAX_BYTES, topLevelNames, limitLiteralLines, factsBlockLineRange, withoutFactsBlock, factsBlockProblems } = require('./shared-constants');
 
 function countLines(file) {
   return fs.readFileSync(file, 'utf8').split('\n').length - 1;
@@ -118,18 +118,6 @@ function longestCommentRun(commentLines) {
   return longest;
 }
 
-// FACTS block: js/config.js's own top-of-file comment, up through the
-// "====" divider right before `const GAME_CONFIG =`, exempt from every
-// comment-share/run-length check below.
-function factsBlockLineRange(src) {
-  const marker = 'const GAME_CONFIG';
-  const idx = src.indexOf(marker);
-  if (idx === -1) return { startLine: 0, endLine: 0 };
-  const before = src.slice(0, idx);
-  const endLine = before.split('\n').length;
-  return { startLine: 1, endLine };
-}
-
 (async function main() {
   await runTest('CLAUDE.md is at most ' + CLAUDE_MD_MAX_BYTES.toLocaleString() + ' bytes', async () => {
     const src = fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8');
@@ -167,15 +155,23 @@ function factsBlockLineRange(src) {
   const jsDir = path.join(ROOT, 'js');
   const jsFiles = fs.readdirSync(jsDir).filter(function(f) { return f.endsWith('.js'); });
 
+  await runTest('js/config.js still opens with its FACTS block, from line 1 to const GAME_CONFIG', async () => {
+    const src = fs.readFileSync(path.join(jsDir, 'config.js'), 'utf8');
+    assert.strictEqual(factsBlockLineRange(src).startLine, 1, 'no FACTS block found');
+    assert.deepStrictEqual(factsBlockProblems(src), []);
+  });
+
+  // config.js's FACTS block is exempt: the share is measured on the rest of the file.
   for (const file of jsFiles) {
     await runTest('Comment share for js/' + file + ' is within its ceiling', async () => {
       if (notYetTrimmed.indexOf(file) !== -1) {
         console.log('  (skipped — ' + file + ' is in notYetTrimmed)');
         return;
       }
-      const src = fs.readFileSync(path.join(jsDir, file), 'utf8');
+      const raw = fs.readFileSync(path.join(jsDir, file), 'utf8');
+      const src = file === 'config.js' ? withoutFactsBlock(raw) : raw;
       const m = measureJs(src);
-      const ceiling = file === 'config.js' ? 0.50 : 0.30;
+      const ceiling = 0.30;
       const share = m.commentBytes / m.totalBytes;
       assert.ok(share <= ceiling, file + ' comment share is ' + (share * 100).toFixed(1) + '%, over its ' + (ceiling * 100) + '% ceiling');
     });

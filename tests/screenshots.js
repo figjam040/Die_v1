@@ -10,8 +10,8 @@
 // map at the fork. Every step is a real function the game or its dev tools
 // already have.
 //
-// Deterministic: Math.random is seeded with SEED at page start (the same
-// generator tests/build175.test.js uses) and #buildStamp is hidden before
+// Deterministic: Math.random is seeded with SEED at page start (the
+// generator seededRandom() below) and #buildStamp is hidden before
 // every shot, so two runs of one tree are pixel-identical.
 //
 // COMPARE (--compare[=HASH]): the working tree's shots are diffed against

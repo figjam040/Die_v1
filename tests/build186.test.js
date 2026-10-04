@@ -27,15 +27,16 @@ const build = Number(configSrc.match(/^\s*BUILD:\s*(\d+)/m)[1]);
     assert.deepStrictEqual(wrong, [], 'script tags without ?v=' + build);
   });
 
-  await runTest('the RULES FOR EVERY BUILD heading exists, once, with its five rules', async () => {
+  // BUILD 188 rewrote the section as three paragraphs: standing rules, build order, paste-back.
+  await runTest('the RULES FOR EVERY BUILD heading exists, once, with its standing rules', async () => {
     const heads = claudeMd.split('\n').filter(function(row) { return row === '# RULES FOR EVERY BUILD'; });
     assert.strictEqual(heads.length, 1, 'RULES FOR EVERY BUILD headings');
     const start = claudeMd.indexOf('# RULES FOR EVERY BUILD');
     const end = claudeMd.indexOf('\n---', start);
     const rules = claudeMd.slice(start, end).split('\n').slice(1).filter(function(row) { return row.trim() !== ''; });
-    assert.strictEqual(rules.length, 5, 'rules: ' + rules.join(' | '));
+    assert.strictEqual(rules.length, 3, 'rules: ' + rules.join(' | '));
     const text = rules.join('\n');
-    ['never sed', 'one Edit per message', 'One command per message', 'cd /c/Users/figja/Die_v1 &&', 'Stop on red', 'do not push', 'Do only the numbered steps', 'progress percentage']
+    ['Edit tool only', 'one Edit per message', 'One command per message', 'cd /c/Users/figja/Die_v1 &&', 'Stop on red', 'no push', 'Do only the numbered steps', 'Progress percentage']
       .forEach(function(needle) { assert.ok(text.indexOf(needle) !== -1, 'missing: ' + needle); });
   });
 

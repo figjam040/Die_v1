@@ -1614,3 +1614,38 @@ Tests: build186.test.js. Corrected: facts, guardrails, build155, build160, build
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+# Moved from CLAUDE.md at BUILD 188
+
+## CONFIRMED WORKING index lines, builds 170 to 187 (verbatim, in build order)
+
+(BUILD 170) — D-124 mod symbols under faces, D-125 imperative texts, two-line face hover, D-113 roll sounds held to the stop.
+(BUILD 171) — KI-48 Anthem reads its own face's weight, KI-49 Jubilee counts run.weightAdded.
+(BUILD 172) — face hover without trigger counts, per-symbol hover boxes, die_rolling quieter, die_blank louder.
+(BUILD 173) — D-126/D-127 blank synergy: Vacancy, Tabernacle, Tithe, Vigil, Reverberation, Tolling Bell, Gilded Die, Blank tag.
+(BUILD 174) — KI-51: facts/mods tests split by BUILD, 34 test files to 54, line caps asserted. No game change.
+(BUILD 175) — rendering.js split into four render files (F26 fifteen), name-collision and script-tag guardrails, tighter line caps. No game change.
+(BUILD 176) — D-128 face hover as the offer box, D-129 DIE table, D-130 weight line, flat rattle, dev Skip to Artifact Reward/Add card/Remove card, KI-52.
+(BUILD 177) — KI-50 DIE count per run, KI-23 Load All skips face 10, KI-21 no default die action origin, die_layer shot.
+(BUILD 178) — KI-54 seeded stamp-free screenshots, commit-based --compare, KI-55 config.js header room + F52. No game change.
+(BUILD 179) — D-125 wording pass, Strengthen picker Now/Becomes with odds, symbol hover box inside the viewport.
+(BUILD 180) — docs reconciliation, D-127 to D-126, config.js F14/F44, Tolling Bell text (D-125).
+(BUILD 181) — D-132 Halo gates Strengthen on face 20 (canStrengthenFace), D-133 artifact tiers 3/6/5 drawn through the offer split.
+(BUILD 182) — D-131 no trigger cap: guard 500, trigger queue; sweep pacing 200/50/10; D-134 chains on any Bound trigger, Rosary.
+(BUILD 183) — D-135 caps: Reckoning/Covenant/Gradual cap 12, Tenet rare, Exequy/Vindication/Jubilee uncapped.
+(BUILD 184) — D-136 boss counters: Cardinal +1 Wrath per blank rolled (applyEnemyReads), Pontifex carries Absolve on faces 6 and 14, sheds half its poison rounded up; F35, F37, F47 amended. Verified: npm test green, screenshots 0 px vs 183.
+(BUILD 185) — KI-58 win clears roll strip, KI-59 reward waits for round's numbers, KI-60 Bound badge/hover, KI-61 Third Eye icon + armed wait, D-137 Penitence 2 rounds, D-138 keys 1-9/Enter, D-139 Retribution 2 soul rare uncapped, tiers 24/14/10.
+(BUILD 186) — script tags carry ?v=build, RULES FOR EVERY BUILD, limit-literal guardrail with six limits in shared-constants. No game change. Verified: screenshots 0 px vs 185.
+(BUILD 187) — D-142 mythic tier (Reliquary Chain, Rosary; boss artifact offer only), KI-62 round line before WON/LOST, KI-63 short numbers + POISON_PRECISION_GUARD, cardRewardEvents CSV column. Verified: screenshots 0 px vs 186.
+
+# BUILD 187 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 188)
+
+Stage 3.14 (BUILD 187) — the mythic tier, two fixes, card picks recorded.
+
+D-142: Rosary and Reliquary Chain are mythic; only a boss's artifact offer weighs mythic (0/60/30/10). KI-62: a fight ending in the player's half of a round now writes that round's line before WON/LOST; enemy poison was already cleared at fight start. KI-63: big stacks, block and damage read short (21.8T); POISON_PRECISION_GUARD holds poison at 1e15. Card picks: cardRewardEvents, the CSV's last column.
+
+Tests: build187.test.js. Corrected: build157, build169, build176, build181, build182.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.
