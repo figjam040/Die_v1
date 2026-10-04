@@ -1934,6 +1934,66 @@
   }
 
   #titleStartBtn:hover { background: var(--nat); color: #1a1500; }
+  #endScreen {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: #000;
+  }
+
+  #endScreen canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+
+  #endWord {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 38%;
+    text-align: center;
+    font-family: var(--game-font);
+    font-size: calc(48px * var(--ui-scale));
+    letter-spacing: 0.2em;
+    color: var(--text);
+  }
+
+  #endButtons {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 6%;
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  #endWord, #endButtons {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1.2s;
+  }
+
+  #endScreen.end-ready #endWord, #endScreen.end-ready #endButtons {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #endButtons button {
+    font-family: var(--game-font);
+    font-size: calc(18px * var(--ui-scale));
+    padding: 14px 32px;
+    border: 1px solid var(--nat);
+    color: var(--nat);
+    background: #000;
+    cursor: pointer;
+  }
+
+  #endButtons button:hover { background: var(--nat); color: #1a1500; }
 
   .offer-small-row {
     display: flex;
@@ -2623,6 +2683,14 @@
   <canvas id="titleCanvas" style="display:none;"></canvas>
   <button id="titleStartBtn">Start</button>
 </div>
+<div id="endScreen" style="display:none;">
+  <canvas id="endCanvas" style="display:none;"></canvas>
+  <div id="endWord"></div>
+  <div id="endButtons">
+    <button id="endNewRunBtn">New Run</button>
+    <button id="endCopyBtn">Copy Run Record</button>
+  </div>
+</div>
 
 <!-- BAND A — build stamp and the gold/artifact placeholders, the act/round/
      phase readout, and the four screen-level buttons. -->
@@ -2966,22 +3034,22 @@
      dispatch opens screens) — a genuine circularity. A top-level name
      defined in two files silently overwrites the first; guardrails.test.js
      fails on any such duplicate. -->
-<script src="js/config.js?v=192"></script>
-<script src="js/state.js?v=192"></script>
-<script src="js/listener-registry.js?v=192"></script>
-<script src="js/audio.js?v=192"></script>
-<script src="js/pipeline.js?v=192"></script>
-<script src="js/cards-mods.js?v=192"></script>
-<script src="js/run-and-map.js?v=192"></script>
-<script src="js/phase-machine.js?v=192"></script>
-<script src="js/rendering.js?v=192"></script>
-<script src="js/render-fight.js?v=192"></script>
-<script src="js/render-map.js?v=192"></script>
-<script src="js/render-layers.js?v=192"></script>
-<script src="js/render-text.js?v=192"></script>
-<script src="js/backdrop-motion.js?v=192"></script>
-<script src="js/dev-tools.js?v=192"></script>
-<script src="js/bootstrap.js?v=192"></script>
+<script src="js/config.js?v=193"></script>
+<script src="js/state.js?v=193"></script>
+<script src="js/listener-registry.js?v=193"></script>
+<script src="js/audio.js?v=193"></script>
+<script src="js/pipeline.js?v=193"></script>
+<script src="js/cards-mods.js?v=193"></script>
+<script src="js/run-and-map.js?v=193"></script>
+<script src="js/phase-machine.js?v=193"></script>
+<script src="js/rendering.js?v=193"></script>
+<script src="js/render-fight.js?v=193"></script>
+<script src="js/render-map.js?v=193"></script>
+<script src="js/render-layers.js?v=193"></script>
+<script src="js/render-text.js?v=193"></script>
+<script src="js/backdrop-motion.js?v=193"></script>
+<script src="js/dev-tools.js?v=193"></script>
+<script src="js/bootstrap.js?v=193"></script>
 
 </body>
 </html>

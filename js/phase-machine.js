@@ -90,6 +90,7 @@ function runPhase(phase) {
           updateRun({ outcome: 'won' });
           log('[RUN] boss defeated — run complete');
           flushRunRecord('won');
+          endScreenOpen('won');
           return;
         }
         log('[RUN] act ' + gameState.run.actNumber + ' boss defeated');
@@ -125,6 +126,7 @@ function runPhase(phase) {
       appendUnfinishedRoundTranscript('did not act');
       appendTranscript('LOST r' + gameState.turn.round + ' | you ' + shownHp(gameState.player.hp) + '/' + gameState.player.maxHp);
       flushRunRecord('lost');
+      endScreenOpen('lost');
       return;
     }
   }

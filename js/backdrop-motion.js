@@ -1,13 +1,15 @@
-// Moving backdrops (D-159) and the title screen (D-158). A backdrop is a
+// Moving backdrops (D-159), the title screen (D-158) and the two end
+// screens (D-161, D-162). A backdrop is a
 // still picture plus art/background_<name>_motion.js, which names layer
 // pictures and effects; this file plays them on a canvas. Every effect is
 // drawn by compositing only, never by reading pixels back, so it runs from
 // file:// as well as from a server. Under automation (navigator.webdriver)
 // a backdrop draws one frozen frame and the title screen stays shut, so
-// tests and screenshots are repeatable; ?motion=1 and ?title=1 override.
+// tests and screenshots are repeatable; the end screens stay shut too.
+// ?motion=1, ?title=1 and ?endscreen=1 override.
 // New backdrops need new files in art/ only, no change here.
 
-const BACKDROP_MOTION = { defs: {}, waiting: {}, images: {}, live: [], raf: 0, t0: 0 };
+const BACKDROP_MOTION = { defs: {}, waiting: {}, images: {}, live: [], raf: 0, endTimer: 0 };
 
 function backdropMotionAutomated(flag) {
   return navigator.webdriver === true && location.search.indexOf(flag + '=1') === -1;
@@ -213,6 +215,79 @@ const BACKDROP_MOTION_EFFECTS = {
     };
   },
 
+  // Flakes falling and embers rising through a zone, each crossing it a whole
+  // number of times per loop so the loop joins.
+  ash: function(e, env) {
+    const TAU = Math.PI * 2, z = e.zone, zw = z[2] - z[0], zh = z[3] - z[1], flakes = [];
+    for (let i = 0; i < e.count + e.embers; i++) {
+      const ember = i >= e.count;
+      flakes.push({ ember: ember, x: z[0] + env.rng() * zw, y: env.rng() * zh, laps: ember ? -1 : (env.rng() > 0.7 ? 2 : 1),
+        sway: (0.3 + env.rng() * 0.7) * e.sway, p: env.rng() * TAU, tw: env.rng() * TAU, size: env.rng() > 0.75 ? e.unit + 1 : e.unit });
+    }
+    return function(ctx, u) {
+      flakes.forEach(function(f) {
+        const y = z[1] + (((f.y + f.laps * zh * u) % zh) + zh) % zh, x = Math.round(f.x + f.sway * Math.sin(TAU * 2 * u + f.p));
+        const edge = Math.min(1, (y - z[1]) / 40, (z[3] - y) / 40), tw = 0.6 + 0.4 * Math.sin(TAU * 3 * u + f.tw);
+        ctx.globalCompositeOperation = f.ember ? 'lighter' : 'source-over';
+        ctx.globalAlpha = Math.max(0, (f.ember ? e.emberStrength : e.strength) * edge * tw);
+        ctx.fillStyle = f.ember ? e.emberColour : e.colour;
+        ctx.fillRect(x, Math.round(y), f.size, f.size);
+      });
+    };
+  },
+
+  // For a backdrop that plays once, in the dark. The picture's own web of
+  // light (the layer) hums faintly, then flares again and again; that light
+  // is the only light, falling away from the source and the target, each
+  // with its own weight. Then it is drawn back out of the target into the
+  // source and goes out. Put it last in the effects list.
+  unmake: function(e, env) {
+    const W = env.W, H = env.H, Q = 4, web = env.images[e.layer];
+    const mask = backdropMotionCanvas(Math.ceil(W / Q), Math.ceil(H / Q)), mk = mask.getContext('2d');
+    const light = function(p, radius, level) {
+      if (level <= 0.01) return;
+      const g = mk.createRadialGradient(p[0] / Q, p[1] / Q, 0, p[0] / Q, p[1] / Q, radius / Q);
+      const c = function(f) { const n = Math.round(255 * Math.min(1, level * f)); return 'rgb(' + n + ',' + n + ',' + n + ')'; };
+      g.addColorStop(0, c(2)); g.addColorStop(0.3, c(1.1)); g.addColorStop(0.65, c(0.45)); g.addColorStop(1, '#000');
+      mk.fillStyle = g; mk.fillRect(0, 0, mask.width, mask.height);
+    };
+    const glow = function(ctx, p, radius, alpha, inner) {
+      if (alpha <= 0.01) return;
+      const g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], radius);
+      g.addColorStop(0, inner); g.addColorStop(0.3, e.colour); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = Math.min(1, alpha); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    };
+    return function(ctx, u, frame, ms) {
+      const rng = backdropMotionRng(frame * 13 + 5), flicker = 0.7 + 0.3 * rng();
+      let level = 0, hit = false;
+      e.strikes.forEach(function(st) {
+        if (ms < st[0]) return;
+        level = Math.max(level, st[1] * Math.exp(-(ms - st[0]) / st[2]));
+        if (ms - st[0] < 1000 / env.fps) hit = true;
+      });
+      const wake = Math.max(0, Math.min(1, (ms - e.wakeFrom) / (e.strikes[0][0] - e.wakeFrom)));
+      const drain = ms > e.drainFrom ? Math.max(0, 1 - (ms - e.drainFrom) / (e.drainTo - e.drainFrom)) : 1;
+      const hum = e.hum * wake * flicker * drain;
+      const atTarget = (Math.max(level, hum) * (ms > e.drainFrom ? Math.pow(drain, 2) : 1)) * e.weights[0];
+      const fed = ms > e.drainFrom ? Math.sin(Math.PI * Math.min(1, (ms - e.drainFrom) / (e.drainTo + 600 - e.drainFrom))) : 0;
+      const atSource = Math.max(level, hum, fed * 0.6) * e.weights[1];
+      if (level > 0.5) { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.drawImage(ctx.canvas, (frame % 2 ? 1 : -1) * e.shake * level, (frame % 3 ? -1 : 1) * e.shake * 0.6 * level); }
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, 0.55 * flicker + level); ctx.drawImage(web, 0, 0);
+      if (level > 0.4) { ctx.globalAlpha = Math.min(1, level); ctx.drawImage(web, 0, 0); ctx.drawImage(web, 0, 0); }
+      mk.globalCompositeOperation = 'source-over'; mk.fillStyle = '#000'; mk.fillRect(0, 0, mask.width, mask.height);
+      mk.globalCompositeOperation = 'lighter';
+      light(e.target, e.reach * e.spread[0] * (0.35 + 0.65 * Math.min(1, atTarget)), atTarget);
+      light(e.source, e.reach * e.spread[1] * (0.35 + 0.65 * Math.min(1, atSource)), atSource);
+      ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(mask, 0, 0, W, H); ctx.imageSmoothingEnabled = false;
+      ctx.globalCompositeOperation = 'lighter';
+      glow(ctx, e.target, e.reach * 0.45 * e.spread[0] * (0.3 + atTarget), atTarget * 0.45 * e.glare[0], e.core);
+      glow(ctx, e.source, e.reach * 0.45 * e.spread[1] * (0.3 + atSource), atSource * 0.45 * e.glare[1], e.colour);
+      if (hit) { ctx.globalAlpha = 0.08; ctx.fillStyle = e.core; ctx.fillRect(0, 0, W, H); }
+    };
+  },
+
   // Small crosses that flare and go, perLoop times each loop per point.
   glints: function(e, env) {
     const list = e.points.map(function(p) {
@@ -267,7 +342,8 @@ const BACKDROP_MOTION_EFFECTS = {
 };
 
 function backdropMotionDraw(entry, ms) {
-  const frames = entry.frames, frame = Math.floor(ms / (1000 / entry.def.fps)) % frames;
+  const frames = entry.frames, step = Math.floor(ms / (1000 / entry.def.fps));
+  const frame = entry.def.once ? Math.min(frames - 1, step) : step % frames;
   if (frame === entry.lastFrame) return;
   entry.lastFrame = frame;
   const ctx = entry.ctx;
@@ -284,7 +360,7 @@ function backdropMotionTick(now) {
   M.live.forEach(function(entry) {
     if (!entry.draws) return;
     any = true;
-    if (entry.canvas.getClientRects().length > 0) backdropMotionDraw(entry, now - M.t0);
+    if (entry.canvas.getClientRects().length > 0) backdropMotionDraw(entry, now - entry.t0);
   });
   if (any && !backdropMotionAutomated('motion')) M.raf = requestAnimationFrame(backdropMotionTick);
 }
@@ -310,13 +386,15 @@ function backdropMotionStart(name, canvas, onReady, onFail) {
       canvas.width = W; canvas.height = H;
       entry.def = def; entry.still = still; entry.ctx = canvas.getContext('2d');
       entry.frames = Math.round(def.loopMs / 1000 * def.fps);
-      const draws = def.effects.map(function(e, i) {
-        return BACKDROP_MOTION_EFFECTS[e.type](e, { W: W, H: H, N: entry.frames, loopMs: def.loopMs, still: still, images: M.images, rng: backdropMotionRng(11 + i) });
+      const draws = [];
+      def.effects.forEach(function(e, i) {
+        const make = BACKDROP_MOTION_EFFECTS[e.type];
+        if (make) draws.push(make(e, { W: W, H: H, N: entry.frames, fps: def.fps, loopMs: def.loopMs, still: still, images: M.images, rng: backdropMotionRng(11 + i) }));
       });
-      entry.draws = draws;
+      entry.draws = draws; entry.t0 = performance.now();
       backdropMotionDraw(entry, 0);
       if (onReady) onReady();
-      if (!M.raf && !backdropMotionAutomated('motion')) { M.t0 = performance.now(); M.raf = requestAnimationFrame(backdropMotionTick); }
+      if (!M.raf && !backdropMotionAutomated('motion')) { M.raf = requestAnimationFrame(backdropMotionTick); }
     });
   });
 }
@@ -343,4 +421,32 @@ function titleScreenOpen() {
 function titleScreenClose() {
   document.getElementById('titleScreen').style.display = 'none';
   backdropMotionStop(document.getElementById('titleCanvas'));
+}
+
+// ---------- END SCREENS ----------
+
+// Opened by the phase machine when the run is won or lost, over everything.
+// A win shows the victory backdrop; a loss plays the defeat backdrop of the
+// act it happened in, once. The word and the buttons wait until the picture
+// has had its say; with no picture they show at once on black.
+function endScreenOpen(outcome) {
+  if (backdropMotionAutomated('endscreen')) return;
+  const M = BACKDROP_MOTION, won = outcome === 'won';
+  const screen = document.getElementById('endScreen'), canvas = document.getElementById('endCanvas');
+  const reveal = function() { screen.classList.add('end-ready'); };
+  document.getElementById('endWord').textContent = won ? '' : 'DEFEAT';
+  screen.classList.remove('end-ready');
+  canvas.style.display = 'none';
+  screen.style.display = 'block';
+  clearTimeout(M.endTimer);
+  backdropMotionStart(won ? 'victory' : 'defeat' + gameState.run.actNumber, canvas, function() {
+    canvas.style.display = 'block';
+    M.endTimer = setTimeout(reveal, won ? 1500 : 6000);
+  }, reveal);
+}
+
+function endScreenClose() {
+  clearTimeout(BACKDROP_MOTION.endTimer);
+  document.getElementById('endScreen').style.display = 'none';
+  backdropMotionStop(document.getElementById('endCanvas'));
 }

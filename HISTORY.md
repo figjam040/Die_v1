@@ -1673,3 +1673,9 @@ Stage 3.17 (BUILD 190) — D-152 tier colours 60a5fa/fbbf24/9f6bff and the card 
 # BUILD 191 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 192)
 
 Stage 3.18 (BUILD 191) — D-159 js/backdrop-motion.js (sixteen js files) plays art/background_<name>_motion.js on a canvas, act 1 on #actBackgroundCanvas over the still; D-158 #titleScreen opened at the end of init(), closed by Start; under automation one frozen frame and no title, ?motion=1 and ?title=1 override. Tests: build191.test.js.
+
+(BUILD 192) — D-155 to D-157 and D-160: every choice lights like a door, the Rite's alcoves, The Font's die and basin, the map as doors with Act N, the capital D, one sentence per line. Every earlier build: HISTORY.md.
+
+# BUILD 192 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 193)
+
+Stage 3.19 (BUILD 192) — D-155 offer cards, mod and artifact symbols, shop items and both removal pickers light like a die door (markChoiceLit, rendering.js); D-156 the Rite's three alcoves from dieDoorButton, The Font's die over its stone basin, every map node a door under the title Act N; D-157 the player's die written Die; D-160 fillSentenceLines() (render-text.js) draws text one sentence per line. Tests: build192.test.js.

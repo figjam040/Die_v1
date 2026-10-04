@@ -293,6 +293,16 @@ document.getElementById('titleStartBtn').addEventListener('click', function() {
   titleScreenClose();
 });
 
+document.getElementById('endNewRunBtn').addEventListener('click', function() {
+  log('[CLICK] New Run (end screen)');
+  endScreenClose();
+  document.getElementById('startGameBtn').click();
+});
+
+document.getElementById('endCopyBtn').addEventListener('click', function() {
+  document.getElementById('copyRunRecordBtn').click();
+});
+
 window.addEventListener('beforeunload', function() {
   flushRunRecord('abandoned');
 });
