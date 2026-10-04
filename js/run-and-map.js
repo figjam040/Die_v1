@@ -291,7 +291,8 @@ function resetRunRecord() {
     outcome: null,
     fightRounds: [],
     dieActionEvents: [],
-    blanksRolled: 0
+    blanksRolled: 0,
+    cardRewardEvents: []
   });
 }
 
@@ -347,6 +348,11 @@ function buildRunRecordLine() {
   }).join(';');
   const triggerCounts = collectTriggerCountsByMod();
   const triggerCountsCol = Object.keys(triggerCounts).map(function(modId) { return modId + ':' + triggerCounts[modId]; }).join('|');
+  // A card reward is offered|ids>picked, >skip when skipped; a shop buy shop:id.
+  const cardEventsCol = r.cardRewardEvents.map(function(e) {
+    if (e.type === 'shop') { return 'shop:' + e.cardId; }
+    return e.offered.join('|') + '>' + (e.picked === null ? '' : e.picked);
+  }).join(';');
   return [
     r.source,
     r.node === null ? '' : r.node,
@@ -357,11 +363,12 @@ function buildRunRecordLine() {
     eventsCol,
     triggerCountsCol,
     r.blanksRolled,
-    GAME_CONFIG.BUILD
+    GAME_CONFIG.BUILD,
+    cardEventsCol
   ].join(',');
 }
 
-const RUN_RECORD_CSV_HEADER = 'source,node,arrivalHpAtBoss,outcome,fightRounds,totalRounds,dieActionEvents,triggerCounts,blanksRolled,build';
+const RUN_RECORD_CSV_HEADER = 'source,node,arrivalHpAtBoss,outcome,fightRounds,totalRounds,dieActionEvents,triggerCounts,blanksRolled,build,cardRewardEvents';
 
 const RUN_RECORD_STORAGE_KEY = 'dieRunRecordLines';
 
@@ -442,6 +449,19 @@ function appendRoundTranscript(actionSummary) {
     + ' | enemy ' + actionSummary
     + ' | you ' + shownHp(p.hp) + '/' + p.maxHp + ' bl' + p.block + ' P' + p.poisonStacks;
   appendTranscript(line);
+}
+
+// KI-62: a fight that ends in the player's half of a round (the roll, a
+// card, the player's own poison tick) never reaches ENEMY_ACT_PHASE, so
+// runPhase()'s win/loss branch writes that round's line here, before
+// WON/LOST — unless this fight already holds it.
+function appendUnfinishedRoundTranscript(actionSummary) {
+  const lines = gameState.run.transcript;
+  const prefix = 'R' + gameState.turn.round + ' ';
+  for (let i = lines.length - 1; i >= 0 && lines[i].indexOf('FIGHT ') !== 0; i--) {
+    if (lines[i].indexOf(prefix) === 0) { return; }
+  }
+  appendRoundTranscript(actionSummary);
 }
 
 // Best-effort clipboard write, falling back to the hidden-textarea +

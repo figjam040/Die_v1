@@ -41,7 +41,7 @@
 // F42 (BUILD 150) break numbers lowered by 4; gold (GOLD_REWARDS) from a fight win spends in the shop (SHOP) after every rite; a non-final Boss win heals BOSS_HEAL_PERCENT of max HP, rounded down (D-122); three artifacts offered after an Elite/non-final-Boss win
 // F43 (BUILD 151, 167) Purify: third die action, clears mods off a face (never 1/10/20), weight kept; Remove (D-119) deletes a blank face, not 1/10/20, above DIE_MIN_FACES 12
 // F44 (BUILD 151) lower lane index 3 is the Anomaly The Font (D-117): unresolved roll picks the outcome; the slot type stays event
-// F45 (BUILD 153) artifacts 15 (Halo 181, Rosary 182), ARTIFACT_MAX 8 held, offered after an Elite or non-final Boss win and sold at SHOP.ARTIFACT_PRICE
+// F45 (BUILD 153) artifacts 15 (Halo 181, Rosary 182), tiers 3/6/4 + mythic 2 (Reliquary Chain, Rosary; boss offer only, D-142), ARTIFACT_MAX 8 held, offered after an Elite or non-final Boss win and sold at SHOP.ARTIFACT_PRICE
 // F46 (BUILD 154) every HP, block, poison, soul and gold change pops a number where it happened; DAMAGE_NUMBERS holds the rise, fade, step count and the six colours
 // F47 (BUILD 142) Lector reads a 6: +1 Drain; Hierophant a Nat 1: cancels, 5 poison; Pontifex reads the heaviest face: Wrath; Cardinal reads blanks: +1 Wrath each, no cap (BUILD 184)
 // F48 (BUILD 153) Merchant's Seal prices are floor(base x 0.75); removal stays 75
@@ -49,11 +49,12 @@
 // F50 (BUILD 170) DIE_ROLL_ANIMATION 3 frames/200 ms, rattling, ROLL_LAND_GAP_MS 250 later a landing, blank or Nat sound; pause only in dev drawer (D-113)
 // F51 (BUILD 164) face 20 weight cap FACE_TWENTY_MAX_WEIGHT 5 with Halo held (D-108, D-132)
 // F52 blanksRolled (run.blanksRolled, runRecord.blanksRolled) counts rolls only: a blank a card triggers is not counted
+//   runRecord.cardRewardEvents, the CSV's last column: offered|ids>picked (>skip), a shop buy shop:id
 // ============================================================
 
 const GAME_CONFIG = {
 
-  BUILD: 186,
+  BUILD: 187,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -61,7 +62,7 @@ const GAME_CONFIG = {
     COLOUR: '#e8e4d0'
   },
 
-  // D-111; mythic and void hold no pieces and weigh 0 in TIER_SPLIT.
+  // D-111; void holds no pieces, mythic only artifacts (D-142).
   TIER_COLOURS: {
     basic: '#4a4a4a',
     uncommon: '#b8b8b8',
@@ -241,6 +242,12 @@ const GAME_CONFIG = {
 
   TRIGGER_FREEZE_GUARD: 500,
 
+  // KI-63: a technical ceiling on either side's stacks of poison, kept under
+  // where a number stops being an exact integer; not a balance cap (D-39).
+  POISON_PRECISION_GUARD: 1e15,
+  // KI-63: stacks, block and damage from this size up read as 10.0K, 21.8T.
+  SHORT_NUMBER_FROM: 10000,
+
   SWEEP_PACING: { FIRST_MS: 200, NEXT_MS: 50, LATER_MS: 10 },
 
   // D-106 — a clicked offer card/die frame/artifact holds its gold
@@ -258,7 +265,8 @@ const GAME_CONFIG = {
   TIER_SPLIT: {
     fight: [0.65, 0.30, 0.05, 0, 0],
     elite: [0.40, 0.40, 0.20, 0, 0],
-    boss: [0.0, 0.70, 0.30, 0, 0]
+    boss: [0.0, 0.70, 0.30, 0, 0],
+    bossArtifact: [0.0, 0.60, 0.30, 0.10, 0]
   },
 
   GOLD_REWARDS: { FIGHT: [12, 20], ELITE: [30, 40], BOSS: 60 },

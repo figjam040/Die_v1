@@ -77,6 +77,7 @@ function runPhase(phase) {
     if (gameState.enemy.hp <= 0) {
       updateRun({ status: 'win' });
       log('[WIN] enemy defeated');
+      appendUnfinishedRoundTranscript('dead before acting');
       updateTurn({ rollOutcome: null, rolledFaceWeight: null, rolledFaceNumber: null, hoppedFaces: [] });
       clearGrantedBound();
       recordFightRoundEnd(gameState.enemy.id);
@@ -121,6 +122,7 @@ function runPhase(phase) {
       clearGrantedBound();
       playAudioEvent('fight_lost');
       recordFightRoundEnd(gameState.enemy.id);
+      appendUnfinishedRoundTranscript('did not act');
       appendTranscript('LOST r' + gameState.turn.round + ' | you ' + shownHp(gameState.player.hp) + '/' + gameState.player.maxHp);
       flushRunRecord('lost');
       return;

@@ -17,9 +17,10 @@ const FACE_TWENTY = 20;
 const EXPECTED_TIERS = {
   basic: ['gilded_die', 'tithe_box', 'merchants_seal'],
   uncommon: ['bone_counter', 'alms', 'plague_bell', 'second_chance', 'hourglass', 'third_eye'],
-  rare: ['tolling_bell', 'loaded_die', 'leaden_face', 'reliquary_chain', 'halo', 'rosary']
+  rare: ['tolling_bell', 'loaded_die', 'leaden_face', 'halo'],
+  mythic: ['reliquary_chain', 'rosary']
 };
-const EXPECTED_TIER_COUNTS = { basic: 3, uncommon: 6, rare: 6 };
+const EXPECTED_TIER_COUNTS = { basic: 3, uncommon: 6, rare: 4, mythic: 2 };
 const EXPECTED_ARTIFACT_COUNT = 15;
 
 const { runTest, report } = createRunner();
@@ -186,7 +187,7 @@ function face20Weight(page) {
   await runTest('there are ' + EXPECTED_ARTIFACT_COUNT + ' artifacts, every one with a tier, split ' + JSON.stringify(EXPECTED_TIER_COUNTS), async () => {
     const page = await freshPage(browser);
     const byTier = await page.evaluate(() => {
-      const out = { basic: [], uncommon: [], rare: [], other: [] };
+      const out = { basic: [], uncommon: [], rare: [], mythic: [], other: [] };
       Object.keys(gameState.config.artifacts).forEach(function(id) {
         const tier = gameState.config.artifacts[id].tier;
         (out[tier] || out.other).push(id);
@@ -194,11 +195,11 @@ function face20Weight(page) {
       return out;
     });
     assert.deepStrictEqual(byTier.other, [], 'artifacts with a missing or unknown tier');
-    assert.deepStrictEqual({ basic: byTier.basic.length, uncommon: byTier.uncommon.length, rare: byTier.rare.length }, EXPECTED_TIER_COUNTS);
+    assert.deepStrictEqual({ basic: byTier.basic.length, uncommon: byTier.uncommon.length, rare: byTier.rare.length, mythic: byTier.mythic.length }, EXPECTED_TIER_COUNTS);
     Object.keys(EXPECTED_TIERS).forEach(function(tier) {
       assert.deepStrictEqual(byTier[tier].slice().sort(), EXPECTED_TIERS[tier].slice().sort(), tier + ' artifacts');
     });
-    assert.strictEqual(byTier.basic.length + byTier.uncommon.length + byTier.rare.length, EXPECTED_ARTIFACT_COUNT);
+    assert.strictEqual(byTier.basic.length + byTier.uncommon.length + byTier.rare.length + byTier.mythic.length, EXPECTED_ARTIFACT_COUNT);
     await page.close();
   });
 
@@ -233,7 +234,7 @@ function face20Weight(page) {
     await page.close();
   });
 
-  await runTest(BOSS_OFFER_COUNT + ' seeded boss artifact offers never contain a basic artifact (boss split 0/70/30)', async () => {
+  await runTest(BOSS_OFFER_COUNT + ' seeded boss artifact offers never contain a basic artifact (boss artifact split 0/60/30/10, D-142)', async () => {
     const page = await freshPage(browser);
     await seedPage(page, 1811);
     await setSlot(page, 'boss');

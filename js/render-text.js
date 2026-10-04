@@ -258,7 +258,7 @@ function spawnFxNumber(anchorId, kind, delta) {
     fxLayer().appendChild(el);
   }
   el.style.color = cfg.COLOURS[kind] || 'var(--text)';
-  el.textContent = (total > 0 ? '+' : '') + total;
+  el.textContent = (total > 0 ? '+' : '') + shortNumber(total);
 
   // applyScale() zooms <html>, so a rect comes back already multiplied by
   // that zoom while style.left is read in the zoomed context's own pixels

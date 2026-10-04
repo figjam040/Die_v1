@@ -1602,3 +1602,15 @@ Tests: build185.test.js. Corrected: facts (F10, F32), build129, 134, 150, 166, 1
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+# BUILD 186 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 187)
+
+Stage 3.13 (BUILD 186) — cache-safe loading, standing rules, a limit-literal guardrail. No game change.
+
+Item 1: every script tag in index.html carries ?v=<build>, so a new build loads without a hard refresh; GAME_CONFIG.BUILD stays the one source, build186.test.js fails any tag that disagrees. Item 2: RULES FOR EVERY BUILD. Item 3: guardrails.test.js fails any test file that sets a CLAUDE.md byte, test file line or code file line limit as a literal; the six limits live in tests/shared-constants.js.
+
+Tests: build186.test.js. Corrected: facts, guardrails, build155, build160, build175 (script tag pattern, imported limits).
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.

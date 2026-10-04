@@ -110,7 +110,7 @@ const VIEWPORTS = [
   // ITEM C — KI-36
   // ---------------------------------------------------------------
 
-  await runTest('KI-36(i): RUN_RECORD_CSV_HEADER ends with build, and a flushed line ends with the current build number', async () => {
+  await runTest('KI-36(i): RUN_RECORD_CSV_HEADER carries build, and a flushed line carries the current build number in that column', async () => {
     const page = await freshPage(browser, VIEWPORTS[0]);
     const v = await page.evaluate(() => {
       startNewRun();
@@ -119,8 +119,9 @@ const VIEWPORTS = [
       const lines = JSON.parse(localStorage.getItem('dieRunRecordLines') || '[]');
       return { header: RUN_RECORD_CSV_HEADER, lastLine: lines[lines.length - 1], build: GAME_CONFIG.BUILD };
     });
-    assert.ok(v.header.split(',').pop() === 'build', 'header must end with build, got: ' + v.header);
-    assert.ok(v.lastLine.split(',').pop() === String(v.build), 'flushed line must end with the build number, got: ' + v.lastLine);
+    const buildCol = v.header.split(',').indexOf('build');
+    assert.ok(buildCol !== -1, 'header must carry build, got: ' + v.header);
+    assert.ok(v.lastLine.split(',')[buildCol] === String(v.build), 'flushed line must carry the build number in the build column, got: ' + v.lastLine);
     await page.close();
   });
 

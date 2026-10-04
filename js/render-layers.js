@@ -243,11 +243,12 @@ function eligibleLoadModIds() {
 
 // Which GAME_CONFIG.TIER_SPLIT table (one weight per TIER_ORDER tier) a
 // reward/offer should roll against — decided by the slot the win (or
-// rite) came from. A rite's Load offer shares the 'fight' split.
+// rite) came from. A rite's Load offer shares the 'fight' split; a boss's
+// artifact offer alone rolls mythic (D-142).
 function currentOfferTierSplit(origin) {
   if (origin === 'rite') return GAME_CONFIG.TIER_SPLIT.fight;
   const cs = gameState.run.currentSlot;
-  if (cs === 'boss') return GAME_CONFIG.TIER_SPLIT.boss;
+  if (cs === 'boss') return origin === 'artifact' ? GAME_CONFIG.TIER_SPLIT.bossArtifact : GAME_CONFIG.TIER_SPLIT.boss;
   if (cs === null || cs === 'opening') return GAME_CONFIG.TIER_SPLIT.fight;
   const wonSlot = gameState.run.act[cs.lane][cs.index];
   return wonSlot.label === 'Elite' ? GAME_CONFIG.TIER_SPLIT.elite : GAME_CONFIG.TIER_SPLIT.fight;
@@ -633,8 +634,21 @@ function openCardRewardScreen() {
     .map(function(id) { return { id: id, tier: gameState.config.cardPool[id].tier }; });
   const split = currentOfferTierSplit(dieActionOrigin);
   cardRewardOptions = pickTieredOffer(pool, split, 3).map(function(o) { return o.id; });
+  updateRunRecord({ cardRewardEvents: gameState.runRecord.cardRewardEvents.concat([{ type: 'reward', offered: cardRewardOptions.slice(), picked: null }]) });
   cardRewardStep = 'choose';
   refreshInspector();
+}
+
+// Patches the newest unresolved card reward event with the id picked, or 'skip'.
+function recordCardRewardChoice(picked) {
+  const events = gameState.runRecord.cardRewardEvents.slice();
+  for (let i = events.length - 1; i >= 0; i--) {
+    if (events[i].type === 'reward' && events[i].picked === null) {
+      events[i] = Object.assign({}, events[i], { picked: picked });
+      break;
+    }
+  }
+  updateRunRecord({ cardRewardEvents: events });
 }
 
 function closeCardRewardScreen() {
@@ -646,6 +660,7 @@ function closeCardRewardScreen() {
 
 function cardRewardSkip() {
   log('[CARD REWARD] skipped, deck still ' + gameState.player.ownedCards.length + ' cards');
+  recordCardRewardChoice('skip');
   closeCardRewardScreen();
 }
 
@@ -658,6 +673,7 @@ function cardRewardPickCard(cardId) {
   log('[CARD REWARD] added ' + card.name + ' to deck, deck now ' + gameState.player.ownedCards.length + ' cards');
   playAudioEvent((cardId === 'strike' || cardId === 'ward') ? 'card_reward_basic' : 'card_reward_rich');
   appendTranscript('CARD ' + cardId);
+  recordCardRewardChoice(cardId);
   closeCardRewardScreen();
 }
 
@@ -1000,9 +1016,10 @@ function buildShopStock() {
     .filter(function(id) { return gameState.config.cardPool[id].tier != null; })
     .map(function(id) { return { id: id, tier: gameState.config.cardPool[id].tier }; });
   const cards = pickTieredOffer(pool, GAME_CONFIG.TIER_SPLIT.elite, 3).map(function(o) { return o.id; });
-  // One artifact slot, always an artifact this run does not already hold.
+  // One artifact slot, always an artifact this run does not already hold,
+  // never a mythic one (D-142).
   const unheld = Object.keys(gameState.config.artifacts).filter(function(id) {
-    return gameState.run.artifacts.indexOf(id) === -1;
+    return gameState.run.artifacts.indexOf(id) === -1 && gameState.config.artifacts[id].tier !== 'mythic';
   });
   const artifact = unheld.length > 0 ? pickRandom(unheld) : null;
   return { cards: cards, artifact: artifact, boughtCards: [], artifactBought: false, strengthenBought: false, removalBought: false };
@@ -1053,6 +1070,7 @@ function shopBuyCard(cardId) {
   if (gameState.run.gold < price) { return; }
   updateRun({ gold: gameState.run.gold - price, shop: Object.assign({}, shop, { boughtCards: shop.boughtCards.concat([cardId]) }) });
   updatePlayer({ deck: gameState.player.deck.concat([cardId]), ownedCards: gameState.player.ownedCards.concat([cardId]) });
+  updateRunRecord({ cardRewardEvents: gameState.runRecord.cardRewardEvents.concat([{ type: 'shop', cardId: cardId }]) });
   log('[SHOP] bought ' + card.name + ' for ' + price + ' gold');
   appendTranscript('SHOP ' + cardId + ' ' + price);
   refreshInspector();

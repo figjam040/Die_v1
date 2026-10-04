@@ -121,7 +121,8 @@ const gameState = {
     outcome: null,
     fightRounds: [],
     dieActionEvents: [],
-    blanksRolled: 0
+    blanksRolled: 0,
+    cardRewardEvents: [] // [{ type:'reward', offered, picked } | { type:'shop', cardId }]
   },
 
   registry: {
@@ -212,6 +213,9 @@ function announceEnemyFx(changes, before) {
 // no poison icon to sit on until this change has been drawn.
 function updatePlayer(changes, silent) {
   const before = { hp: gameState.player.hp, block: gameState.player.block, poisonStacks: gameState.player.poisonStacks, soul: gameState.player.soul };
+  if (changes.poisonStacks !== undefined) {
+    changes = Object.assign({}, changes, { poisonStacks: guardPoisonStacks('player', changes.poisonStacks) });
+  }
   Object.assign(gameState.player, changes);
   if (!silent) logStateChange('updatePlayer', changes);
   refreshInspector();
@@ -220,6 +224,9 @@ function updatePlayer(changes, silent) {
 
 function updateEnemy(changes, silent) {
   const before = { hp: gameState.enemy.hp, poisonStacks: gameState.enemy.poisonStacks };
+  if (changes.poisonStacks !== undefined) {
+    changes = Object.assign({}, changes, { poisonStacks: guardPoisonStacks('enemy', changes.poisonStacks) });
+  }
   Object.assign(gameState.enemy, changes);
   if (!silent) logStateChange('updateEnemy', changes);
   refreshInspector();
@@ -273,6 +280,31 @@ function shownHp(hp) {
   return Math.max(0, hp);
 }
 
+// KI-63: stacks, block and damage from SHORT_NUMBER_FROM up read as one
+// decimal, truncated, and a letter (21818442088442 is 21.8T); smaller
+// numbers unchanged. Display only — state keeps the exact number.
+const SHORT_NUMBER_UNITS = [[1e15, 'Q'], [1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
+function shortNumber(n) {
+  if (typeof n !== 'number' || !isFinite(n) || Math.abs(n) < GAME_CONFIG.SHORT_NUMBER_FROM) { return String(n); }
+  const unit = SHORT_NUMBER_UNITS.find(function(u) { return Math.abs(n) >= u[0]; });
+  const tenths = Math.floor(Math.abs(n) / (unit[0] / 10));
+  return (n < 0 ? '-' : '') + (tenths / 10).toFixed(1) + unit[1];
+}
+
+// The same for every whole number in a line of text, a log line's.
+function shortNumbersInText(text) {
+  return String(text).replace(/(?<![\d.])\d{5,}(?![\d.])/g, function(digits) { return shortNumber(Number(digits)); });
+}
+
+// KI-63: either side's stacks of poison never pass POISON_PRECISION_GUARD;
+// returns the stacks to write, logging when the guard holds them.
+function guardPoisonStacks(side, stacks) {
+  const guard = GAME_CONFIG.POISON_PRECISION_GUARD;
+  if (stacks <= guard) { return stacks; }
+  log('[GUARD] ' + side + ' stacks of poison held at ' + guard + ' (POISON_PRECISION_GUARD)');
+  return guard;
+}
+
 // ---------- SHUFFLE ----------
 
 function shuffle(array) {
@@ -321,10 +353,12 @@ function pickRandom(list) {
 // fills up to count as long as pool has that many entries left. No piece
 // is picked twice within one offer. rolledTier is kept distinct from the
 // delivered id's own tier so a fallback substitution never contaminates a
-// sample of the rolled-tier distribution.
+// sample of the rolled-tier distribution. D-142: a mythic piece is in the
+// pool only when the split weighs mythic, so a fallback never climbs to it.
 function pickTieredOffer(pool, splitWeights, count) {
   const order = GAME_CONFIG.TIER_ORDER;
-  const remaining = pool.slice();
+  const offersMythic = splitWeights[order.indexOf('mythic')] > 0;
+  const remaining = pool.filter(function(e) { return offersMythic || e.tier !== 'mythic'; });
   const results = [];
   for (let i = 0; i < count && remaining.length > 0; i++) {
     const rolledTier = rollTier(splitWeights);

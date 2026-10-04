@@ -201,7 +201,7 @@ function playFromHand(page, cardId) {
     await page.close();
   });
 
-  await runTest('artifacts count ' + EXPECTED_ARTIFACT_COUNT + '; Rosary is rare, priced 150, and its slot shows its name with no icon', async () => {
+  await runTest('artifacts count ' + EXPECTED_ARTIFACT_COUNT + '; Rosary is mythic (D-142), priced 150, and its slot shows its name with no icon', async () => {
     const page = await freshFight(browser, { artifacts: ['rosary'] });
     await page.waitForFunction(() => {
       const img = document.querySelector('#artifactRow .artifact-slot-img');
@@ -215,7 +215,7 @@ function playFromHand(page, cardId) {
       nameVisibility: document.querySelector('#artifactRow .artifact-slot-name').style.visibility
     }));
     assert.strictEqual(v.count, EXPECTED_ARTIFACT_COUNT);
-    assert.strictEqual(v.tier, 'rare');
+    assert.strictEqual(v.tier, 'mythic');
     assert.strictEqual(v.price, 150);
     assert.strictEqual(v.slotName, 'Rosary');
     assert.notStrictEqual(v.nameVisibility, 'hidden', 'the label stays while art/artifacts/rosary.png is missing');

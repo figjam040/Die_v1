@@ -389,11 +389,11 @@ const rowOf = (n) => '#playerDieList .die-row:has(.face-num:text-is("' + n + '")
       const cols = buildRunRecordLine().split(',');
       const header = RUN_RECORD_CSV_HEADER.split(',');
       startNewRun();
-      return { outsideBlank: outsideBlank, column: cols[header.indexOf('blanksRolled')], headerEnd: header.slice(-2), afterNewRun: gameState.runRecord.blanksRolled };
+      return { outsideBlank: outsideBlank, column: cols[header.indexOf('blanksRolled')], headerEnd: header.slice(-3), afterNewRun: gameState.runRecord.blanksRolled };
     });
     assert.strictEqual(v.outsideBlank, 0, 'a triggered blank is not a roll');
     assert.strictEqual(v.column, '4');
-    assert.deepStrictEqual(v.headerEnd, ['blanksRolled', 'build']);
+    assert.deepStrictEqual(v.headerEnd, ['blanksRolled', 'build', 'cardRewardEvents']);
     assert.strictEqual(v.afterNewRun, 0);
     await page.close();
   });

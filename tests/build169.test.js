@@ -104,11 +104,11 @@ async function hoverEveryTip(page, label) {
   // ITEM A — D-111 rarity scheme
   // ---------------------------------------------------------------
 
-  await runTest('Item A: TIER_ORDER is the five tiers, TIER_SPLIT gives mythic and void weight 0, TIER_COLOURS holds the five values', async () => {
+  await runTest('Item A: TIER_ORDER is the five tiers, TIER_SPLIT gives void weight 0 and mythic weight only in the boss artifact split (D-142), TIER_COLOURS holds the five values', async () => {
     const page = await freshPage(browser);
     const v = await page.evaluate(() => ({ order: GAME_CONFIG.TIER_ORDER, split: GAME_CONFIG.TIER_SPLIT, colours: GAME_CONFIG.TIER_COLOURS }));
     assert.deepStrictEqual(v.order, ['basic', 'uncommon', 'rare', 'mythic', 'void']);
-    assert.deepStrictEqual(v.split, { fight: [0.65, 0.30, 0.05, 0, 0], elite: [0.40, 0.40, 0.20, 0, 0], boss: [0.0, 0.70, 0.30, 0, 0] });
+    assert.deepStrictEqual(v.split, { fight: [0.65, 0.30, 0.05, 0, 0], elite: [0.40, 0.40, 0.20, 0, 0], boss: [0.0, 0.70, 0.30, 0, 0], bossArtifact: [0.0, 0.60, 0.30, 0.10, 0] });
     assert.deepStrictEqual(v.colours, { basic: '#4a4a4a', uncommon: '#b8b8b8', rare: '#60a5fa', mythic: '#fbbf24', void: '#8b5cf6' });
     await page.close();
   });

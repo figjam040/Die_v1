@@ -600,7 +600,7 @@ function renderEnemyIntent() {
   // Both the number's own hover box and the icon's hover box carry the
   // same sentence — the game-font .hover-tip box, never a native title.
   function setValue(text, sentence) {
-    valueEl.innerHTML = String(text) + '<span class="hover-tip">' + (sentence || '') + '</span>';
+    valueEl.innerHTML = (typeof text === 'number' ? shortNumber(text) : String(text)) + '<span class="hover-tip">' + (sentence || '') + '</span>';
     renderIntentIcon(kindWord, sentence);
   }
   // A genuine enemy Nat this round overrides whatever the pattern's own
@@ -672,7 +672,7 @@ function renderStats() {
     }
   }
   renderEnemyIntent();
-  document.getElementById('enemyPoisonValue').textContent = gameState.enemy.poisonStacks;
+  document.getElementById('enemyPoisonValue').textContent = shortNumber(gameState.enemy.poisonStacks);
   // Every loaded face on this enemy's own die, named with its face number.
   const loadedBuffs = gameState.enemy.die.faces
     .filter(function(f) { return f.modId !== null; })
@@ -692,7 +692,7 @@ function renderStats() {
   if (wrathLine) {
     if (gameState.enemy.wrath > 0) {
       wrathLine.style.display = '';
-      document.getElementById('enemyWrathValue').textContent = '+' + gameState.enemy.wrath;
+      document.getElementById('enemyWrathValue').textContent = '+' + shortNumber(gameState.enemy.wrath);
       setHoverTip(document.getElementById('enemyWrathValue'), 'Wrath: each Attack deals this much more.');
     } else {
       wrathLine.style.display = 'none';
@@ -709,11 +709,11 @@ function renderStats() {
     }
   }
 
-  document.getElementById('playerBlockValue').textContent = gameState.player.block;
+  document.getElementById('playerBlockValue').textContent = shortNumber(gameState.player.block);
   document.getElementById('playerHpValue').textContent = shownHp(gameState.player.hp) + ' / ' + gameState.player.maxHp;
   document.getElementById('playerSoulValue').textContent = gameState.player.soul + ' / ' + gameState.player.maxSoul;
   const playerDebuffs = [];
-  if (gameState.player.poisonStacks) playerDebuffs.push('poison x' + gameState.player.poisonStacks);
+  if (gameState.player.poisonStacks) playerDebuffs.push('poison x' + shortNumber(gameState.player.poisonStacks));
   if (gameState.player.penitenceActive) playerDebuffs.push('penitence');
   const playerDebuffsEl = document.getElementById('playerDebuffsValue');
   playerDebuffsEl.textContent = playerDebuffs.length ? playerDebuffs.join(', ') : '—';
@@ -751,7 +751,7 @@ function renderStatusRows(poisonTitle) {
   if (playerRow) {
     playerRow.innerHTML = '';
     if (gameState.player.poisonStacks > 0) {
-      icon(playerRow, 'P' + gameState.player.poisonStacks, 'status-poison', poisonTitle);
+      icon(playerRow, 'P' + shortNumber(gameState.player.poisonStacks), 'status-poison', poisonTitle);
     }
     if (gameState.player.penitenceActive) {
       const turnsLeft = gameState.player.penitenceTurnsRemaining;
@@ -769,13 +769,13 @@ function renderStatusRows(poisonTitle) {
   if (enemyRow) {
     enemyRow.innerHTML = '';
     if (gameState.enemy.poisonStacks > 0) {
-      icon(enemyRow, 'P' + gameState.enemy.poisonStacks, 'status-poison', 'Poison: deals 1 damage per stack at the end of its turn, then loses 1 stack.');
+      icon(enemyRow, 'P' + shortNumber(gameState.enemy.poisonStacks), 'status-poison', 'Poison: deals 1 damage per stack at the end of its turn, then loses 1 stack.');
     }
     if (gameState.enemy.wrath > 0) {
-      icon(enemyRow, 'W' + gameState.enemy.wrath, 'status-wrath', 'Wrath: each Attack deals this much more.');
+      icon(enemyRow, 'W' + shortNumber(gameState.enemy.wrath), 'status-wrath', 'Wrath: each Attack deals this much more.');
     }
     if (gameState.enemy.aweStacks > 0) {
-      icon(enemyRow, 'A' + gameState.enemy.aweStacks, 'status-awe', 'Awe: lowers this enemy\'s next Attack by this many stacks, then loses 1 stack at the start of its round.');
+      icon(enemyRow, 'A' + shortNumber(gameState.enemy.aweStacks), 'status-awe', 'Awe: lowers this enemy\'s next Attack by this many stacks, then loses 1 stack at the start of its round.');
     }
   }
 }

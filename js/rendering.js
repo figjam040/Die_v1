@@ -30,7 +30,8 @@ const LOG_PREFIX_CLASSES = [
 function log(message) {
   const logEl = document.getElementById('log');
   const entry = document.createElement('div');
-  entry.textContent = message;
+  // KI-63: the shown line shortens big numbers; the parsing below reads message.
+  entry.textContent = shortNumbersInText(message);
 
   let matchedClass = 'log-default';
   for (let i = 0; i < LOG_PREFIX_CLASSES.length; i++) {
