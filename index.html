@@ -1037,7 +1037,7 @@
     right: auto;
     transform: translateX(-50%);
     margin: 0 0 6px 0;
-    text-align: center;
+    text-align: left;
   }
 
   .die-row:hover .face-symbol .hover-tip,
@@ -1104,7 +1104,7 @@
     right: auto;
     transform: translateX(-50%);
     margin: 0 0 6px 0;
-    text-align: center;
+    text-align: left;
   }
 
   /* ---------- ENEMY FACE ROW (D-103) ---------- */
@@ -1308,8 +1308,101 @@
 
   /* D-154 — the choose step: a door per die action, Skip under them. The
      face row (band-d) is hidden meanwhile, band-top taking its height. */
-  #fightScreen.die-action-choosing .band-d { display: none; }
-  #fightScreen.die-action-choosing .band-top { bottom: 0; }
+  #fightScreen:is(.die-action-choosing, .rite-choosing) .band-d { display: none; }
+  #fightScreen:is(.die-action-choosing, .rite-choosing) .band-top { bottom: 0; }
+
+  /* D-156 — The Font: its title, the flavour, the die button over the
+     stone basin; the basin lights while the die is hovered or focused. */
+  #eventScreenPanel { gap: 6px; padding-top: 2px; padding-bottom: 2px; }
+  #eventScreenPanel > .die-action-title { font-size: 30px; font-weight: normal; color: #f4f4f4; }
+
+  .font-flavour {
+    font-family: var(--game-font-2);
+    font-size: 30px;
+    line-height: 1.05;
+    color: #e8e4d0;
+  }
+
+  .font-stage { display: flex; flex-direction: column; align-items: center; gap: 34px; }
+
+  .font-die {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: #9c9684;
+    cursor: pointer;
+    transition: transform 150ms steps(3);
+  }
+
+  .font-die svg { display: block; }
+  .font-die-word { font-family: var(--game-font); font-size: 20px; color: #f4f4f4; }
+
+  .font-die:hover, .font-die:focus-visible {
+    color: #fbbf24;
+    border: none;
+    outline: none;
+    transform: translateY(-12px);
+    filter: drop-shadow(0 0 26px rgba(251, 191, 36, 0.5));
+  }
+
+  .font-die:is(:hover, :focus-visible) .font-die-word { color: #fbbf24; }
+
+  .font-basin { position: relative; flex: 0 0 auto; width: 520px; height: 190px; }
+
+  .font-basin-outer {
+    position: absolute;
+    inset: 0;
+    background: #3a3b3f;
+    clip-path: polygon(0 0, 520px 0, 520px 28px, 492px 28px, 492px 56px, 452px 56px, 452px 84px, 372px 84px, 372px 112px,
+      312px 112px, 312px 158px, 372px 158px, 372px 190px, 148px 190px, 148px 158px, 208px 158px, 208px 112px, 148px 112px,
+      148px 84px, 68px 84px, 68px 56px, 28px 56px, 28px 28px, 0 28px);
+  }
+
+  .font-basin-inner {
+    position: absolute;
+    left: 6px;
+    top: 6px;
+    width: 508px;
+    height: 178px;
+    background: #0a0a0c;
+    clip-path: polygon(0 0, 508px 0, 508px 16px, 480px 16px, 480px 44px, 440px 44px, 440px 72px, 360px 72px, 360px 100px,
+      300px 100px, 300px 158px, 360px 158px, 360px 178px, 148px 178px, 148px 158px, 208px 158px, 208px 100px, 148px 100px,
+      148px 72px, 68px 72px, 68px 44px, 28px 44px, 28px 16px, 0 16px);
+  }
+
+  .font-basin-water {
+    position: absolute;
+    left: 18px;
+    top: 10px;
+    width: 484px;
+    height: 8px;
+    background: #000000;
+    border-bottom: 2px solid #23406b;
+  }
+
+  .font-die:is(:hover, :focus-visible) + .font-basin .font-basin-outer { background: #8a6a12; }
+  .font-die:is(:hover, :focus-visible) + .font-basin .font-basin-water { border-bottom-color: #fbbf24; }
+
+  /* D-156 — the Rite's alcoves: the door parts, shorter, a wider gap. */
+  .die-doors.rite-alcoves { gap: 64px; padding-top: 12px; }
+  .die-door.rite-alcove { height: 440px; }
+
+  .rite-alcove .die-door-outer {
+    clip-path: polygon(0 60px, 20px 60px, 20px 36px, 44px 36px, 44px 16px, 76px 16px, 76px 0, 184px 0, 184px 16px, 216px 16px,
+      216px 36px, 240px 36px, 240px 60px, 260px 60px, 260px 440px, 0 440px);
+  }
+
+  .rite-alcove .die-door-inner {
+    height: 428px;
+    padding-top: 86px;
+    gap: 24px;
+    clip-path: polygon(0 60px, 20px 60px, 20px 36px, 44px 36px, 44px 16px, 76px 16px, 76px 0, 172px 0, 172px 16px, 204px 16px,
+      204px 36px, 228px 36px, 228px 60px, 248px 60px, 248px 428px, 0 428px);
+  }
 
   .die-door-sub {
     font-family: var(--game-font-2);
@@ -1384,7 +1477,17 @@
     font-size: 25px;
     line-height: 1.05;
     color: #e8e4d0;
-    text-align: center;
+    text-align: left;
+  }
+
+  /* D-160 — a screen line block: as wide as its longest sentence, centred
+     in its box, the sentences left-aligned inside it. */
+  .sentence-block {
+    width: fit-content;
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
   }
 
   .die-door-line {
@@ -1787,6 +1890,19 @@
 
   .offer-skip:hover { background: var(--nat); color: #1a1500; }
 
+  /* D-155 — every choice lights like a die door: a card's 2px edge or the
+     shop button's edge turns gold, a symbol's name does; each rises and
+     glows. Disabled choices, hand cards and face picks never react. */
+  .choice-lit { transition: transform 150ms steps(3); }
+  .choice-lit:hover, .choice-lit:focus-visible {
+    transform: translateY(-12px);
+    filter: drop-shadow(0 0 22px rgba(251, 191, 36, 0.45));
+  }
+  .choice-lit:focus-visible:not(.offer-card-picked) { outline: none; }
+  .offer-card.choice-lit:is(:hover, :focus-visible), .offer-small.choice-lit:is(:hover, :focus-visible) { border-color: #fbbf24; }
+  .offer-symbol.choice-lit:is(:hover, :focus-visible) :is(.offer-symbol-label, .hover-tip > :first-child) { color: #fbbf24; }
+  .offer-symbol.choice-lit:focus-visible .hover-tip { opacity: 1; visibility: visible; }
+
   #titleScreen {
     position: fixed;
     inset: 0;
@@ -1885,7 +2001,7 @@
     font-family: var(--game-font-2);
     font-size: calc(17px * var(--ui-scale));
     font-weight: normal;
-    text-align: center;
+    text-align: left;
     white-space: normal;
     line-height: 1.15;
     opacity: 0;
@@ -2024,39 +2140,45 @@
 
   /* ---------- MAP SCREEN ---------- */
 
+  /* D-156 — the title, then the map of doors, centred top to bottom in
+     the play column. The panel spans the column's side padding and drops
+     its border, so act 1's twelve doors fit at 1600 wide. */
   #mapScreen {
+    flex: 1 1 auto;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 16px;
+    margin: 0 -24px;
+    padding: 8px 0;
+    border: none;
   }
 
-  /* D-98 — the map is the only thing this screen draws now (no title, no
-     die previews), so it gets to run bigger: zoom is the same technique
-     applyScale() already uses to scale the whole screen, applied here to
-     just the node/connector composition. */
+  .map-title {
+    font-family: var(--game-font);
+    font-size: 30px;
+    color: #f4f4f4;
+    text-align: center;
+  }
+
   .map-composition {
     display: flex;
     align-items: stretch;
     justify-content: center;
     gap: 0;
-    margin: 40px 0;
-    /* The widest zoom at which all 19 nodes plus Start/Boss sit inside the
-       map panel's own border at 1600px wide (D-118; 1.4 overran it). */
-    zoom: 1.25;
+    margin-top: 24px;
   }
 
   .map-start-node,
   .map-node-opening,
-  .map-node-boss {
+  .map-node-boss,
+  .map-composition > .map-connector {
     align-self: center;
   }
 
-  .map-node-opening { margin-right: 20px; }
-  .map-node-boss { margin-left: 20px; }
-
   .map-fork, .map-merge {
     position: relative;
-    width: 20px;
+    width: 14px;
     flex-shrink: 0;
   }
 
@@ -2093,13 +2215,13 @@
     content: '';
     position: absolute;
     top: 50%;
-    width: 20px;
+    width: 14px;
     height: 2px;
     background: var(--line);
     transform: translateY(-50%);
   }
-  .map-lane::before { left: -20px; }
-  .map-lane::after { right: -20px; }
+  .map-lane::before { left: -14px; }
+  .map-lane::after { right: -14px; }
 
   .map-lane-committed::before,
   .map-lane-committed::after { background: var(--nat); }
@@ -2108,78 +2230,98 @@
   .map-lane-abandoned::after { background: var(--muted); opacity: 0.6; }
 
   .map-connector {
-    width: 20px;
+    width: 14px;
     height: 2px;
     background: var(--line);
     flex-shrink: 0;
   }
-  /* D-123 — act 1's nine-slot lanes: in-lane connectors 20px to 14px, so
-     the map keeps its margin inside the panel at 1600px. */
-  .map-composition-long .map-lane .map-connector { width: 14px; }
   .map-connector-committed { background: var(--nat); }
   .map-connector-abandoned { background: var(--muted); opacity: 0.6; }
 
+  /* D-156 — a map node is a small door: the outer shape, the inner shape
+     3px in, an icon and the label. The state classes set the three tones. */
   .map-node {
-    font-family: var(--game-font);
-    font-size: calc(10px * var(--ui-scale));
-    line-height: 1.4;
-    width: 70px;
-    height: 70px;
-    padding: 0 3px;
-    border: 1px solid var(--line);
-    color: var(--muted);
-    background: var(--panel-bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+    --door-outer: #26272b; --door-icon: #55565c; --door-label: #7d7d7d;
     position: relative;
     z-index: 1;
-  }
-
-  .map-node-completed {
-    color: var(--blank);
-    border-color: var(--blank);
-  }
-  .map-node-completed::before { content: '✓ '; }
-
-  .map-node-current {
-    color: var(--nat);
-    border: 1px solid var(--nat);
-    cursor: pointer;
-  }
-  .map-node-current:hover {
-    background: var(--nat);
-    color: #1a1500;
-  }
-
-  .map-node-choice {
-    color: var(--nat);
-    border: 1px dashed var(--nat);
-    cursor: pointer;
-  }
-  .map-node-choice:hover {
-    background: var(--nat);
-    color: #1a1500;
-  }
-
-  .map-node-inert {
-    color: var(--muted);
-    opacity: 0.45;
+    flex: 0 0 104px;
+    width: 104px;
+    height: 128px;
+    padding: 0;
+    border: none;
+    background: none;
     cursor: default;
+    transition: transform 150ms steps(3);
+  }
+
+  .map-door-outer {
+    position: absolute;
+    inset: 0;
+    background: var(--door-outer);
+    clip-path: polygon(0 24px, 8px 24px, 8px 14px, 18px 14px, 18px 6px, 30px 6px, 30px 0, 74px 0, 74px 6px, 86px 6px,
+      86px 14px, 96px 14px, 96px 24px, 104px 24px, 104px 128px, 0 128px);
+  }
+
+  .map-door-inner {
+    position: absolute;
+    left: 3px;
+    top: 3px;
+    width: 98px;
+    height: 122px;
+    box-sizing: border-box;
+    padding-top: 34px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    background: #0a0a0c;
+    clip-path: polygon(0 24px, 8px 24px, 8px 14px, 18px 14px, 18px 6px, 30px 6px, 30px 0, 68px 0, 68px 6px, 80px 6px,
+      80px 14px, 90px 14px, 90px 24px, 98px 24px, 98px 122px, 0 122px);
+  }
+
+  .map-door-icon { display: block; flex: 0 0 auto; color: var(--door-icon); }
+
+  .map-door-label {
+    font-family: var(--game-font);
+    font-size: 9px;
+    line-height: 1;
+    color: var(--door-label);
+  }
+
+  .map-node-boss { flex-basis: 136px; width: 136px; height: 168px; }
+
+  .map-node-boss .map-door-outer {
+    clip-path: polygon(0 31px, 10px 31px, 10px 18px, 24px 18px, 24px 8px, 39px 8px, 39px 0, 97px 0, 97px 8px, 112px 8px,
+      112px 18px, 126px 18px, 126px 31px, 136px 31px, 136px 168px, 0 168px);
+  }
+
+  .map-node-boss .map-door-inner {
+    width: 130px;
+    height: 162px;
+    padding-top: 46px;
+    clip-path: polygon(0 31px, 10px 31px, 10px 18px, 24px 18px, 24px 8px, 39px 8px, 39px 0, 91px 0, 91px 8px, 106px 8px,
+      106px 18px, 120px 18px, 120px 31px, 130px 31px, 130px 162px, 0 162px);
+  }
+
+  .map-node-boss .map-door-label { font-size: 11px; }
+
+  .map-node-completed { --door-outer: #3a3b3f; --door-icon: #7d7d7d; --door-label: #8a8a8a; }
+  .map-node-current, .map-node-choice { --door-outer: #8a6a12; --door-icon: #e8e4d0; --door-label: #f4f4f4; }
+  .map-node-inert[data-kind="Elite"] { --door-outer: #3a1c1c; --door-icon: #b85c5c; --door-label: #b85c5c; }
+  .map-node-inert[data-kind="Boss"] { --door-outer: #4a1f1f; --door-icon: #f87171; --door-label: #f87171; }
+
+  /* The doors that can be clicked now light on hover or keyboard focus. */
+  button:is(.map-node-current, .map-node-choice):not(:disabled) { cursor: pointer; }
+  button:is(.map-node-current, .map-node-choice):not(:disabled):is(:hover, :focus-visible) {
+    --door-outer: #fbbf24; --door-icon: #fbbf24; --door-label: #fbbf24;
+    outline: none;
+    transform: translateY(-10px);
+    filter: drop-shadow(0 0 18px rgba(251, 191, 36, 0.5));
   }
 
   /* DEV ONLY — jump target for a node the run hasn't reached yet. */
-  .map-node-dev-jump {
-    color: var(--muted);
-    border: 1px dotted var(--muted);
-    opacity: 0.75;
-    cursor: pointer;
-  }
-  .map-node-dev-jump:hover {
-    background: var(--muted);
-    color: #0a0a0f;
-  }
+  .map-node-dev-jump { cursor: pointer; }
+  .map-node-dev-jump:hover { --door-outer: var(--muted); }
 
   /* D-98 — what ELITE PREVIEW/ELITE DIE and BOSS PREVIEW/BOSS DIE showed
      inline now shows on hover instead (information moved, not lost). */
@@ -2792,7 +2934,7 @@
      its own CLOSE button or Escape. -->
 <div class="info-layer" id="dieInfoLayer" style="display:none;">
   <div class="info-layer-inner">
-    <div class="die-action-title">Player die</div>
+    <div class="die-action-title">Player Die</div>
     <div id="dieInfoContent"></div>
     <button class="info-layer-close" id="dieInfoCloseBtn">CLOSE</button>
   </div>
@@ -2824,22 +2966,22 @@
      dispatch opens screens) — a genuine circularity. A top-level name
      defined in two files silently overwrites the first; guardrails.test.js
      fails on any such duplicate. -->
-<script src="js/config.js?v=191"></script>
-<script src="js/state.js?v=191"></script>
-<script src="js/listener-registry.js?v=191"></script>
-<script src="js/audio.js?v=191"></script>
-<script src="js/pipeline.js?v=191"></script>
-<script src="js/cards-mods.js?v=191"></script>
-<script src="js/run-and-map.js?v=191"></script>
-<script src="js/phase-machine.js?v=191"></script>
-<script src="js/rendering.js?v=191"></script>
-<script src="js/render-fight.js?v=191"></script>
-<script src="js/render-map.js?v=191"></script>
-<script src="js/render-layers.js?v=191"></script>
-<script src="js/render-text.js?v=191"></script>
-<script src="js/backdrop-motion.js?v=191"></script>
-<script src="js/dev-tools.js?v=191"></script>
-<script src="js/bootstrap.js?v=191"></script>
+<script src="js/config.js?v=192"></script>
+<script src="js/state.js?v=192"></script>
+<script src="js/listener-registry.js?v=192"></script>
+<script src="js/audio.js?v=192"></script>
+<script src="js/pipeline.js?v=192"></script>
+<script src="js/cards-mods.js?v=192"></script>
+<script src="js/run-and-map.js?v=192"></script>
+<script src="js/phase-machine.js?v=192"></script>
+<script src="js/rendering.js?v=192"></script>
+<script src="js/render-fight.js?v=192"></script>
+<script src="js/render-map.js?v=192"></script>
+<script src="js/render-layers.js?v=192"></script>
+<script src="js/render-text.js?v=192"></script>
+<script src="js/backdrop-motion.js?v=192"></script>
+<script src="js/dev-tools.js?v=192"></script>
+<script src="js/bootstrap.js?v=192"></script>
 
 </body>
 </html>

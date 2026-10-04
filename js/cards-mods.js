@@ -1541,7 +1541,7 @@ function init() {
     plague_bell: { id: 'plague_bell', name: 'Plague Bell', tier: 'uncommon', text: 'When a fight starts, apply 1 stack of poison to the enemy for every 2 loaded faces other than face 10.' },
     alms: { id: 'alms', name: 'Alms', tier: 'uncommon', tags: ['blank'], text: 'When you roll a blank, gain 1 soul instead of 2 block.' },
     hourglass: { id: 'hourglass', name: 'Hourglass', tier: 'uncommon', text: "Skip the enemy's first round of every fight." },
-    second_chance: { id: 'second_chance', name: 'Second Chance', tier: 'uncommon', text: 'Once per fight, reroll your die.' },
+    second_chance: { id: 'second_chance', name: 'Second Chance', tier: 'uncommon', text: 'Once per fight, reroll your Die.' },
     gilded_die: { id: 'gilded_die', name: 'Gilded Die', tier: 'basic', tags: ['blank'], text: 'When you roll a blank, gain 3 gold.' },
     bone_counter: { id: 'bone_counter', name: 'Bone Counter', tier: 'uncommon', text: 'When you roll a Nat 1, pay 15 gold instead of starting Penitence. Without the gold, Penitence starts.' },
     halo: { id: 'halo', name: 'Halo', tier: 'rare', text: 'While you hold this, Strengthen may target face 20.' }

@@ -205,6 +205,17 @@ function cardPart(parent, tag, className, text) {
   return part;
 }
 
+// D-155: an enabled choice off the hand lights like a door on hover or
+// keyboard focus; a div choice takes focus and Enter or Space clicks it.
+function markChoiceLit(el) {
+  el.classList.add('choice-lit');
+  if (el.tagName === 'BUTTON') return;
+  el.tabIndex = 0;
+  el.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+  });
+}
+
 // opts: { size, button, footText, disabled, unaffordable, count, onClick }.
 // onClick runs through offerCardHandleClick() (D-106) except on the hand,
 // where a play is immediate.
@@ -258,10 +269,10 @@ function renderCard(cardId, opts) {
   const explainers = keywordExplainers(text, card.tags);
   appendExplainerLines(el, explainers);
   const textBox = cardPart(column, 'div', 'card-text-box');
-  cardPart(textBox, 'div', 'offer-card-text', text);
+  fillSentenceLines(cardPart(textBox, 'div', 'offer-card-text'), text);
   if (size === 'offer' && explainers.length) {
     const explainer = cardPart(textBox, 'div', 'card-explainer');
-    explainers.forEach(function(line) { cardPart(explainer, 'div', 'card-explainer-line', line); });
+    explainers.forEach(function(line) { fillSentenceLines(cardPart(explainer, 'div', 'card-explainer-line'), line); });
   }
   textBox.dataset.fitKey = text + '|' + explainers.join('|');
 
@@ -269,6 +280,7 @@ function renderCard(cardId, opts) {
 
   if (opts.onClick && !opts.disabled) {
     el.addEventListener('click', size === 'hand' ? opts.onClick : function() { offerCardHandleClick(el, opts.onClick); });
+    if (size !== 'hand') markChoiceLit(el);
   } else if (!opts.onClick) {
     el.style.cursor = 'default';
   }

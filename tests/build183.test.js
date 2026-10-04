@@ -173,7 +173,7 @@ function setFace(page, faceNumber, changes) {
       tenet: '6 damage. +1 for each time this face has been rolled.',
       exequy: "Deal damage equal to the enemy's stacks of poison.",
       vindication: 'Deal damage equal to twice your block.',
-      jubilee: 'Deal 4 damage, plus 2 per weight added to your die.'
+      jubilee: 'Deal 4 damage, plus 2 per weight added to your Die.'
     });
     assert.deepStrictEqual(r.emptyMods, []);
     assert.deepStrictEqual(r.emptyCards, []);

@@ -1667,3 +1667,9 @@ Stage 3.16 (BUILD 189) — D-143 to D-150: Tenet counts rolls (modData.rollCount
 # BUILD 190 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 191)
 
 Stage 3.17 (BUILD 190) — D-152 tier colours 60a5fa/fbbf24/9f6bff and the card in layers, no NONE tag line; D-153 six keyword explainers, Ordain/Elevation texts, worded status icons; D-154 the four doors, face row hidden while choosing, offer-size owned-card grid, white picked card; D-151 Vigil rare (13/8/5); KI-64 renders held while the trigger queue is open. Tests: build190.test.js.
+
+(BUILD 191) — D-158 and D-159: the title screen with Start, and moving backdrops on a canvas, act 1 and title, frozen under automation. Every earlier build: HISTORY.md.
+
+# BUILD 191 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 192)
+
+Stage 3.18 (BUILD 191) — D-159 js/backdrop-motion.js (sixteen js files) plays art/background_<name>_motion.js on a canvas, act 1 on #actBackgroundCanvas over the still; D-158 #titleScreen opened at the end of init(), closed by Start; under automation one frozen frame and no title, ?motion=1 and ?title=1 override. Tests: build191.test.js.

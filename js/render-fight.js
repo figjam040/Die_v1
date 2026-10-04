@@ -514,9 +514,8 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
       titleLine.className = 'face-tip-title';
       titleLine.textContent = titleText;
       tip.appendChild(titleLine);
-      const currentLine = document.createElement('div');
+      const currentLine = fillSentenceLines(document.createElement('div'), baseHoverText);
       currentLine.className = 'face-tip-text';
-      currentLine.textContent = baseHoverText;
       tip.appendChild(currentLine);
     }
     if (becomesText) {
@@ -573,8 +572,8 @@ function renderIntentIcon(kindWord, sentence) {
   el.setAttribute('aria-label', kindWord);
   el.innerHTML = '<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="7" ' +
     'stroke-linecap="square" stroke-linejoin="miter">' +
-    INTENT_ICON_SHAPES[kindWord] + '</svg>' +
-    '<span class="hover-tip">' + tipText + '</span>';
+    INTENT_ICON_SHAPES[kindWord] + '</svg>';
+  setHoverTip(el, tipText);
 }
 
 // Which icon this round's intent wears, independent of whatever text a
@@ -601,7 +600,8 @@ function renderEnemyIntent() {
   // Both the number's own hover box and the icon's hover box carry the
   // same sentence — the game-font .hover-tip box, never a native title.
   function setValue(text, sentence) {
-    valueEl.innerHTML = (typeof text === 'number' ? shortNumber(text) : String(text)) + '<span class="hover-tip">' + (sentence || '') + '</span>';
+    valueEl.textContent = typeof text === 'number' ? shortNumber(text) : String(text);
+    setHoverTip(valueEl, sentence || '');
     renderIntentIcon(kindWord, sentence);
   }
   // A genuine enemy Nat this round overrides whatever the pattern's own
@@ -950,7 +950,7 @@ function renderDieIcons() {
     const rolled = shownPlayerRoll().faceNumber;
     const frame = dieIconFrame('player', rolled, playerDieIconColour());
     playerEl.innerHTML = dieIconWrapHtml(frame, GAME_CONFIG.DIE_SIZE.PLAYER, 'var(--text)');
-    setHoverTip(playerEl, 'Your die: d' + GAME_CONFIG.DIE_SIZE.PLAYER +
+    setHoverTip(playerEl, 'Your Die: d' + GAME_CONFIG.DIE_SIZE.PLAYER +
       (frame.stage === 'spin' ? ', rolling.' : rolled === null ? ', not yet rolled this round.' : ', rolled ' + rolled + ' this round.'));
   }
 

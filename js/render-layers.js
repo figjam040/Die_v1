@@ -39,6 +39,7 @@ function renderOfferSymbol(spec) {
 
   if (spec.onClick && !spec.disabled) {
     el.addEventListener('click', function() { offerCardHandleClick(el, spec.onClick); });
+    markChoiceLit(el);
   }
   return el;
 }
@@ -120,10 +121,8 @@ function renderOfferPanel(panel, spec) {
       btn.className = 'offer-small';
       btn.textContent = entry.label;
       btn.disabled = !!entry.disabled;
-      const tip = document.createElement('span');
-      tip.className = 'hover-tip';
-      tip.textContent = entry.text;
-      btn.appendChild(tip);
+      if (!entry.disabled) markChoiceLit(btn);
+      setHoverTip(btn, entry.text);
       btn.addEventListener('click', entry.onClick);
       small.appendChild(btn);
     });
@@ -480,7 +479,7 @@ const DIE_DOOR_TEXT = {
   Load: 'Put a new mod on a face. Pick 1 of 3.',
   Strengthen: 'Add 1 weight to a loaded face. It rolls more often.',
   Purify: 'Take every mod off one face. Its weight stays.',
-  Remove: 'Take one blank face off the die for the run.'
+  Remove: 'Take one blank face off the Die for the run.'
 };
 const DIE_DOOR_D20 = '<path d="M48 6 L84 27 L84 69 L48 90 L12 69 L12 27 Z"/>';
 const DIE_DOOR_D20_EDGES = '<path d="M48 24 V6 M48 24 L84 27 M48 24 L12 27 M72 66 L84 27 M72 66 L84 69 M72 66 L48 90 M24 66 L12 27 M24 66 L12 69 M24 66 L48 90"/>';
@@ -496,17 +495,33 @@ const DIE_DOOR_ICONS = {
     '<path d="M54 6 L84 23 L54 21 Z"/>'
 };
 
-function dieDoorButton(label, onChoose) {
+// D-156: the Rite's three alcoves, the same door parts at the alcove size.
+const RITE_ALCOVE_ICONS = {
+  Heal: '<path d="M24 22 H72 V40 L58 56 H38 L24 40 Z M48 56 V76 M30 84 H66 M36 76 H60 M48 6 V14 M44 10 H52"/>',
+  'Modify Die': DIE_DOOR_D20 + '<path d="M48 24 L72 66 L24 66 Z"/>' + DIE_DOOR_D20_EDGES,
+  Remove: '<path d="M28 10 H68 V86 H28 Z M36 20 H60 V46 H36 Z M36 58 H60 M36 68 H52"/><path d="M14 82 L82 14" stroke-width="5"/>'
+};
+
+// A door (D-154) or, with sizeClass 'rite-alcove', a Rite alcove (D-156).
+function dieDoorButton(label, text, icon, onChoose, sizeClass) {
   const door = document.createElement('button');
-  door.className = 'die-door';
+  door.className = 'die-door' + (sizeClass ? ' ' + sizeClass : '');
   door.dataset.action = label;
   door.innerHTML = '<span class="die-door-outer"></span><span class="die-door-inner">' +
     '<svg class="die-door-icon" width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3"' +
-    ' stroke-linecap="square" stroke-linejoin="miter">' + DIE_DOOR_ICONS[label] + '</svg>' +
-    '<span class="die-door-name">' + label + '</span><span class="die-door-desc">' + DIE_DOOR_TEXT[label] + '</span>' +
+    ' stroke-linecap="square" stroke-linejoin="miter">' + icon + '</svg>' +
+    '<span class="die-door-name">' + label + '</span><span class="die-door-desc"></span>' +
     '<span class="die-door-line"></span></span>';
+  fillSentenceLines(door.querySelector('.die-door-desc'), text);
   door.addEventListener('click', function() { log('[CLICK] ' + label); onChoose(); });
   return door;
+}
+
+// The line or lines under a layer's title, one sentence per line (D-160).
+function screenSubLines(text) {
+  const sub = fillSentenceLines(document.createElement('div'), text);
+  sub.className = 'die-door-sub sentence-block';
+  return sub;
 }
 
 function renderDieActionPanel() {
@@ -535,27 +550,27 @@ function renderDieActionPanel() {
   titleText = 'Choose';
 
   if (dieActionStep === 'choose') {
-    const sub = document.createElement('div');
-    sub.className = 'die-door-sub';
-    sub.textContent = 'One change to your die. It lasts the whole run.';
-    extra = [sub];
+    extra = [screenSubLines('One change to your Die. It lasts the whole run.')];
     buttonRow = document.createElement('div');
     buttonRow.className = 'die-doors-wrap';
     const doors = document.createElement('div');
     doors.className = 'die-doors';
     buttonRow.appendChild(doors);
+    const addDoor = function(label, onChoose) {
+      doors.appendChild(dieDoorButton(label, DIE_DOOR_TEXT[label], DIE_DOOR_ICONS[label], onChoose));
+    };
 
     // Load shows whenever a blank face exists among faces 2-19 AND the
     // pool hasn't run dry (D-54) — a real 3-mod offer must be buildable.
     const blankFaceExists = gameState.die.faces.some(function(f) {
       return f.number !== 1 && f.number !== GAME_CONFIG.DIE_SIZE.PLAYER && f.modId === null;
     });
-    if (blankFaceExists && eligibleLoadModIds().length >= 3) doors.appendChild(dieDoorButton('Load', dieActionChooseLoad));
-    if (strengthenFaceExists()) doors.appendChild(dieDoorButton('Strengthen', dieActionChooseStrengthen));
+    if (blankFaceExists && eligibleLoadModIds().length >= 3) addDoor('Load', dieActionChooseLoad);
+    if (strengthenFaceExists()) addDoor('Strengthen', dieActionChooseStrengthen);
     // Purify offers only when a purifiable face exists (D-54-style hide).
-    if (purifiableFaceExists()) doors.appendChild(dieDoorButton('Purify', dieActionChoosePurify));
+    if (purifiableFaceExists()) addDoor('Purify', dieActionChoosePurify);
     // D-119 — hidden when no blank face qualifies or the die is at DIE_MIN_FACES.
-    if (removableFaceExists()) doors.appendChild(dieDoorButton('Remove', dieActionChooseRemove));
+    if (removableFaceExists()) addDoor('Remove', dieActionChooseRemove);
 
     const skipBtn = document.createElement('button');
     skipBtn.className = 'die-door-skip';
@@ -881,44 +896,39 @@ function renderRiteScreen() {
   const panel = document.getElementById('riteScreenPanel');
   if (!panel) return;
 
+  // D-156: the face row and its mod icons hide while the alcoves show.
+  document.getElementById('fightScreen').classList.toggle('rite-choosing', riteStep === 'choose');
+
   if (riteStep === null) {
     panel.style.display = 'none';
     panel.innerHTML = '';
     return;
   }
 
-  // D-116 — the rite is its own screen in the reward layer, titled Rite,
-  // the fight's face row exposed beneath it like every other layer step;
-  // the player's HP sits under the title in the HP red, nothing else.
+  // D-116 — the rite is its own screen in the reward layer, titled Rite;
+  // the player's HP sits under the title in the HP red.
   const hpLine = document.createElement('div');
   hpLine.className = 'rite-hp';
   hpLine.textContent = shownHp(gameState.player.hp) + ' / ' + gameState.player.maxHp;
-  let row = document.createElement('div');
-  row.className = 'die-action-row';
+  const extra = [hpLine];
+  let row = null;
   let instruction = null;
 
   if (riteStep === 'remove_pick_card') {
     instruction = 'CHOOSE A CARD TO REMOVE';
     row = renderOwnedCardGrid(riteRemoveCard);
   } else {
-    const healBtn = document.createElement('button');
-    healBtn.textContent = 'Heal ' + GAME_CONFIG.RITE_HEAL + ' HP';
-    healBtn.addEventListener('click', function() { log('[CLICK] Heal ' + GAME_CONFIG.RITE_HEAL + ' HP'); riteChooseHeal(); });
-
-    const dieBtn = document.createElement('button');
-    dieBtn.textContent = 'Take a die action';
-    dieBtn.addEventListener('click', function() { log('[CLICK] Take a die action'); riteChooseDieAction(); });
-
-    const removeBtn = document.createElement('button');
-    removeBtn.textContent = 'Remove a card';
-    removeBtn.addEventListener('click', function() { log('[CLICK] Remove a card'); riteChooseRemoveCard(); });
-
-    row.appendChild(healBtn);
-    row.appendChild(dieBtn);
-    row.appendChild(removeBtn);
+    extra.push(screenSubLines('Rest here. Take one.'));
+    row = document.createElement('div');
+    row.className = 'die-doors rite-alcoves';
+    [['Heal', 'Recover ' + GAME_CONFIG.RITE_HEAL + ' HP.', riteChooseHeal],
+      ['Modify Die', 'Take one Die action: Load, Strengthen, Purify or Remove.', riteChooseDieAction],
+      ['Remove', 'Take one card out of your deck for the run.', riteChooseRemoveCard]].forEach(function(a) {
+      row.appendChild(dieDoorButton(a[0], a[1], RITE_ALCOVE_ICONS[a[0]], a[2], 'rite-alcove'));
+    });
   }
 
-  renderOfferPanel(panel, { title: 'Rite', extra: [hpLine], cards: [], skip: null, buttonRow: row, instruction: instruction });
+  renderOfferPanel(panel, { title: 'Rite', extra: extra, cards: [], skip: null, buttonRow: row, instruction: instruction });
 }
 
 // ---------- EVENT SCREEN — The Font (slot type 'event', id 'font') ----------
@@ -1002,16 +1012,27 @@ function renderEventScreen() {
     return;
   }
 
-  // The Font's flavour goes where a title goes; ROLL, then the outcome
-  // and CONTINUE, sit in the card area; the row beneath lights the face.
+  // D-156: titled The Font, its flavour under the title; the die button
+  // over the stone basin, then the outcome and CONTINUE; the face row
+  // beneath lights the rolled face.
+  const flavour = fillSentenceLines(document.createElement('div'),
+    'A font of black water stands where the road bends. Nothing moves in it. The Die goes in.');
+  flavour.className = 'font-flavour sentence-block';
   const row = document.createElement('div');
   row.className = 'die-action-row offer-card-area';
 
   if (eventStep === 'open') {
+    row.className = 'font-stage';
     const rollBtn = document.createElement('button');
-    rollBtn.textContent = 'ROLL';
-    rollBtn.addEventListener('click', function() { log('[CLICK] ROLL'); eventRoll(); });
+    rollBtn.className = 'font-die';
+    rollBtn.innerHTML = '<svg width="200" height="200" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.5"' +
+      ' stroke-linecap="square" stroke-linejoin="miter">' + RITE_ALCOVE_ICONS['Modify Die'] + '</svg><span class="font-die-word">Roll</span>';
+    rollBtn.addEventListener('click', function() { log('[CLICK] Roll'); eventRoll(); });
+    const basin = document.createElement('div');
+    basin.className = 'font-basin';
+    basin.innerHTML = '<span class="font-basin-outer"></span><span class="font-basin-inner"></span><span class="font-basin-water"></span>';
     row.appendChild(rollBtn);
+    row.appendChild(basin);
   } else if (eventStep === 'result') {
     const outcome = document.createElement('div');
     outcome.className = 'die-action-empty';
@@ -1027,7 +1048,8 @@ function renderEventScreen() {
   // the roll lights the fight's own face row (#playerDieList);
   // no die row of this panel's own.
   renderOfferPanel(panel, {
-    title: 'A font of black water stands where the road bends. Nothing moves in it. The die goes in.',
+    title: 'The Font',
+    extra: [flavour],
     cards: [],
     skip: null,
     buttonRow: row

@@ -22,10 +22,22 @@ function setHoverTip(el, text) {
   // An empty line (a piece with no tags) draws nothing, not a blank row.
   (Array.isArray(text) ? text : [text]).forEach(function(line) {
     if (line === '' || line === null || line === undefined) return;
-    const div = document.createElement('div');
-    div.textContent = line;
-    tip.appendChild(div);
+    tip.appendChild(fillSentenceLines(document.createElement('div'), line));
   });
+}
+
+// D-160: text the player reads is drawn one sentence per line, split after
+// each full stop followed by a space. Each piece keeps its trailing space,
+// which a line end swallows, so the element's textContent is the text unchanged.
+function fillSentenceLines(el, text) {
+  el.textContent = '';
+  String(text).split(/(?<=\. +)(?=\S)/).forEach(function(piece) {
+    const line = document.createElement('div');
+    line.className = 'sentence-line';
+    line.textContent = piece;
+    el.appendChild(line);
+  });
+  return el;
 }
 
 // KI-46 — every showing hover box is shifted inward until it sits fully
@@ -171,9 +183,8 @@ function faceModBox(face, modId) {
   if (bound) { rows.push(['face-tip-bound', bound === 'printed' ? 'Bound' : 'Bound this fight']); }
   rows.push(['face-tip-foot', 'weight ' + face.weight + (isFaceTwentyAtCap(face.number) ? ' MAX' : '')]);
   rows.forEach(function(r) {
-    const line = document.createElement('div');
+    const line = fillSentenceLines(document.createElement('div'), r[1]);
     line.className = r[0];
-    line.textContent = r[1];
     box.appendChild(line);
   });
   box.querySelector('.face-tip-rarity').style.color = GAME_CONFIG.TIER_COLOURS[tier] || GAME_CONFIG.TIER_COLOURS.basic;
@@ -470,8 +481,8 @@ const CARD_EFFECT_TEXT = {
   orison: 'Deal 5 damage. If you rolled a blank, deal 9 instead.',
   tenet: '6 damage. +1 for each time this face has been rolled.',
   gradual: 'Deal 3 damage, plus 1 per weight of your heaviest loaded face, up to 12.',
-  vacancy: 'Deal 1 damage per blank face on your die.',
-  lauds: 'Deal 4 damage, plus 3 per Growth mod on your die, up to 13.',
+  vacancy: 'Deal 1 damage per blank face on your Die.',
+  lauds: 'Deal 4 damage, plus 3 per Growth mod on your Die, up to 13.',
   chastise: 'Deal 7 damage.',
   cloister: 'Gain 7 block.',
   psalm: 'Draw 1 card.',
@@ -482,12 +493,12 @@ const CARD_EFFECT_TEXT = {
   hosanna: "Deal 6 damage. If the enemy's intent this round is not an Attack, deal 12 instead.",
   gloria: 'Deal 30 damage.',
   oblation: 'Spend all your soul. Deal 7 damage per soul spent, up to 42.',
-  tabernacle: 'Gain 2 block per blank face on your die.',
-  jubilee: 'Deal 4 damage, plus 2 per weight added to your die.',
+  tabernacle: 'Gain 2 block per blank face on your Die.',
+  jubilee: 'Deal 4 damage, plus 2 per weight added to your Die.',
   // Fallback only — getCardEffectText() below overrides this with the
   // live threnodyFace number; no real caller reads this map directly.
   threnody: 'Trigger the same face every time. If it is blank, gain 2 block.',
-  reverberation: 'Trigger every blank face on your die.',
+  reverberation: 'Trigger every blank face on your Die.',
   kyrie: 'Deal 5 damage. If the rolled face has Bound, deal 10 instead.',
   novena: 'Trigger every loaded Bound face.',
   canticle: 'Gain 6 block. If the rolled face is loaded, it gains Bound for this fight.',
@@ -532,8 +543,8 @@ const MOD_DESCRIPTION = {
   anthem: 'Deal 6 damage, plus 4 per weight on this face.',
   elevation: 'Deal 10 damage. The face above gains 1 weight.',
   largesse: 'Gain 2 soul and 4 block.',
-  tithe: 'Gain 1 block per blank face on your die.',
-  congregation: 'Deal 8 damage. If another mod on your die has Growth, deal 16 instead.',
+  tithe: 'Gain 1 block per blank face on your Die.',
+  congregation: 'Deal 8 damage. If another mod on your Die has Growth, deal 16 instead.',
   cope: '8 block. +2 each trigger.',
   anathema: 'When this turn ends, deal damage equal to your block, up to 16.',
   thurible: 'Deal 8 damage. Apply 3 stacks of poison.',
@@ -581,9 +592,8 @@ function appendExplainerLines(el, lines) {
   const tip = el && el.querySelector('.hover-tip');
   if (!tip) return;
   lines.forEach(function(line) {
-    const div = document.createElement('div');
+    const div = fillSentenceLines(document.createElement('div'), line);
     div.className = 'hover-tip-explainer';
-    div.textContent = line;
     tip.appendChild(div);
   });
 }

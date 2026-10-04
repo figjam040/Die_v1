@@ -27,9 +27,32 @@ function renderActBackground() {
   }
 }
 
-// Node states: completed (--blank), current (--nat, solid), choice (--nat,
-// dashed, the fork's two options), inert (--muted). KI-31: an entered slot
-// reads as completed, so a second click cannot enter it again.
+// D-156: every map node is a small door, its icon by slot label; the Boss
+// door is the larger one. The state class colours outer, icon and label.
+const MAP_DOOR_ICONS = {
+  Start: 'M24 12 L36 24 L24 36 L12 24 Z',
+  Fight: 'M10 38 L36 12 M28 10 H38 V20 M38 38 L12 12 M10 20 V10 H20 M8 32 L16 40 M40 32 L32 40',
+  Rite: 'M24 4 L30 14 L24 20 L18 14 Z M17 24 H31 V42 H17 Z M11 42 H37',
+  Elite: 'M8 36 V14 L17 24 L24 8 L31 24 L40 14 V36 Z M8 42 H40',
+  Anomaly: 'M4 24 L24 10 L44 24 L24 38 Z M20 20 H28 V28 H20 Z',
+  Boss: 'M12 8 H36 V28 H31 V40 H17 V28 H12 Z M17 16 H22 V21 H17 Z M26 16 H31 V21 H26 Z M22 34 V40 M26 34 V40'
+};
+
+function mapDoorNode(tag, label, className) {
+  const node = document.createElement(tag);
+  node.className = className;
+  node.dataset.kind = label;
+  const px = label === 'Boss' ? 60 : 44;
+  node.innerHTML = '<span class="map-door-outer"></span><span class="map-door-inner">' +
+    '<svg class="map-door-icon" width="' + px + '" height="' + px + '" viewBox="0 0 48 48" fill="none" stroke="currentColor"' +
+    ' stroke-width="3" stroke-linecap="square" stroke-linejoin="miter"><path d="' + MAP_DOOR_ICONS[label] + '"/></svg>' +
+    '<span class="map-door-label">' + label + '</span></span>';
+  return node;
+}
+
+// Node states: completed, current and choice (the doors that can be
+// clicked now; choice is the fork's two options), inert. KI-31: an entered
+// slot reads as completed, so a second click cannot enter it again.
 function mapNodeStateClass(slot, isCurrent, isChoice) {
   if (isCurrent && !slot.entered) { return 'map-node-current'; }
   if (isChoice) { return 'map-node-choice'; }
@@ -53,12 +76,9 @@ function attachDevJumpIfEligible(node, laneName, index, rewardPanelOpen) {
   // absolutely positioned tip over the same spot.
   const existingTip = node.querySelector('.hover-tip');
   if (existingTip) {
-    existingTip.textContent += ' ' + devText;
+    existingTip.appendChild(fillSentenceLines(document.createElement('div'), devText));
   } else {
-    const tip = document.createElement('span');
-    tip.className = 'hover-tip';
-    tip.textContent = devText;
-    node.appendChild(tip);
+    setHoverTip(node, devText);
   }
   node.addEventListener('click', function() { devJumpToSlot(laneName, index); });
 }
@@ -106,18 +126,23 @@ function renderMapScreen() {
   const rewardPanelOpen = dieActionStep !== null || cardRewardStep !== null
     || artifactRewardStep !== null || shopStep !== null || riteStep !== null || eventStep !== null;
 
-  // D-98 — the map screen shows the top bar and the map only; the act
-  // number already reads on the top bar's own #actStamp.
+  // D-156 — the title Act N over the map; while the lane choice is open,
+  // the two lines under it.
+  const openingSlot = gameState.run.act.opening;
+  const title = document.createElement('div');
+  title.className = 'map-title';
+  title.textContent = 'Act ' + gameState.run.actNumber;
+  container.appendChild(title);
+  if (gameState.run.lane === null && openingSlot.completed) {
+    container.appendChild(screenSubLines('The road splits. Choose a door.'));
+  }
+
   const composition = document.createElement('div');
-  // D-123: act 1's nine-slot lanes draw with shorter connectors.
-  composition.className = 'map-composition' + (gameState.run.act.upper.length > 8 ? ' map-composition-long' : '');
+  composition.className = 'map-composition';
 
   // START — a marker, not a clickable slot; reads 'current' until the
   // shared opening fight is done and 'completed' once it is.
-  const openingSlot = gameState.run.act.opening;
-  const startNode = document.createElement('div');
-  startNode.className = 'map-node map-start-node ' + (openingSlot.completed ? 'map-node-completed' : 'map-node-current');
-  startNode.textContent = 'Start';
+  const startNode = mapDoorNode('div', 'Start', 'map-node map-start-node ' + (openingSlot.completed ? 'map-node-completed' : 'map-node-current'));
   composition.appendChild(startNode);
 
   // OPENING — the shared fight both lanes pass through before the fork,
@@ -128,9 +153,7 @@ function renderMapScreen() {
   composition.appendChild(openingConnector);
 
   const openingIsCurrent = gameState.run.currentSlot === 'opening';
-  const openingNode = document.createElement('button');
-  openingNode.className = 'map-node map-node-opening ' + mapNodeStateClass(openingSlot, openingIsCurrent, false);
-  openingNode.textContent = openingSlot.label;
+  const openingNode = mapDoorNode('button', openingSlot.label, 'map-node map-node-opening ' + mapNodeStateClass(openingSlot, openingIsCurrent, false));
   if (openingIsCurrent && !openingSlot.entered && !rewardPanelOpen) {
     openingNode.addEventListener('click', function() { enterSlot('opening', null); });
   } else {
@@ -157,26 +180,20 @@ function renderMapScreen() {
         laneRow.appendChild(connector);
       }
 
-      const node = document.createElement('button');
-      node.textContent = slot.label;
-
       // The fork is only a real choice once the shared opening fight is
       // behind the player.
       const isForkChoice = gameState.run.lane === null && index === 0 && openingSlot.completed;
       const cs = gameState.run.currentSlot;
       const isCurrent = cs && cs !== 'boss' && cs.lane === laneName && cs.index === index;
 
-      node.className = 'map-node ' + mapNodeStateClass(slot, isCurrent, isForkChoice);
+      const node = mapDoorNode('button', slot.label, 'map-node ' + mapNodeStateClass(slot, isCurrent, isForkChoice));
 
       // D-98 — the Elite node carries the same summary ELITE PREVIEW/ELITE
       // DIE used to print inline, now a hover-tip instead. Reads the
       // slot's own static enemy, never the live gameState.enemy (that
       // would go stale once any other fight is entered).
       if (slot.label === 'Elite' && slot.enemy) {
-        const tip = document.createElement('span');
-        tip.className = 'hover-tip';
-        tip.textContent = enemyPreviewHoverText(slot.enemy);
-        node.appendChild(tip);
+        setHoverTip(node, enemyPreviewHoverText(slot.enemy));
       }
 
       if ((isCurrent || isForkChoice) && !slot.entered && !rewardPanelOpen) {
@@ -204,15 +221,11 @@ function renderMapScreen() {
   merge.className = 'map-merge';
   composition.appendChild(merge);
 
-  const bossBtn = document.createElement('button');
   const bossIsCurrent = gameState.run.currentSlot === 'boss';
-  bossBtn.className = 'map-node map-node-boss ' + mapNodeStateClass(gameState.run.act.boss, bossIsCurrent, false);
-  bossBtn.textContent = gameState.run.act.boss.label;
+  const bossBtn = mapDoorNode('button', gameState.run.act.boss.label,
+    'map-node map-node-boss ' + mapNodeStateClass(gameState.run.act.boss, bossIsCurrent, false));
   // D-98 — same hover-tip treatment as the Elite node above.
-  const bossTip = document.createElement('span');
-  bossTip.className = 'hover-tip';
-  bossTip.textContent = enemyPreviewHoverText(gameState.run.act.boss.enemy);
-  bossBtn.appendChild(bossTip);
+  setHoverTip(bossBtn, enemyPreviewHoverText(gameState.run.act.boss.enemy));
   if (bossIsCurrent && !gameState.run.act.boss.entered && !rewardPanelOpen) {
     bossBtn.addEventListener('click', function() { enterSlot('boss', null); });
   } else {

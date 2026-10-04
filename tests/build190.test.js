@@ -30,7 +30,7 @@ const DOOR_TEXT = {
   Load: 'Put a new mod on a face. Pick 1 of 3.',
   Strengthen: 'Add 1 weight to a loaded face. It rolls more often.',
   Purify: 'Take every mod off one face. Its weight stays.',
-  Remove: 'Take one blank face off the die for the run.'
+  Remove: 'Take one blank face off the Die for the run.'
 };
 
 async function fontsReady(page) {
@@ -420,7 +420,7 @@ function timeLoop(page) {
       };
     });
     assert.strictEqual(v.title, 'Choose');
-    assert.strictEqual(v.sub, 'One change to your die. It lasts the whole run.');
+    assert.strictEqual(v.sub, 'One change to your Die. It lasts the whole run.');
     assert.strictEqual(v.subStyle, '26px VT323 rgb(156, 150, 132)');
     assert.deepStrictEqual(v.actions, ['Load', 'Strengthen', 'Purify', 'Remove', 'Skip']);
     assert.strictEqual(v.gap, '48px');
