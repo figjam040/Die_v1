@@ -178,10 +178,36 @@ function topLevelNames(src) {
   return names;
 }
 
+// Lines of a test file's source that set a byte, line or character limit as
+// a literal instead of importing it from this file: a *BYTE(S)/*LINE(S)
+// constant assigned a number, a bytes/lines/byteLength comparison against a
+// 3+ digit number, a line.length comparison, a limit constant compared with
+// a literal, or a 'N,NNN bytes'/'NNN characters' title. Comment lines skipped.
+const LIMIT_LITERAL_PATTERNS = [
+  /\b[A-Z_]*(?:BYTES?|LINES?)[A-Z_]*\s*=\s*[\d_,.]+/,
+  /\b(?:bytes|lines)\s*(?:<=?|>=?|===?)\s*\d{3,}/,
+  /byteLength\([^)]*\)\s*(?:<=?|>=?|===?)\s*\d{3,}/,
+  /\b(?:l|ln|line)\.length\s*(?:<=?|>=?)\s*\d{3,}/,
+  /(?:MAX_BYTES|MAX_LINES)\w*\s*,\s*\d{3,}/,
+  /\d{1,3},\d{3}\s*(?:bytes|lines)/,
+  /\b\d{3,}\s*(?:characters|chars)\b/
+];
+function limitLiteralLines(src) {
+  return src.split('\n').filter(function(line) {
+    const t = line.trim();
+    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return false;
+    return LIMIT_LITERAL_PATTERNS.some(function(re) { return re.test(line); });
+  });
+}
+
 module.exports = {
   CLAUDE_MD_MAX_BYTES: 90000,
   TEST_FILE_MAX_LINES: 800,
   JS_FILE_MAX_LINES: 1700,
+  RENDER_FILE_MAX_LINES: 1500,
+  CONFIRMED_WORKING_LINE_MAX_CHARS: 300,
+  CURRENT_SUBSTAGE_MAX_BYTES: 4000,
+  limitLiteralLines,
   FILE_URL,
   createRunner,
   TEST_FACE,

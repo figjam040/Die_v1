@@ -8,7 +8,7 @@ const assert = require('assert');
 const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const { CLAUDE_MD_MAX_BYTES, TEST_FILE_MAX_LINES, JS_FILE_MAX_LINES, topLevelNames } = require('./shared-constants');
+const { CLAUDE_MD_MAX_BYTES, TEST_FILE_MAX_LINES, JS_FILE_MAX_LINES, CONFIRMED_WORKING_LINE_MAX_CHARS, CURRENT_SUBSTAGE_MAX_BYTES, topLevelNames, limitLiteralLines } = require('./shared-constants');
 
 function countLines(file) {
   return fs.readFileSync(file, 'utf8').split('\n').length - 1;
@@ -137,23 +137,23 @@ function factsBlockLineRange(src) {
     assert.ok(bytes <= CLAUDE_MD_MAX_BYTES, 'CLAUDE.md is ' + bytes + ' bytes, over the ' + CLAUDE_MD_MAX_BYTES.toLocaleString() + ' byte guardrail');
   });
 
-  await runTest('Every line in CONFIRMED WORKING is at most 300 characters', async () => {
+  await runTest('Every line in CONFIRMED WORKING is at most ' + CONFIRMED_WORKING_LINE_MAX_CHARS + ' characters', async () => {
     const src = fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8');
     const start = src.indexOf('# CONFIRMED WORKING');
     const end = src.indexOf('# CURRENT SUBSTAGE');
     assert.ok(start !== -1 && end !== -1 && end > start, 'CONFIRMED WORKING / CURRENT SUBSTAGE markers not found');
     const section = src.slice(start, end);
-    const tooLong = section.split('\n').filter(function(l) { return l.length > 300; });
-    assert.strictEqual(tooLong.length, 0, tooLong.length + ' line(s) over 300 characters in CONFIRMED WORKING');
+    const tooLong = section.split('\n').filter(function(row) { return row.length > CONFIRMED_WORKING_LINE_MAX_CHARS; });
+    assert.strictEqual(tooLong.length, 0, tooLong.length + ' line(s) over ' + CONFIRMED_WORKING_LINE_MAX_CHARS + ' characters in CONFIRMED WORKING');
   });
 
-  await runTest('CURRENT SUBSTAGE is at most 4,000 bytes and names exactly one build, equal to GAME_CONFIG.BUILD', async () => {
+  await runTest('CURRENT SUBSTAGE is at most ' + CURRENT_SUBSTAGE_MAX_BYTES.toLocaleString() + ' bytes and names exactly one build, equal to GAME_CONFIG.BUILD', async () => {
     const claudeMd = fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8');
     const start = claudeMd.indexOf('# CURRENT SUBSTAGE');
     assert.ok(start !== -1, 'CURRENT SUBSTAGE marker not found');
     const section = claudeMd.slice(start);
     const bytes = Buffer.byteLength(section, 'utf8');
-    assert.ok(bytes <= 4000, 'CURRENT SUBSTAGE is ' + bytes + ' bytes, over the 4,000 byte limit');
+    assert.ok(bytes <= CURRENT_SUBSTAGE_MAX_BYTES, 'CURRENT SUBSTAGE is ' + bytes + ' bytes, over the ' + CURRENT_SUBSTAGE_MAX_BYTES.toLocaleString() + ' byte limit');
 
     const buildNumbers = new Set(Array.from(section.matchAll(/BUILD (\d+)/g)).map(function(m) { return m[1]; }));
     assert.strictEqual(buildNumbers.size, 1, 'CURRENT SUBSTAGE names ' + buildNumbers.size + ' distinct build number(s), expected exactly 1');
@@ -296,11 +296,20 @@ function factsBlockLineRange(src) {
 
   await runTest('Every js/ file has exactly one script tag in index.html, and every script tag names a file that exists', async () => {
     const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
-    const srcs = Array.from(html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)).map(function(m) { return m[1]; });
+    const srcs = Array.from(html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)).map(function(m) { return m[1].replace(/\?.*$/, ''); });
     const missing = srcs.filter(function(src) { return !fs.existsSync(path.join(ROOT, src)); });
     assert.deepStrictEqual(missing, [], 'script tags naming no file');
     const notOnce = jsFiles.filter(function(f) { return srcs.filter(function(src) { return src === 'js/' + f; }).length !== 1; });
     assert.deepStrictEqual(notOnce, [], 'js/ files without exactly one script tag');
+  });
+
+  await runTest('No test file sets a CLAUDE.md byte, test file line or code file line limit except by importing tests/shared-constants.js', async () => {
+    const testsDir = path.join(ROOT, 'tests');
+    const offenders = [];
+    fs.readdirSync(testsDir).filter(function(f) { return f.endsWith('.js') && f !== 'shared-constants.js'; }).forEach(function(f) {
+      limitLiteralLines(fs.readFileSync(path.join(testsDir, f), 'utf8')).forEach(function(row) { offenders.push('tests/' + f + ': ' + row.trim()); });
+    });
+    assert.deepStrictEqual(offenders, [], 'limit literal outside shared-constants.js');
   });
 
   if (notYetTrimmed.length > 0) {

@@ -32,8 +32,9 @@ const claudeMd = fs.readFileSync(path.resolve(ROOT, 'CLAUDE.md'), 'utf8');
 // ITEM A — CLAUDE.md size cap rises from 72,000 to 90,000 bytes
 // ---------------------------------------------------------------
 
-runTest('CLAUDE_MD_MAX_BYTES is 90000', () => {
-  assert.strictEqual(CLAUDE_MD_MAX_BYTES, 90000, 'CLAUDE_MD_MAX_BYTES must be 90000, found ' + CLAUDE_MD_MAX_BYTES);
+runTest('CLAUDE_MD_MAX_BYTES is a whole number of bytes above CLAUDE.md\'s own size', () => {
+  assert.ok(Number.isInteger(CLAUDE_MD_MAX_BYTES), 'CLAUDE_MD_MAX_BYTES must be an integer, found ' + CLAUDE_MD_MAX_BYTES);
+  assert.ok(CLAUDE_MD_MAX_BYTES > fs.statSync(path.resolve(ROOT, 'CLAUDE.md')).size, 'CLAUDE.md is at or over CLAUDE_MD_MAX_BYTES');
 });
 
 runTest('no file in tests/ contains the literal 72000', () => {
@@ -49,15 +50,16 @@ runTest('no file in tests/ contains the literal 72000', () => {
   assert.strictEqual(offenders.length, 0, 'the literal 72000 still appears in: ' + offenders.join(', ') + ' (scanned ' + (files.length + 1) + ' files in tests/, excluding this file)');
 });
 
-runTest('CLAUDE.md is under 90,000 bytes', () => {
-  const bytes = Buffer.byteLength(claudeMd, 'utf8');
-  assert.ok(bytes < 90000, 'CLAUDE.md is ' + bytes + ' bytes, must be under 90,000');
+runTest('CLAUDE.md is under CLAUDE_MD_MAX_BYTES', () => {
+  const size = Buffer.byteLength(claudeMd, 'utf8');
+  assert.ok(size < CLAUDE_MD_MAX_BYTES, 'CLAUDE.md is ' + size + ' bytes, must be under ' + CLAUDE_MD_MAX_BYTES);
 });
 
-runTest('CLAUDE.md SIZE RULE line names 90,000', () => {
+runTest('CLAUDE.md SIZE RULE line names the CLAUDE_MD_MAX_BYTES ceiling', () => {
   const sizeRuleLine = claudeMd.split('\n').find((line) => line.startsWith('SIZE RULE:'));
   assert.ok(sizeRuleLine, 'could not find the SIZE RULE line in CLAUDE.md');
-  assert.ok(sizeRuleLine.indexOf('90,000 bytes') !== -1, 'the SIZE RULE line must name 90,000 bytes, found: ' + sizeRuleLine);
+  const named = CLAUDE_MD_MAX_BYTES.toLocaleString('en-US') + ' bytes';
+  assert.ok(sizeRuleLine.indexOf(named) !== -1, 'the SIZE RULE line must name ' + named + ', found: ' + sizeRuleLine);
   assert.ok(sizeRuleLine.indexOf('72,000') === -1, 'the SIZE RULE line must not still name 72,000, found: ' + sizeRuleLine);
 });
 

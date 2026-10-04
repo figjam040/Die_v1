@@ -10,14 +10,13 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 const { execFileSync } = require('child_process');
-const { createRunner, topLevelNames, FILE_URL } = require('./shared-constants');
+const { createRunner, topLevelNames, FILE_URL, RENDER_FILE_MAX_LINES } = require('./shared-constants');
 const { diffPNGs } = require('./pngdiff');
 
 const ROOT = path.resolve(__dirname, '..');
 const REF_COMMIT = '519abc3';
 const REF_DIR = path.join(ROOT, 'test-results', 'build175-ref');
 const SHOT_DIR = path.join(ROOT, 'test-results', 'build175-shots');
-const RENDER_FILE_MAX_LINES = 1500;
 const RENDER_FILES = ['rendering.js', 'render-fight.js', 'render-map.js', 'render-layers.js', 'render-text.js'];
 const LOAD_ORDER = ['config', 'state', 'listener-registry', 'audio', 'pipeline', 'cards-mods', 'run-and-map', 'phase-machine',
   'rendering', 'render-fight', 'render-map', 'render-layers', 'render-text', 'dev-tools', 'bootstrap'];
@@ -100,7 +99,7 @@ async function shootMapAndFight(browser, url, label) {
 
   await runTest('index.html loads the fifteen js/ files in the recorded order', async () => {
     const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
-    const order = Array.from(html.matchAll(/<script src="js\/([a-z-]+)\.js"><\/script>/g)).map(function(m) { return m[1]; });
+    const order = Array.from(html.matchAll(/<script src="js\/([a-z-]+)\.js(?:\?v=\d+)?"><\/script>/g)).map(function(m) { return m[1]; });
     assert.deepStrictEqual(order, LOAD_ORDER);
   });
 

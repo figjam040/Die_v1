@@ -557,7 +557,7 @@ function specOnlyDeepEqual(actual, expected, label) {
     assert.strictEqual(actual.length, 15);
     expected.forEach(function(name) { assert.ok(actual.indexOf(name) !== -1, 'missing js/' + name + '.js'); });
     const html = fs.readFileSync(path.resolve(__dirname, '..', 'index.html'), 'utf8');
-    const order = (html.match(/<script src="js\/([a-z-]+)\.js"><\/script>/g) || []).map(function(tag) { return tag.match(/js\/([a-z-]+)\.js/)[1]; });
+    const order = (html.match(/<script src="js\/([a-z-]+)\.js(?:\?v=\d+)?"><\/script>/g) || []).map(function(tag) { return tag.match(/js\/([a-z-]+)\.js/)[1]; });
     assert.deepStrictEqual(order, expected, 'index.html script tag order must match the documented load order, config.js first');
   });
 

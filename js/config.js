@@ -53,7 +53,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 185,
+  BUILD: 186,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {

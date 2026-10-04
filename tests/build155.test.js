@@ -225,7 +225,7 @@ function faceRow(page, faceNumber) {
   // ITEM D — CLAUDE.md headroom
   // ---------------------------------------------------------------
 
-  await runTest('Item D: CLAUDE.md is at most 72,000 bytes', async () => {
+  await runTest('Item D: CLAUDE.md is at most CLAUDE_MD_MAX_BYTES', async () => {
     const bytes = Buffer.byteLength(fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8'), 'utf8');
     assert.ok(bytes <= CLAUDE_MD_MAX_BYTES, 'CLAUDE.md is ' + bytes + ' bytes, over the ' + CLAUDE_MD_MAX_BYTES + ' byte ceiling');
   });

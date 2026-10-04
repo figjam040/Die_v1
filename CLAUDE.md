@@ -9,7 +9,7 @@ Read this file at the start of every session before doing anything else.
 
 # PROJECT
 
-Single HTML file (index.html) plus fifteen plain JavaScript files under /js/, loaded via ordinary `<script src>` tags in a fixed order: config.js, state.js, listener-registry.js, audio.js, pipeline.js, cards-mods.js, run-and-map.js, phase-machine.js, rendering.js, render-fight.js, render-map.js, render-layers.js, render-text.js, dev-tools.js, bootstrap.js. rendering.js holds log(), refreshInspector() and renderCard(); render-fight.js the fight screen and face rows; render-map.js the map; render-layers.js the reward and info layers, shop, rite and The Font; render-text.js hover boxes, pops, the roll animation and the text tables. No ES modules — file:// origins are null and module scripts are CORS-blocked, a hard constraint, not a style choice. No build step. No npm. No server.
+Single HTML file (index.html) plus fifteen plain JavaScript files under /js/, loaded via ordinary `<script src>` tags in a fixed order, each ending ?v=N with N = GAME_CONFIG.BUILD so a new build bypasses the browser cache: config.js, state.js, listener-registry.js, audio.js, pipeline.js, cards-mods.js, run-and-map.js, phase-machine.js, rendering.js, render-fight.js, render-map.js, render-layers.js, render-text.js, dev-tools.js, bootstrap.js. rendering.js holds log(), refreshInspector() and renderCard(); render-fight.js the fight screen and face rows; render-map.js the map; render-layers.js the reward and info layers, shop, rite and The Font; render-text.js hover boxes, pops, the roll animation and the text tables. No ES modules — file:// origins are null and module scripts are CORS-blocked, a hard constraint, not a style choice. No build step. No npm. No server.
 
 config.js is the one constants file, loaded first, before state.js. Every tunable number/structural constant lives on one object, GAME_CONFIG — every other file reads it from there instead of repeating a literal. Its header comment carries the FACTS block (F01-F52) verbatim from the 2 Register's F-rows, one line per fact beside the GAME_CONFIG field(s) implementing it — the one place F-numbers live in code.
 
@@ -682,7 +682,17 @@ Never skip a failing substage. Never advance on partial verification.
 
 COMMENT RULE: a comment says what the code does now, or why it must be this way (a law, a trap, an order it depends on). At most 8 lines in a row; a file's opening header may run to 12. No build numbers, stage numbers, dates, test results, or the story of what the code used to do; git and HISTORY.md hold that. Rule/decision IDs (LAW-A2, ARCH-CF1, D-66, KI-8) allowed when the ID is the reason. js/config.js's FACTS block is exempt.
 
-TESTS: npm test runs every test file in tests/, one at a time, guardrails first. New assertions for a build go in tests/buildNNN.test.js. tests/ holds test files and their helpers only; screenshots and one-off scripts go in backups/. tests/shared-constants.js holds the page helpers every test file shares, topLevelNames() and the size caps (KI-51): no .js file under tests/ over TEST_FILE_MAX_LINES (800), no js/ file over JS_FILE_MAX_LINES (1700, down to 1500 once cards-mods.js is split). guardrails.test.js asserts both, that no top-level name is declared twice across js/ (F26), and that every js/ file has exactly one script tag in index.html, each naming a real file.
+TESTS: npm test runs every test file in tests/, one at a time, guardrails first. New assertions for a build go in tests/buildNNN.test.js. tests/ holds test files and their helpers only; screenshots and one-off scripts go in backups/. tests/shared-constants.js holds the page helpers every test file shares, topLevelNames() and the size caps (KI-51): no .js file under tests/ over TEST_FILE_MAX_LINES (800), no js/ file over JS_FILE_MAX_LINES (1700, down to 1500 once cards-mods.js is split). guardrails.test.js asserts both, that no top-level name is declared twice across js/ (F26), and that every js/ file has exactly one script tag in index.html, each naming a real file. Every limit lives in tests/shared-constants.js; guardrails.test.js fails any other test file that sets a CLAUDE.md byte, test file line or code file line limit as a literal.
+
+---
+
+# RULES FOR EVERY BUILD
+
+Edit tool only to change a file, never sed; one Edit per message.
+One command per message, each starting with cd /c/Users/figja/Die_v1 &&.
+Stop on red (D-94): if npm test has any failure at the end, do not commit and do not push; paste back what failed and stop.
+Do only the numbered steps of the prompt.
+Every status line starts with a progress percentage.
 
 ---
 
@@ -696,7 +706,7 @@ OWNERSHIP RULE. Any build that changes a mechanic, a number, a file, or a struct
 
 A build that changes any GAME_CONFIG value updates the F-line comment beside it in config.js's header and the F-row on 2 Register in the same build, and runs tests/facts.test.js before pasting back.
 
-Every build updates #buildStamp (index.html) to its own stage/build number, whether or not it touches any other part of index.html — the one standing exception to "don't touch files the build doesn't need to." It's how a player or future session tells what code is running.
+Every build sets GAME_CONFIG.BUILD and every script tag's ?v= to its own number, which updates #buildStamp (index.html) too, whether or not it touches any other part of index.html — the one standing exception to "don't touch files the build doesn't need to." It's how a player or future session tells what code is running.
 
 Every build regenerates verify/ (`node tests/screenshots.js`) and reports the diff (`node tests/screenshots.js --compare`, changed pixels per screen and per box vs. the parent commit) in its paste-back — a visual defect costs a diff to notice, not a build. Same standing-exception status: run it even when the build doesn't touch index.html/rendering, so a regression is caught by the next build's screenshot set, not discovered cold several builds later.
 
@@ -785,17 +795,18 @@ Full reports for every build below live in HISTORY.md, verbatim, in order. This 
 (BUILD 183) — D-135 caps: Reckoning/Covenant/Gradual cap 12, Tenet rare, Exequy/Vindication/Jubilee uncapped.
 (BUILD 184) — D-136 boss counters: Cardinal +1 Wrath per blank rolled (applyEnemyReads), Pontifex carries Absolve on faces 6 and 14, sheds half its poison rounded up; F35, F37, F47 amended. Verified: npm test green, screenshots 0 px vs 183.
 (BUILD 185) — KI-58 win clears roll strip, KI-59 reward waits for round's numbers, KI-60 Bound badge/hover, KI-61 Third Eye icon + armed wait, D-137 Penitence 2 rounds, D-138 keys 1-9/Enter, D-139 Retribution 2 soul rare uncapped, tiers 24/14/10.
+(BUILD 186) — script tags carry ?v=build, RULES FOR EVERY BUILD, limit-literal guardrail with six limits in shared-constants. No game change. Verified: screenshots 0 px vs 185.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 3.12 (BUILD 185) — four fixes and three changes from the 3 Oct runs (KI-58 to KI-61, D-137 to D-139).
+Stage 3.13 (BUILD 186) — cache-safe loading, standing rules, a limit-literal guardrail. No game change.
 
-KI-58 a win clears the roll strip. KI-59 the reward layer waits for the round's damage numbers and hit sounds. KI-60 Bound badge and hover line. KI-61 Third Eye icon, armed, then the roll waits for a chosen face. D-137 Penitence 2 rounds. D-138 keys 1-9 play, Enter ends the turn. D-139 Retribution 2 soul, rare, uncapped; tiers 24/14/10.
+Item 1: every script tag in index.html carries ?v=<build>, so a new build loads without a hard refresh; GAME_CONFIG.BUILD stays the one source, build186.test.js fails any tag that disagrees. Item 2: RULES FOR EVERY BUILD. Item 3: guardrails.test.js fails any test file that sets a CLAUDE.md byte, test file line or code file line limit as a literal; the six limits live in tests/shared-constants.js.
 
-Tests: build185.test.js. Corrected: facts (F10, F32), build129, 134, 150, 166, 183.
+Tests: build186.test.js. Corrected: facts, guardrails, build155, build160, build175 (script tag pattern, imported limits).
 
 Verification: see paste-back.
 

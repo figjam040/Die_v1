@@ -1590,3 +1590,15 @@ Tests: build184.test.js. Corrected: build142.
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+# BUILD 185 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 186)
+
+Stage 3.12 (BUILD 185) — four fixes and three changes from the 3 Oct runs (KI-58 to KI-61, D-137 to D-139).
+
+KI-58 a win clears the roll strip. KI-59 the reward layer waits for the round's damage numbers and hit sounds. KI-60 Bound badge and hover line. KI-61 Third Eye icon, armed, then the roll waits for a chosen face. D-137 Penitence 2 rounds. D-138 keys 1-9 play, Enter ends the turn. D-139 Retribution 2 soul, rare, uncapped; tiers 24/14/10.
+
+Tests: build185.test.js. Corrected: facts (F10, F32), build129, 134, 150, 166, 183.
+
+Verification: see paste-back.
+
+Full write-ups: HISTORY.md.
