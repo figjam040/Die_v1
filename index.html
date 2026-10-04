@@ -1787,6 +1787,38 @@
 
   .offer-skip:hover { background: var(--nat); color: #1a1500; }
 
+  #titleScreen {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: #000;
+  }
+
+  #titleScreen img, #titleScreen canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+
+  #titleStartBtn {
+    position: absolute;
+    left: 50%;
+    bottom: 6%;
+    transform: translateX(-50%);
+    font-family: var(--game-font);
+    font-size: calc(22px * var(--ui-scale));
+    padding: 14px 44px;
+    border: 1px solid var(--nat);
+    color: var(--nat);
+    background: #000;
+    cursor: pointer;
+  }
+
+  #titleStartBtn:hover { background: var(--nat); color: #1a1500; }
+
   .offer-small-row {
     display: flex;
     flex-wrap: wrap;
@@ -2444,6 +2476,11 @@
 </style>
 </head>
 <body>
+<div id="titleScreen" style="display:none;">
+  <img id="titleStillImg" alt="">
+  <canvas id="titleCanvas" style="display:none;"></canvas>
+  <button id="titleStartBtn">Start</button>
+</div>
 
 <!-- BAND A — build stamp and the gold/artifact placeholders, the act/round/
      phase readout, and the four screen-level buttons. -->
@@ -2515,6 +2552,7 @@
            (setArtImage()'s own onload/onerror pattern), no art ships in
            this build so /art/ stays empty and this stays hidden. -->
       <img id="actBackgroundImg" class="act-background" style="display:none;" alt="">
+<canvas id="actBackgroundCanvas" class="act-background" style="display:none;"></canvas>
 
       <!-- KI-32: everything except the face row sits in this absolutely
            positioned top area, sized to the space above band-d — a reward
@@ -2786,21 +2824,22 @@
      dispatch opens screens) — a genuine circularity. A top-level name
      defined in two files silently overwrites the first; guardrails.test.js
      fails on any such duplicate. -->
-<script src="js/config.js?v=190"></script>
-<script src="js/state.js?v=190"></script>
-<script src="js/listener-registry.js?v=190"></script>
-<script src="js/audio.js?v=190"></script>
-<script src="js/pipeline.js?v=190"></script>
-<script src="js/cards-mods.js?v=190"></script>
-<script src="js/run-and-map.js?v=190"></script>
-<script src="js/phase-machine.js?v=190"></script>
-<script src="js/rendering.js?v=190"></script>
-<script src="js/render-fight.js?v=190"></script>
-<script src="js/render-map.js?v=190"></script>
-<script src="js/render-layers.js?v=190"></script>
-<script src="js/render-text.js?v=190"></script>
-<script src="js/dev-tools.js?v=190"></script>
-<script src="js/bootstrap.js?v=190"></script>
+<script src="js/config.js?v=191"></script>
+<script src="js/state.js?v=191"></script>
+<script src="js/listener-registry.js?v=191"></script>
+<script src="js/audio.js?v=191"></script>
+<script src="js/pipeline.js?v=191"></script>
+<script src="js/cards-mods.js?v=191"></script>
+<script src="js/run-and-map.js?v=191"></script>
+<script src="js/phase-machine.js?v=191"></script>
+<script src="js/rendering.js?v=191"></script>
+<script src="js/render-fight.js?v=191"></script>
+<script src="js/render-map.js?v=191"></script>
+<script src="js/render-layers.js?v=191"></script>
+<script src="js/render-text.js?v=191"></script>
+<script src="js/backdrop-motion.js?v=191"></script>
+<script src="js/dev-tools.js?v=191"></script>
+<script src="js/bootstrap.js?v=191"></script>
 
 </body>
 </html>

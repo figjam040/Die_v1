@@ -288,6 +288,11 @@ document.getElementById('copyRunRecordBtn').addEventListener('click', function()
   log('[RUN RECORD] copied ' + recordLineCount + ' record line(s) and ' + transcriptLines.length + ' transcript line(s)');
 });
 
+document.getElementById('titleStartBtn').addEventListener('click', function() {
+  log('[CLICK] Start');
+  titleScreenClose();
+});
+
 window.addEventListener('beforeunload', function() {
   flushRunRecord('abandoned');
 });

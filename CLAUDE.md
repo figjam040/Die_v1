@@ -9,11 +9,13 @@ Read this file at the start of every session before doing anything else.
 
 # PROJECT
 
-index.html plus fifteen plain JavaScript files under /js/, loaded by ordinary `<script src>` tags in this fixed order, each ending ?v=N with N = GAME_CONFIG.BUILD so a new build bypasses the browser cache: config.js, state.js, listener-registry.js, audio.js, pipeline.js, cards-mods.js, run-and-map.js, phase-machine.js, rendering.js, render-fight.js, render-map.js, render-layers.js, render-text.js, dev-tools.js, bootstrap.js. No ES modules — file:// origins are null and module scripts are CORS-blocked, a hard constraint. No build step, no npm in the game, no server: test by double-clicking index.html, never through a local server.
+index.html plus sixteen plain JavaScript files under /js/, loaded by ordinary `<script src>` tags in this fixed order, each ending ?v=N with N = GAME_CONFIG.BUILD so a new build bypasses the browser cache: config.js, state.js, listener-registry.js, audio.js, pipeline.js, cards-mods.js, run-and-map.js, phase-machine.js, rendering.js, render-fight.js, render-map.js, render-layers.js, render-text.js, backdrop-motion.js, dev-tools.js, bootstrap.js. No ES modules — file:// origins are null and module scripts are CORS-blocked, a hard constraint. No build step, no npm in the game, no server: test by double-clicking index.html, never through a local server.
 
 config.js is the one constants file, loaded first. Every tunable number and structural constant lives on GAME_CONFIG; every other file reads it from there instead of repeating a literal. Its header comment carries the FACTS block (F01-F52), one line per fact from the 2 Register's F-rows, beside the GAME_CONFIG fields implementing it — the one place F-numbers live in code.
 
-All fifteen files share one global lexical scope, so a top-level name declared in two files silently overwrites the first; guardrails.test.js fails on any duplicate. The only eager trigger is `window.addEventListener('DOMContentLoaded', init)` in bootstrap.js — nothing calls a game function at parse time, so cross-file references are safe regardless of tag order. /art/ holds the PNGs, /fonts/ the two self-hosted OFL fonts; there is no /audio/, every sound is synthesised.
+All sixteen files share one global lexical scope, so a top-level name declared in two files silently overwrites the first; guardrails.test.js fails on any duplicate. The only eager trigger is `window.addEventListener('DOMContentLoaded', init)` in bootstrap.js — nothing calls a game function at parse time, so cross-file references are safe regardless of tag order. /art/ holds the PNGs, /fonts/ the two self-hosted OFL fonts; there is no /audio/, every sound is synthesised.
+
+Backdrops (D-159): backdrop <name> is art/background_<name>.png plus, when it moves, art/background_<name>_motion.js and the layer pictures it names; js/backdrop-motion.js plays it on a canvas by compositing only, never reading pixels back, so it runs from file://. Act backdrops draw on #actBackgroundCanvas in place of the still. The title screen (D-158) is #titleScreen, opened by titleScreenOpen() at the end of init() and closed by Start. Under automation (navigator.webdriver) a backdrop draws one frozen frame and the title stays shut; ?motion=1 and ?title=1 in the address override. A new backdrop adds files in art/ only.
 
 TESTS: plain Node scripts on raw `playwright`, no test runner. npm test (tests/run-all.js) runs every tests/*.test.js alone, guardrails first, each with a 10 minute timeout. guardrails.test.js: size caps, comment share, duplicate names, script tags, stray files. facts.test.js: every F-number against GAME_CONFIG and the live game. mods.test.js: each reward-eligible mod's exact effect through the real MOD_TRIGGER dispatch. tests/buildNNN.test.js: one file per build, that build's own assertions. screenshots.js and pngdiff.js regenerate verify/ (seeded, stamp hidden, pixel-identical) and, with --compare[=HASH], diff against a commit's shots. autoplay.js and autoplay-lib.js: the headless autoplayer, a measurement tool never run unless explicitly asked (D-70). Every limit lives in tests/shared-constants.js; no other test file sets one as a literal. tests/ holds test files and their helpers only; one-off scripts go in backups/. index.html loads nothing under tests/.
 
@@ -380,11 +382,11 @@ Notion is the source of truth for planning; neither mirrors the other. The Notio
 
 # CONFIRMED WORKING
 
-(BUILD 190) — D-151 to D-154 and KI-64: tier colours and the layered card frame, keyword explainers, the four doors, offer-size owned-card grid, Vigil rare, the chain loop drawn once per queue. Every earlier build: HISTORY.md.
+(BUILD 191) — D-158 and D-159: the title screen with Start, and moving backdrops on a canvas, act 1 and title, frozen under automation. Every earlier build: HISTORY.md.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 3.17 (BUILD 190) — D-152 tier colours 60a5fa/fbbf24/9f6bff and the card in layers, no NONE tag line; D-153 six keyword explainers, Ordain/Elevation texts, worded status icons; D-154 the four doors, face row hidden while choosing, offer-size owned-card grid, white picked card; D-151 Vigil rare (13/8/5); KI-64 renders held while the trigger queue is open. Tests: build190.test.js.
+Stage 3.18 (BUILD 191) — D-159 js/backdrop-motion.js (sixteen js files) plays art/background_<name>_motion.js on a canvas, act 1 on #actBackgroundCanvas over the still; D-158 #titleScreen opened at the end of init(), closed by Start; under automation one frozen frame and no title, ?motion=1 and ?title=1 override. Tests: build191.test.js.

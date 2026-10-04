@@ -1661,3 +1661,9 @@ Stage 3.15 (BUILD 188) — repo simplification, no game change: old build tests 
 # BUILD 189 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 190)
 
 Stage 3.16 (BUILD 189) — D-143 to D-150: Tenet counts rolls (modData.rollCount), Verger 7/9/Charge 14 break 8, Lector 13 and break 13, act 1 Afflicts to Attacks, Siphon and Stigma (cards 50, tiers 24/15/11), Tolling Bell and mod texts, Second Sight 2 soul exhaust. Tests: build189.test.js.
+
+(BUILD 190) — D-151 to D-154 and KI-64: tier colours and the layered card frame, keyword explainers, the four doors, offer-size owned-card grid, Vigil rare, the chain loop drawn once per queue. Every earlier build: HISTORY.md.
+
+# BUILD 190 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 191)
+
+Stage 3.17 (BUILD 190) — D-152 tier colours 60a5fa/fbbf24/9f6bff and the card in layers, no NONE tag line; D-153 six keyword explainers, Ordain/Elevation texts, worded status icons; D-154 the four doors, face row hidden while choosing, offer-size owned-card grid, white picked card; D-151 Vigil rare (13/8/5); KI-64 renders held while the trigger queue is open. Tests: build190.test.js.

@@ -73,7 +73,7 @@
 // historical comments mentioning Math.random, not live call sites.)
 //
 // SEEDING — page.addInitScript() installs a seeded PRNG (mulberry32) as the
-// page's Math.random before any of the fifteen js/ files execute, so the
+// page's Math.random before any of the sixteen js/ files execute, so the
 // init-time deck shuffle and every roll for the entire page lifetime are
 // reproducible from one seed. A fresh browser page (and a fresh
 // addInitScript() call with that run's own seed) is used for every run —

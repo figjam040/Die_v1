@@ -1656,4 +1656,5 @@ function init() {
   window.addEventListener('resize', applyScale);
 
   startNewRun();
+  titleScreenOpen();
 }

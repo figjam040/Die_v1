@@ -3,14 +3,25 @@
 // slot's own enemy, never gameState.enemy), and the act background.
 // A node click calls run-and-map.js's enterSlot()/chooseLane()/devJumpToSlot().
 
-// D-97: draws art/background_act<N>.png when it exists, hidden otherwise.
+// D-97, D-159: draws art/background_act<N>.png when it exists, hidden
+// otherwise; when art/background_act<N>_motion.js exists too, the moving
+// canvas takes over from the still.
 function renderActBackground() {
   const img = document.getElementById('actBackgroundImg');
-  if (!img) return;
-  const src = 'art/background_act' + gameState.run.actNumber + '.png';
+  const canvas = document.getElementById('actBackgroundCanvas');
+  if (!img || !canvas) return;
+  const name = 'act' + gameState.run.actNumber;
+  const src = 'art/background_' + name + '.png';
   if (img.getAttribute('data-bg-src') !== src) {
     img.setAttribute('data-bg-src', src);
-    img.onload = function() { img.style.display = 'block'; };
+    canvas.style.display = 'none';
+    backdropMotionStop(canvas);
+    img.onload = function() {
+      img.style.display = 'block';
+      backdropMotionStart(name, canvas,
+        function() { canvas.style.display = 'block'; img.style.display = 'none'; },
+        function() { canvas.style.display = 'none'; });
+    };
     img.onerror = function() { img.style.display = 'none'; };
     img.src = src;
   }

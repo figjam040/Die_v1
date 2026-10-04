@@ -20,9 +20,9 @@ const build = Number(configSrc.match(/^\s*BUILD:\s*(\d+)/m)[1]);
     assert.ok(Number.isInteger(build) && build >= 186, 'BUILD is ' + build);
   });
 
-  await runTest('all fifteen script tags carry ?v= equal to GAME_CONFIG.BUILD', async () => {
+  await runTest('all sixteen script tags carry ?v= equal to GAME_CONFIG.BUILD', async () => {
     const srcs = Array.from(html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)).map(function(m) { return m[1]; });
-    assert.strictEqual(srcs.length, 15, 'script tags found');
+    assert.strictEqual(srcs.length, 16, 'script tags found');
     const wrong = srcs.filter(function(src) { return !new RegExp('^js/[a-z-]+\\.js\\?v=' + build + '$').test(src); });
     assert.deepStrictEqual(wrong, [], 'script tags without ?v=' + build);
   });
