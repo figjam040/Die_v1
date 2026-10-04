@@ -22,7 +22,7 @@
 // F18 (BUILD 142) intent: opening 4–12, normals 6–18, elite 10–18, boss 10–20 — every enemy acts from a pattern (F36, F37)
 // F19 enemy buff applies 3 stacks of poison (act 1), scaled per act to 4 (act 2) and 5 (act 3) · F20 act 1 elite (Lector) 12-sided, no Nat faces, no poison faces (D-146): drain on 6, wrath on 12 ·F21 act 1 boss (Hierophant) buff faces 5, 10, 15, all poison, plus Nat 20 and Nat 1
 // F22 enemy Nat 20 forces the boss's Charge next round (forcedNextIntent, breakable as any Charge); buff faces trigger only when rolled · F23 enemy Nat 1 attack cancelled, self-applies a flat 5 stacks of poison, once per fight
-// F24 mods 27 (BUILD 149: +Dread, Genuflect; 26 offerable plus Consecrate, tiers 13/9/4), each asserted by tests/mods.test.js
+// F24 mods 27 (BUILD 149: +Dread, Genuflect; 26 offerable plus Consecrate, tiers 13/8/5, Vigil rare D-151), each asserted by tests/mods.test.js
 // F25 cards 50, tiers 24/15/11 (Siphon uncommon, Stigma rare, D-147), asserted by tests/facts.test.js
 // F26 files under /js/: fifteen — config, state, listener-registry, audio, pipeline, cards-mods, run-and-map, phase-machine, rendering, render-fight, render-map, render-layers, render-text, dev-tools, bootstrap
 // F27 pitch chains cap 8, reset at START_OF_TURN
@@ -54,7 +54,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 189,
+  BUILD: 190,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -65,9 +65,9 @@ const GAME_CONFIG = {
   // D-111; void holds no pieces, mythic only artifacts (D-142).
   TIER_COLOURS: {
     basic: '#4a4a4a',
-    uncommon: '#b8b8b8',
-    rare: '#60a5fa',
-    mythic: '#fbbf24',
+    uncommon: '#60a5fa',
+    rare: '#fbbf24',
+    mythic: '#9f6bff',
     void: '#8b5cf6'
   },
 

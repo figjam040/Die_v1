@@ -463,6 +463,7 @@ function renderDieList(containerId, faces, forceRollFn, pickConfig, buffPoisonSt
         symbol.className = 'face-symbol';
         attachArtIcon(symbol, 'mods', modId, FACE_SYMBOL_PX, 'face-symbol-img');
         setHoverTip(symbol, faceSymbolTipLines(face, modId));
+        appendExplainerLines(symbol, keywordExplainers(MOD_DESCRIPTION[modId], (gameState.config.mods[modId] || {}).tags));
         symbolStrip.appendChild(symbol);
       });
     }
@@ -751,37 +752,38 @@ function renderStatusRows(poisonTitle) {
   if (playerRow) {
     playerRow.innerHTML = '';
     if (gameState.player.poisonStacks > 0) {
-      icon(playerRow, 'P' + shortNumber(gameState.player.poisonStacks), 'status-poison', poisonTitle);
+      icon(playerRow, 'Poison ' + shortNumber(gameState.player.poisonStacks), 'status-poison', poisonTitle);
     }
     if (gameState.player.penitenceActive) {
       const turnsLeft = gameState.player.penitenceTurnsRemaining;
-      icon(playerRow, 'PN', 'status-penitence', 'Penitence: lose 1 soul at the start of your turn. ' + turnsLeft + (turnsLeft === 1 ? ' turn left.' : ' turns left.'));
+      icon(playerRow, 'Penitence', 'status-penitence', 'Penitence: lose 1 soul at the start of your turn. ' + turnsLeft + (turnsLeft === 1 ? ' turn left.' : ' turns left.'));
     }
     if (gameState.player.drainNextRound > 0) {
-      icon(playerRow, 'D' + gameState.player.drainNextRound, 'status-drain', 'Drain: ' + gameState.player.drainNextRound + ' less soul at the start of next round.');
+      icon(playerRow, 'Drain ' + gameState.player.drainNextRound, 'status-drain', 'Drain: ' + gameState.player.drainNextRound + ' less soul at the start of next round.');
     }
     if (gameState.turn.sealedFaces.length > 0) {
-      icon(playerRow, 'S', 'status-seal', 'Sealed: face ' + gameState.turn.sealedFaces.join(', ') + ' counts as blank this round.');
+      icon(playerRow, 'Sealed', 'status-seal', 'Sealed: face ' + gameState.turn.sealedFaces.join(', ') + ' counts as blank this round.');
     }
   }
 
+  // The enemy's poison, awe, Siphon and Stigma hovers are the D-153 explainers.
   const enemyRow = document.getElementById('enemyStatusRow');
   if (enemyRow) {
     enemyRow.innerHTML = '';
     if (gameState.enemy.poisonStacks > 0) {
-      icon(enemyRow, 'P' + shortNumber(gameState.enemy.poisonStacks), 'status-poison', 'Poison: deals 1 damage per stack at the end of its turn, then loses 1 stack.');
+      icon(enemyRow, 'Poison ' + shortNumber(gameState.enemy.poisonStacks), 'status-poison', KEYWORD_EXPLAINERS.poison);
     }
     if (gameState.enemy.wrath > 0) {
-      icon(enemyRow, 'W' + shortNumber(gameState.enemy.wrath), 'status-wrath', 'Wrath: each Attack deals this much more.');
+      icon(enemyRow, 'Wrath ' + shortNumber(gameState.enemy.wrath), 'status-wrath', 'Wrath: each Attack deals this much more.');
     }
     if (gameState.enemy.aweStacks > 0) {
-      icon(enemyRow, 'A' + shortNumber(gameState.enemy.aweStacks), 'status-awe', 'Awe: lowers this enemy\'s next Attack by this many stacks, then loses 1 stack at the start of its round.');
+      icon(enemyRow, 'Awe ' + shortNumber(gameState.enemy.aweStacks), 'status-awe', KEYWORD_EXPLAINERS.awe);
     }
     if (gameState.enemy.siphonStacks > 0) {
-      icon(enemyRow, 'SI' + shortNumber(gameState.enemy.siphonStacks), 'status-siphon', 'Siphon: when you deal attack damage to it, gain block equal to half that damage, rounded up. Each hit spends 1 stack.');
+      icon(enemyRow, 'Siphon ' + shortNumber(gameState.enemy.siphonStacks), 'status-siphon', KEYWORD_EXPLAINERS.siphon);
     }
     if (gameState.enemy.stigmaStacks > 0) {
-      icon(enemyRow, 'ST' + gameState.enemy.stigmaStacks, 'status-stigma', 'Stigma: every mod that damages it hits again for half, rounded down. Loses 1 at the start of each round.');
+      icon(enemyRow, 'Stigma ' + gameState.enemy.stigmaStacks, 'status-stigma', KEYWORD_EXPLAINERS.stigma);
     }
   }
 }
@@ -826,6 +828,7 @@ function paintThirdEyeIcon(el) {
     });
     const def = gameState.config.artifacts.third_eye;
     setHoverTip(el, [def.name, def.text]);
+    appendExplainerLines(el, keywordExplainers(def.text, def.tags));
   }
   const spent = gameState.run.thirdEyeUsedThisAct;
   el.classList.toggle('third-eye-armed', !spent && gameState.run.thirdEyeArmed);
@@ -899,6 +902,7 @@ function renderTopBarTokens() {
       }
       setHoverTip(slot, [artifact.name, artifact.tier.toUpperCase(), artifact.text]);
       slot.querySelector('.hover-tip').children[1].style.color = GAME_CONFIG.TIER_COLOURS[artifact.tier];
+      appendExplainerLines(slot, keywordExplainers(artifact.text, artifact.tags));
     } else {
       slot.innerHTML = '';
       delete slot.dataset.artifactId;

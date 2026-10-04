@@ -1147,7 +1147,7 @@ function init() {
   gameState.config.mods['vigil'] = {
     id: 'vigil',
     name: 'Vigil',
-    tier: 'uncommon',
+    tier: 'rare',
     tags: ['blank'],
     effect: function() {
       const bonus = Math.floor(gameState.run.blanksRolled / GAME_CONFIG.VIGIL_BLANKS_PER_POINT);

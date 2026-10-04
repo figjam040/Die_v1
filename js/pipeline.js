@@ -498,22 +498,25 @@ function countRoundTrigger() {
 
 // A trigger raised inside another is queued and played after it, in
 // order, never recursed, so a long chain keeps a flat stack. Play stops
-// when the enemy dies or the guard is reached.
+// when the enemy dies or the guard is reached. Renders are held while the
+// queue is open and drawn once as it closes (KI-64, holdRenders()).
 let triggerQueue = [];
 let triggerQueueOpen = false;
 
 function runTriggerQueue(dispatchFn) {
   if (triggerQueueOpen) { dispatchFn(); return; }
   triggerQueueOpen = true;
-  try {
-    dispatchFn();
-    while (triggerQueue.length > 0 && gameState.enemy.hp > 0 && !triggerGuardReached()) {
-      playOutsideTrigger(triggerQueue.shift());
+  holdRenders(function() {
+    try {
+      dispatchFn();
+      while (triggerQueue.length > 0 && gameState.enemy.hp > 0 && !triggerGuardReached()) {
+        playOutsideTrigger(triggerQueue.shift());
+      }
+    } finally {
+      triggerQueue = [];
+      triggerQueueOpen = false;
     }
-  } finally {
-    triggerQueue = [];
-    triggerQueueOpen = false;
-  }
+  });
 }
 
 // Every "trigger a face without rolling it" goes through here. Refuses

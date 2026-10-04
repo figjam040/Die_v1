@@ -175,8 +175,45 @@ function suppressFxNumbers(fn) {
 
 function announceFx(anchorId, kind, delta) {
   if (fxSuppressDepth > 0 || delta === 0) { return; }
+  if (renderHoldDepth > 0) { heldPops.push([anchorId, kind, delta]); return; }
   if (typeof spawnFxNumber !== 'function') { return; }
   spawnFxNumber(anchorId, kind, delta);
+}
+
+// KI-64: while renders are held (the trigger queue, runTriggerQueue() in
+// pipeline.js) state and log lines change at once and in order, but the
+// screen is redrawn, the log scrolled and the pops shown once, on release:
+// a chain loop otherwise redraws the whole screen several times a trigger.
+// Held pops merge per target into one total each (D-87).
+let renderHoldDepth = 0;
+let heldRenderDirty = false;
+let heldLogScroll = false;
+let heldPops = [];
+
+function holdRenders(fn) {
+  renderHoldDepth++;
+  try { return fn(); } finally {
+    renderHoldDepth--;
+    if (renderHoldDepth === 0) releaseHeldRenders();
+  }
+}
+
+function releaseHeldRenders() {
+  if (heldRenderDirty) { heldRenderDirty = false; refreshInspector(); }
+  if (heldLogScroll) {
+    heldLogScroll = false;
+    const logEl = document.getElementById('log');
+    if (logEl) logEl.scrollTop = logEl.scrollHeight;
+  }
+  const merged = {};
+  const order = [];
+  heldPops.forEach(function(p) {
+    const key = p[0] + '|' + p[1];
+    if (!merged[key]) { merged[key] = [p[0], p[1], 0]; order.push(key); }
+    merged[key][2] += p[2];
+  });
+  heldPops = [];
+  order.forEach(function(key) { announceFx(merged[key][0], merged[key][1], merged[key][2]); });
 }
 
 // Block/poison pop on a gain only: their drops are the turn's own block

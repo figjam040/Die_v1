@@ -759,7 +759,7 @@ function specOnlyDeepEqual(actual, expected, label) {
 
     const buttons = await page.evaluate(() => {
       openDieActionScreen('reward');
-      return Array.from(document.querySelectorAll('#dieActionPanel button')).map(function(b) { return b.textContent; });
+      return Array.from(document.querySelectorAll('#dieActionPanel button')).map(function(b) { return b.dataset.action; });
     });
     assert.strictEqual(buttons.indexOf('Load'), -1, 'the Load button must not render at all once fewer than 3 unloaded mods remain: ' + JSON.stringify(buttons));
     assert.ok(buttons.indexOf('Strengthen') !== -1, 'Strengthen must still render: ' + JSON.stringify(buttons));

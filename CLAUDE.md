@@ -79,7 +79,7 @@ Mods trigger. Never fire. Never activate. Always trigger.
 Soul is the resource spent on cards. Never energy.
 A loaded face has a mod. A blank face does not.
 Status: stacks of poison, stacks of awe, stacks of Siphon; Stigma counts rounds. Never a bare number of any.
-TEXT RULE (D-125): every mod, card and artifact text is one or two short imperative sentences — a number before its noun, conditions as "If …," or "When …," at the front, no parentheses, never "applied"/"applies" or "this run"; tags ride the tag line, not the text. Texts live in render-text.js and config.artifacts.
+TEXT RULE (D-125): every mod, card and artifact text is one or two short imperative sentences — a number before its noun, conditions as "If …," or "When …," at the front, no parentheses, never "applied"/"applies" or "this run"; tags ride the tag line, not the text. Texts live in render-text.js and config.artifacts. The keyword explainers (D-153, KEYWORD_EXPLAINERS in render-text.js) are not rules text; the TEXT RULE does not bind them.
 
 ---
 
@@ -241,7 +241,7 @@ TRIGGER COUNTS: in each face's modData — triggerCount for modId, triggerCount2
 
 triggerFaceOutsideRoll(faceNumber) (pipeline.js) is the one shared function every "trigger a face without rolling it" card/mod/artifact uses; any future piece with the same shape uses this, never a second dispatch copy. It refuses (no state change, returns false) face 1, face 20 and a removed face. A loaded face triggers through the identical MOD_TRIGGER dispatch a rolled face uses, so per-face growth accrues exactly as on a roll; a blank face dispatches BLANK_ROLL with outsideRoll: true. It never writes the roll fields. Every face that fires without being the rolled face (outside-roll, Bound scan, Nat 20 sweep) is recorded in turn.hoppedFaces and lit like a rolled face.
 
-D-131 — no cap. turn.roundTriggerCount counts every trigger this round; at TRIGGER_FREEZE_GUARD nothing more triggers that round, logged [GUARD] once. QUEUE: runTriggerQueue() wraps every root dispatch; a trigger raised inside one waits in triggerQueue and plays after, in order, each resolving fully — no recursion — until empty, the enemy dead or the guard reached.
+D-131 — no cap. turn.roundTriggerCount counts every trigger this round; at TRIGGER_FREEZE_GUARD nothing more triggers that round, logged [GUARD] once. QUEUE: runTriggerQueue() wraps every root dispatch; a trigger raised inside one waits in triggerQueue and plays after, in order, each resolving fully — no recursion — until empty, the enemy dead or the guard reached. While it is open renders are held (holdRenders(), state.js, KI-64): state and log lines change at once and in order, and the screen is redrawn, the log scrolled and the pops shown, one total per target, once it closes.
 
 ---
 
@@ -380,11 +380,11 @@ Notion is the source of truth for planning; neither mirrors the other. The Notio
 
 # CONFIRMED WORKING
 
-(BUILD 189) — the 4 Oct design session, D-143 to D-150: Tenet reads rolls, Verger/Lector/Asperser patterns, act 1 poison only from the Hierophant, Siphon and Stigma, texts, Second Sight exhaust. Every earlier build: HISTORY.md.
+(BUILD 190) — D-151 to D-154 and KI-64: tier colours and the layered card frame, keyword explainers, the four doors, offer-size owned-card grid, Vigil rare, the chain loop drawn once per queue. Every earlier build: HISTORY.md.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 3.16 (BUILD 189) — D-143 to D-150: Tenet counts rolls (modData.rollCount), Verger 7/9/Charge 14 break 8, Lector 13 and break 13, act 1 Afflicts to Attacks, Siphon and Stigma (cards 50, tiers 24/15/11), Tolling Bell and mod texts, Second Sight 2 soul exhaust. Tests: build189.test.js.
+Stage 3.17 (BUILD 190) — D-152 tier colours 60a5fa/fbbf24/9f6bff and the card in layers, no NONE tag line; D-153 six keyword explainers, Ordain/Elevation texts, worded status icons; D-154 the four doors, face row hidden while choosing, offer-size owned-card grid, white picked card; D-151 Vigil rare (13/8/5); KI-64 renders held while the trigger queue is open. Tests: build190.test.js.

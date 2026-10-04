@@ -43,7 +43,8 @@ function log(message) {
   entry.className = matchedClass;
 
   logEl.appendChild(entry);
-  logEl.scrollTop = logEl.scrollHeight;
+  if (renderHoldDepth > 0) heldLogScroll = true;
+  else logEl.scrollTop = logEl.scrollHeight;
 
   if (message === '[PHASE] START_OF_TURN' || message === '[WIN] enemy defeated') {
     resetRollHero();
@@ -61,6 +62,8 @@ function log(message) {
 // ---------- STATE INSPECTOR ----------
 
 function refreshInspector() {
+  // KI-64: a held render is drawn once, by releaseHeldRenders() (state.js).
+  if (renderHoldDepth > 0) { heldRenderDirty = true; return; }
   const contentEl = document.getElementById('inspectorContent');
   if (!contentEl) return;
   contentEl.textContent = JSON.stringify(gameState, null, 2);
@@ -146,6 +149,7 @@ function refreshInspector() {
   // click handler dismisses it before resetting, so it isn't gated on
   // dieActionStep/cardRewardStep/riteStep the way endTurnBtn is.
   document.getElementById('startGameBtn').disabled = false;
+  fitCardTextBoxes();
   // A re-render replaces the hovered element's tip with a fresh, unshifted one.
   clampHoverTips();
 }
@@ -183,13 +187,22 @@ function renderRegistryInspector() {
 
 // ---------- THE ONE CARD (D-112) ----------
 // Every card the player sees — hand, card reward, shop, CARDS layer, both
-// removal pickers — is renderCard() at one of three sizes: 'offer', 'hand',
-// 'mini'. A 2 px border and the rarity line in its tier's colour (D-111),
-// the soul cost as filled dots top right (none at zero cost), never a cost
-// in the name. The Ring 0 cards carry no tier and read basic.
+// removal pickers — is renderCard() at one of two sizes: 'offer', 'hand'.
+// Its frame is drawn in layers in its tier's tones (D-152, index.html), the
+// soul cost as filled dots right of the name (none at zero cost), never a
+// cost in the name. The Ring 0 cards carry no tier and read basic.
 
 function cardTier(card) {
   return (card && card.tier) || 'basic';
+}
+
+// One element of the card, appended to parent, with its text if given.
+function cardPart(parent, tag, className, text) {
+  const part = document.createElement(tag);
+  part.className = className;
+  if (text !== undefined) part.textContent = text;
+  parent.appendChild(part);
+  return part;
 }
 
 // opts: { size, button, footText, disabled, unaffordable, count, onClick }.
@@ -199,7 +212,6 @@ function renderCard(cardId, opts) {
   const card = gameState.config.cardPool[cardId] || getCard(cardId);
   const size = opts.size || 'offer';
   const tier = cardTier(card);
-  const colour = GAME_CONFIG.TIER_COLOURS[tier];
   const text = getCardEffectText(cardId);
 
   const el = document.createElement(opts.button ? 'button' : 'div');
@@ -207,65 +219,53 @@ function renderCard(cardId, opts) {
     (opts.disabled ? ' offer-card-disabled' : '') + (opts.unaffordable ? ' unaffordable' : '');
   el.dataset.offerId = cardId;
   el.dataset.tier = tier;
-  el.style.borderColor = colour;
   setHoverTip(el, card.name + ' — ' + text);
 
-  const cost = document.createElement('div');
-  cost.className = 'offer-card-cost';
-  for (let i = 0; i < getCardCost(card); i++) {
-    const dot = document.createElement('span');
-    dot.className = 'offer-card-dot';
-    cost.appendChild(dot);
-  }
-  el.appendChild(cost);
+  // D-152: card box > inner box > column (MYTHIC's second, gold inner box
+  // is the column's own border) > title plate, art, type line, text box.
+  const inner = cardPart(el, 'div', 'card-inner');
+  const column = cardPart(inner, 'div', 'card-column');
+  ['tl', 'tr', 'bl', 'br'].forEach(function(c) { cardPart(el, 'span', 'card-corner card-corner-' + c); });
+  cardPart(el, 'span', 'card-gem card-gem-bottom');
+  if (tier === 'mythic') cardPart(el, 'span', 'card-gem card-gem-top');
 
-  if (opts.count > 1) {
-    const count = document.createElement('span');
-    count.className = 'offer-card-count';
-    count.textContent = '×' + opts.count;
-    el.appendChild(count);
-  }
+  if (opts.count > 1) cardPart(el, 'span', 'offer-card-count', '×' + opts.count);
 
-  const name = document.createElement('div');
-  name.className = 'offer-card-name';
-  name.textContent = card.name;
-  el.appendChild(name);
+  const plate = cardPart(column, 'div', 'card-title-plate');
+  cardPart(plate, 'div', 'offer-card-name', card.name);
+  const cost = cardPart(plate, 'div', 'offer-card-cost');
+  for (let i = 0; i < getCardCost(card); i++) cardPart(cost, 'span', 'offer-card-dot');
 
-  const tierLine = document.createElement('div');
-  tierLine.className = 'offer-card-tier';
-  tierLine.textContent = tier.toUpperCase();
-  tierLine.style.color = colour;
-  el.appendChild(tierLine);
-
-  const art = document.createElement('div');
-  art.className = 'offer-card-art';
+  const art = cardPart(column, 'div', 'offer-card-art');
   if (size === 'offer') {
-    const label = document.createElement('span');
-    label.className = 'offer-card-art-label';
-    label.textContent = card.name.toUpperCase() + ' ART';
-    art.appendChild(label);
+    const label = cardPart(art, 'span', 'offer-card-art-label', card.name.toUpperCase() + ' ART');
     attachCardArtImg(art, cardId).addEventListener('load', function() { label.style.display = 'none'; });
   } else {
     attachCardArtImg(art, cardId);
   }
-  el.appendChild(art);
 
-  const tag = document.createElement('div');
-  tag.className = 'offer-card-tag';
-  tag.textContent = offerTagText(card.tags);
-  el.appendChild(tag);
-
-  const textEl = document.createElement('div');
-  textEl.className = 'offer-card-text';
-  textEl.textContent = text;
-  el.appendChild(textEl);
-
-  if (opts.footText) {
-    const foot = document.createElement('div');
-    foot.className = 'offer-card-foot';
-    foot.textContent = opts.footText;
-    el.appendChild(foot);
+  // The type line: the tier word, then the square and the tags when it has any.
+  const typeLine = cardPart(column, 'div', 'card-type-plate');
+  cardPart(typeLine, 'span', 'offer-card-tier', tier.toUpperCase());
+  const tagText = offerTagText(card.tags);
+  if (tagText) {
+    cardPart(typeLine, 'span', 'card-type-pip');
+    cardPart(typeLine, 'span', 'offer-card-tag', tagText);
   }
+
+  // D-153: the keyword explainers sit in an offer card's text box, under a
+  // rule; every size carries them in its hover box.
+  const explainers = keywordExplainers(text, card.tags);
+  appendExplainerLines(el, explainers);
+  const textBox = cardPart(column, 'div', 'card-text-box');
+  cardPart(textBox, 'div', 'offer-card-text', text);
+  if (size === 'offer' && explainers.length) {
+    const explainer = cardPart(textBox, 'div', 'card-explainer');
+    explainers.forEach(function(line) { cardPart(explainer, 'div', 'card-explainer-line', line); });
+  }
+  textBox.dataset.fitKey = text + '|' + explainers.join('|');
+
+  if (opts.footText) cardPart(column, 'div', 'offer-card-foot', opts.footText);
 
   if (opts.onClick && !opts.disabled) {
     el.addEventListener('click', size === 'hand' ? opts.onClick : function() { offerCardHandleClick(el, opts.onClick); });
@@ -273,6 +273,33 @@ function renderCard(cardId, opts) {
     el.style.cursor = 'default';
   }
   return el;
+}
+
+// D-153: an offer card's rules text and explainer start at 23px and 19px
+// and step down 2px together until the text box no longer overflows, never
+// below 15px. A fit found with the fonts loaded is kept per text, so a
+// redrawn card takes its size without measuring again.
+const CARD_TEXT_FIT = { RULES_PX: 23, EXPLAINER_PX: 19, STEP_PX: 2, MIN_PX: 15 };
+const cardTextFitSteps = {};
+
+function applyCardTextStep(box, step) {
+  const drop = step * CARD_TEXT_FIT.STEP_PX;
+  const rules = box.querySelector('.offer-card-text');
+  const explainer = box.querySelector('.card-explainer');
+  rules.style.fontSize = step ? Math.max(CARD_TEXT_FIT.MIN_PX, CARD_TEXT_FIT.RULES_PX - drop) + 'px' : '';
+  if (explainer) explainer.style.fontSize = step ? Math.max(CARD_TEXT_FIT.MIN_PX, CARD_TEXT_FIT.EXPLAINER_PX - drop) + 'px' : '';
+}
+
+function fitCardTextBoxes() {
+  const maxStep = (CARD_TEXT_FIT.RULES_PX - CARD_TEXT_FIT.MIN_PX) / CARD_TEXT_FIT.STEP_PX;
+  document.querySelectorAll('.offer-card-offer .card-text-box').forEach(function(box) {
+    const known = cardTextFitSteps[box.dataset.fitKey];
+    if (known !== undefined) { applyCardTextStep(box, known); return; }
+    if (box.clientHeight === 0) return;
+    let step = 0;
+    while (box.scrollHeight > box.clientHeight && step < maxStep) { step++; applyCardTextStep(box, step); }
+    if (document.fonts.status === 'loaded') cardTextFitSteps[box.dataset.fitKey] = step;
+  });
 }
 
 // A card offer's spec (offerCardSpecForCard()) drawn as the one card.
@@ -292,7 +319,7 @@ function renderOwnedCardGrid(onPick) {
   ids.forEach(function(id) {
     const count = owned.filter(function(o) { return o === id; }).length;
     grid.appendChild(renderCard(id, {
-      size: 'mini',
+      size: 'offer',
       count: count,
       onClick: onPick ? function() { log('[CLICK] ' + getCard(id).name); onPick(owned.indexOf(id)); } : null
     }));

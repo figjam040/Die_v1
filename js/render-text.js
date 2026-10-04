@@ -19,7 +19,9 @@ function setHoverTip(el, text) {
     el.appendChild(tip);
   }
   tip.innerHTML = '';
+  // An empty line (a piece with no tags) draws nothing, not a blank row.
   (Array.isArray(text) ? text : [text]).forEach(function(line) {
+    if (line === '' || line === null || line === undefined) return;
     const div = document.createElement('div');
     div.textContent = line;
     tip.appendChild(div);
@@ -163,7 +165,8 @@ function faceModBox(face, modId) {
     ['face-tip-rarity', (tier || 'mod').toUpperCase()],
     ['face-tip-tags', offerTagText(mod.tags)],
     ['face-tip-text', MOD_DESCRIPTION[modId] || '']
-  ];
+  ].filter(function(r) { return r[0] !== 'face-tip-tags' || r[1] !== ''; }).concat(
+    keywordExplainers(MOD_DESCRIPTION[modId], mod.tags).map(function(line) { return ['hover-tip-explainer', line]; }));
   const bound = boundSource(face);
   if (bound) { rows.push(['face-tip-bound', bound === 'printed' ? 'Bound' : 'Bound this fight']); }
   rows.push(['face-tip-foot', 'weight ' + face.weight + (isFaceTwentyAtCap(face.number) ? ' MAX' : '')]);
@@ -525,9 +528,9 @@ const MOD_DESCRIPTION = {
   vigil: 'Deal 4 damage, plus 1 for every 3 blanks you have rolled this run. Also triggers whenever you roll a blank.',
   zeal: '10 damage. +4 each trigger.',
   fervour: 'Double your attack damage this turn.',
-  ordain: '10 damage. This face +1 weight.',
+  ordain: 'Deal 10 damage. This face gains 1 weight.',
   anthem: 'Deal 6 damage, plus 4 per weight on this face.',
-  elevation: '10 damage. The face above +1 weight.',
+  elevation: 'Deal 10 damage. The face above gains 1 weight.',
   largesse: 'Gain 2 soul and 4 block.',
   tithe: 'Gain 1 block per blank face on your die.',
   congregation: 'Deal 8 damage. If another mod on your die has Growth, deal 16 instead.',
@@ -543,6 +546,47 @@ const MOD_DESCRIPTION = {
   dread: 'Apply 4 stacks of awe.',
   genuflect: 'Gain 6 block. Apply 3 stacks of awe.'
 };
+
+// D-153: the keyword explainers. Not rules text, so the TEXT RULE does not
+// apply. keywordExplainers() returns, for one card, mod or artifact, each
+// keyword whose word is in its text (whole word, any case) or in its tags,
+// text matches first in order of appearance, then tag-only matches in tag
+// order, at most KEYWORD_EXPLAINER_MAX.
+const KEYWORD_EXPLAINERS = {
+  weight: 'Weight: each point is one more chance to roll this face.',
+  bound: 'Bound: when you roll a Bound face, every other Bound face triggers too.',
+  poison: "Poison: at the end of its holder's turn it deals 1 damage per stack, ignoring block, then loses 1 stack.",
+  awe: "Awe: each stack lowers the enemy's next Attack by 1. It loses 1 stack at the start of the enemy's round.",
+  siphon: 'Siphon: when you deal attack damage to the enemy, gain block equal to half that damage, rounded up. Each hit spends 1 stack.',
+  stigma: 'Stigma: every mod that damages the enemy hits again for half, rounded down. It loses 1 at the start of each round.'
+};
+const KEYWORD_EXPLAINER_MAX = 2;
+
+function keywordExplainers(text, tags) {
+  const src = text || '';
+  const tagWords = (tags || []).map(function(t) { return String(t).toLowerCase(); });
+  const found = [];
+  Object.keys(KEYWORD_EXPLAINERS).forEach(function(word) {
+    const m = new RegExp('\\b' + word + '\\b', 'i').exec(src);
+    const tagAt = tagWords.indexOf(word);
+    if (m) found.push({ word: word, at: m.index });
+    else if (tagAt !== -1) found.push({ word: word, at: src.length + 1 + tagAt });
+  });
+  found.sort(function(a, b) { return a.at - b.at; });
+  return found.slice(0, KEYWORD_EXPLAINER_MAX).map(function(f) { return KEYWORD_EXPLAINERS[f.word]; });
+}
+
+// The explainers as dim lines at the foot of an element's hover box.
+function appendExplainerLines(el, lines) {
+  const tip = el && el.querySelector('.hover-tip');
+  if (!tip) return;
+  lines.forEach(function(line) {
+    const div = document.createElement('div');
+    div.className = 'hover-tip-explainer';
+    div.textContent = line;
+    tip.appendChild(div);
+  });
+}
 
 const NAT_DESCRIPTION = {
   NAT_TWENTY: 'Trigger every loaded face, lowest first.',

@@ -1655,3 +1655,9 @@ Full write-ups: HISTORY.md.
 # BUILD 188 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 189)
 
 Stage 3.15 (BUILD 188) — repo simplification, no game change: old build tests deleted, CLAUDE.md cut to rules and architecture, FACTS block exempt from comment share. Tests: build188.test.js.
+
+(BUILD 189) — the 4 Oct design session, D-143 to D-150: Tenet reads rolls, Verger/Lector/Asperser patterns, act 1 poison only from the Hierophant, Siphon and Stigma, texts, Second Sight exhaust. Every earlier build: HISTORY.md.
+
+# BUILD 189 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 190)
+
+Stage 3.16 (BUILD 189) — D-143 to D-150: Tenet counts rolls (modData.rollCount), Verger 7/9/Charge 14 break 8, Lector 13 and break 13, act 1 Afflicts to Attacks, Siphon and Stigma (cards 50, tiers 24/15/11), Tolling Bell and mod texts, Second Sight 2 soul exhaust. Tests: build189.test.js.

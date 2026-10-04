@@ -35,6 +35,7 @@ function renderOfferSymbol(spec) {
   setHoverTip(el, [spec.name, spec.tierText, spec.tagText, spec.text]);
   const tierLine = el.querySelector('.hover-tip').children[1];
   tierLine.style.color = GAME_CONFIG.TIER_COLOURS[(spec.tierText || '').toLowerCase()] || GAME_CONFIG.TIER_COLOURS.basic;
+  appendExplainerLines(el, keywordExplainers(spec.text, (spec.tagText || '').toLowerCase().split(' ')));
 
   if (spec.onClick && !spec.disabled) {
     el.addEventListener('click', function() { offerCardHandleClick(el, spec.onClick); });
@@ -60,9 +61,10 @@ function offerCardHandleClick(card, onClick) {
   setTimeout(onClick, GAME_CONFIG.OFFER_PICK_HIGHLIGHT_MS);
 }
 
-// The tag line every card shows — a piece's synergy tags, or NONE.
+// A piece's synergy tags as its tag line, or '' when it has none — and an
+// empty tag line is never drawn (D-152).
 function offerTagText(tags) {
-  return (tags && tags.length) ? tags.join(' ').toUpperCase() : 'NONE';
+  return (tags && tags.length) ? tags.join(' ').toUpperCase() : '';
 }
 
 function renderOfferPanel(panel, spec) {
@@ -472,9 +474,46 @@ function currentPlayerDiePickConfig() {
   return null;
 }
 
+// D-154: the choose step's four doors, one per die action, in this order.
+// Each icon is drawn in currentColor, so the door's hover turns it gold.
+const DIE_DOOR_TEXT = {
+  Load: 'Put a new mod on a face. Pick 1 of 3.',
+  Strengthen: 'Add 1 weight to a loaded face. It rolls more often.',
+  Purify: 'Take every mod off one face. Its weight stays.',
+  Remove: 'Take one blank face off the die for the run.'
+};
+const DIE_DOOR_D20 = '<path d="M48 6 L84 27 L84 69 L48 90 L12 69 L12 27 Z"/>';
+const DIE_DOOR_D20_EDGES = '<path d="M48 24 V6 M48 24 L84 27 M48 24 L12 27 M72 66 L84 27 M72 66 L84 69 M72 66 L48 90 M24 66 L12 27 M24 66 L12 69 M24 66 L48 90"/>';
+const DIE_DOOR_ICONS = {
+  Load: DIE_DOOR_D20 + '<path d="M48 24 L72 66 L24 66 Z"/>' + DIE_DOOR_D20_EDGES +
+    '<path d="M48 40 L60 60 L36 60 Z" fill="currentColor"/>',
+  Strengthen: '<path d="M48 2 L78 19 L78 55 L48 72 L18 55 L18 19 Z"/><path d="M48 17 L68 52 L28 52 Z" fill="currentColor"/>' +
+    '<path d="M48 17 V2 M48 17 L78 19 M48 17 L18 19 M68 52 L78 19 M68 52 L78 55 M68 52 L48 72 M28 52 L18 19 M28 52 L18 55 M28 52 L48 72"/>' +
+    '<path d="M20 83 H76 M20 92 H76" stroke-width="5"/>',
+  Purify: DIE_DOOR_D20 + '<path d="M48 24 L72 66 L24 66 Z" stroke-dasharray="5 7"/>' + DIE_DOOR_D20_EDGES,
+  Remove: '<path d="M70 37 L70 73 L40 90 L10 73 L10 37 L40 20"/><path d="M40 35 L60 70 L20 70 Z"/>' +
+    '<path d="M40 35 V20 M40 35 L70 37 M40 35 L10 37 M60 70 L70 37 M60 70 L70 73 M60 70 L40 90 M20 70 L10 37 M20 70 L10 73 M20 70 L40 90"/>' +
+    '<path d="M54 6 L84 23 L54 21 Z"/>'
+};
+
+function dieDoorButton(label, onChoose) {
+  const door = document.createElement('button');
+  door.className = 'die-door';
+  door.dataset.action = label;
+  door.innerHTML = '<span class="die-door-outer"></span><span class="die-door-inner">' +
+    '<svg class="die-door-icon" width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3"' +
+    ' stroke-linecap="square" stroke-linejoin="miter">' + DIE_DOOR_ICONS[label] + '</svg>' +
+    '<span class="die-door-name">' + label + '</span><span class="die-door-desc">' + DIE_DOOR_TEXT[label] + '</span>' +
+    '<span class="die-door-line"></span></span>';
+  door.addEventListener('click', function() { log('[CLICK] ' + label); onChoose(); });
+  return door;
+}
+
 function renderDieActionPanel() {
   const panel = document.getElementById('dieActionPanel');
   if (!panel) return;
+  // D-154: the face row and its mod icons stay hidden while the doors show.
+  document.getElementById('fightScreen').classList.toggle('die-action-choosing', dieActionStep === 'choose');
 
   if (dieActionStep === null) {
     panel.style.display = 'none';
@@ -486,6 +525,7 @@ function renderDieActionPanel() {
   let instruction = null;
   let buttonRow = null;
   let cards = [];
+  let extra = [];
 
   const row = document.createElement('div');
   row.className = 'die-action-row';
@@ -495,50 +535,34 @@ function renderDieActionPanel() {
   titleText = 'Choose';
 
   if (dieActionStep === 'choose') {
-    buttonRow = row;
+    const sub = document.createElement('div');
+    sub.className = 'die-door-sub';
+    sub.textContent = 'One change to your die. It lasts the whole run.';
+    extra = [sub];
+    buttonRow = document.createElement('div');
+    buttonRow.className = 'die-doors-wrap';
+    const doors = document.createElement('div');
+    doors.className = 'die-doors';
+    buttonRow.appendChild(doors);
 
     // Load shows whenever a blank face exists among faces 2-19 AND the
     // pool hasn't run dry (D-54) — a real 3-mod offer must be buildable.
     const blankFaceExists = gameState.die.faces.some(function(f) {
       return f.number !== 1 && f.number !== GAME_CONFIG.DIE_SIZE.PLAYER && f.modId === null;
     });
-    if (blankFaceExists && eligibleLoadModIds().length >= 3) {
-      const loadBtn = document.createElement('button');
-      loadBtn.textContent = 'Load';
-      loadBtn.addEventListener('click', function() { log('[CLICK] Load'); dieActionChooseLoad(); });
-      row.appendChild(loadBtn);
-    }
-
-    if (strengthenFaceExists()) {
-      const strengthenBtn = document.createElement('button');
-      strengthenBtn.textContent = 'Strengthen';
-      strengthenBtn.addEventListener('click', function() { log('[CLICK] Strengthen'); dieActionChooseStrengthen(); });
-      row.appendChild(strengthenBtn);
-    }
-
+    if (blankFaceExists && eligibleLoadModIds().length >= 3) doors.appendChild(dieDoorButton('Load', dieActionChooseLoad));
+    if (strengthenFaceExists()) doors.appendChild(dieDoorButton('Strengthen', dieActionChooseStrengthen));
     // Purify offers only when a purifiable face exists (D-54-style hide).
-    if (purifiableFaceExists()) {
-      const purifyBtn = document.createElement('button');
-      purifyBtn.textContent = 'Purify';
-      setHoverTip(purifyBtn, 'Take every mod off one face. The face stays as heavy as it was.');
-      purifyBtn.addEventListener('click', function() { log('[CLICK] Purify'); dieActionChoosePurify(); });
-      row.appendChild(purifyBtn);
-    }
-
+    if (purifiableFaceExists()) doors.appendChild(dieDoorButton('Purify', dieActionChoosePurify));
     // D-119 — hidden when no blank face qualifies or the die is at DIE_MIN_FACES.
-    if (removableFaceExists()) {
-      const removeBtn = document.createElement('button');
-      removeBtn.textContent = 'Remove';
-      setHoverTip(removeBtn, 'Take one blank face off the die for the rest of the run. The die keeps at least ' + GAME_CONFIG.DIE_MIN_FACES + ' faces.');
-      removeBtn.addEventListener('click', function() { log('[CLICK] Remove'); dieActionChooseRemove(); });
-      row.appendChild(removeBtn);
-    }
+    if (removableFaceExists()) doors.appendChild(dieDoorButton('Remove', dieActionChooseRemove));
 
     const skipBtn = document.createElement('button');
-    skipBtn.textContent = 'Skip';
+    skipBtn.className = 'die-door-skip';
+    skipBtn.dataset.action = 'Skip';
+    skipBtn.textContent = 'Skip. Take nothing.';
     skipBtn.addEventListener('click', function() { log('[CLICK] Skip'); dieActionChooseSkip(); });
-
-    row.appendChild(skipBtn);
+    buttonRow.appendChild(skipBtn);
 
   } else if (dieActionStep === 'load_pick_mod' || dieActionStep === 'load_pick_face') {
     // Both Load steps show the same three mod cards; the second step adds
@@ -586,6 +610,7 @@ function renderDieActionPanel() {
     cardRenderer: isLoadStep ? renderOfferSymbol : undefined,
     skip: null,
     buttonRow: buttonRow,
+    extra: extra,
     instruction: instruction
   });
 }
@@ -766,8 +791,8 @@ function renderArtifactRewardPanel() {
   });
 }
 
-// An artifact without a tags list reads NONE on the tag line so the shape
-// stays identical across every offer; the rarity line is the artifact's tier.
+// An artifact without a tags list draws no tag line; the rarity line is the
+// artifact's tier.
 function offerCardSpecForArtifact(artifactId, priceText, footText, disabled, onClick) {
   const artifact = gameState.config.artifacts[artifactId];
   return {
@@ -1162,8 +1187,8 @@ function renderShopPanel() {
 
   const shop = gameState.run.shop;
 
-  // The removal picker is the whole owned deck as small cards, not a
-  // three-card offer.
+  // The removal picker is the whole owned deck as offer-size cards in a
+  // wrapping, scrolling grid, not a three-card offer.
   if (shopRemovingCard) {
     renderOfferPanel(panel, { title: 'SHOP', cards: [], skip: null, buttonRow: renderOwnedCardGrid(shopRemoveCard), instruction: 'CHOOSE A CARD TO REMOVE' });
     return;

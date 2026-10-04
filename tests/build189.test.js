@@ -255,8 +255,8 @@ async function nextRound(page, faceNumber) {
       const el = document.querySelector('#enemyStatusRow .' + c);
       return el ? el.firstChild.textContent + ' | ' + ((el.querySelector('.hover-tip') || {}).textContent || '') : null;
     }));
-    assert.ok(v[0] && v[0].indexOf('SI3 | Siphon:') === 0, v[0]);
-    assert.ok(v[1] && v[1].indexOf('ST2 | Stigma:') === 0, v[1]);
+    assert.ok(v[0] && v[0].indexOf('Siphon 3 | Siphon:') === 0, v[0]);
+    assert.ok(v[1] && v[1].indexOf('Stigma 2 | Stigma:') === 0, v[1]);
     const after = await page.evaluate(() => { clearFightScopedState(); return [gameState.enemy.siphonStacks, gameState.enemy.stigmaStacks]; });
     assert.deepStrictEqual(after, [0, 0]);
     await page.close();
@@ -290,8 +290,8 @@ async function nextRound(page, faceNumber) {
     assert.deepStrictEqual(v, {
       zeal: '10 damage. +4 each trigger.',
       cope: '8 block. +2 each trigger.',
-      ordain: '10 damage. This face +1 weight.',
-      elevation: '10 damage. The face above +1 weight.'
+      ordain: 'Deal 10 damage. This face gains 1 weight.',
+      elevation: 'Deal 10 damage. The face above gains 1 weight.'
     });
     await page.close();
   });

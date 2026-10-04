@@ -11,7 +11,7 @@ const { runTest, report } = createRunner();
 
 const OFFER_COUNT = 400;
 const MYTHIC_IDS = ['reliquary_chain', 'rosary'];
-const MYTHIC_GOLD = 'rgb(251, 191, 36)';
+const MYTHIC_COLOUR = 'rgb(159, 107, 255)'; // D-152: mythic is now 9f6bff
 const BIG_POISON = 21818442088442;
 const CSV_HEADER = 'source,node,arrivalHpAtBoss,outcome,fightRounds,totalRounds,dieActionEvents,triggerCounts,blanksRolled,build,cardRewardEvents';
 
@@ -141,7 +141,7 @@ async function finishRound(page) {
     await page.close();
   });
 
-  await runTest('D-142: a mythic artifact in the boss offer reads MYTHIC in the D-111 gold', async () => {
+  await runTest('D-142: a mythic artifact in the boss offer reads MYTHIC in its tier colour', async () => {
     const page = await freshPage(browser);
     await page.evaluate((ids) => {
       updateRun({ currentSlot: 'boss', artifacts: Object.keys(gameState.config.artifacts).filter(function(id) { return ids.indexOf(id) === -1; }) });
@@ -157,7 +157,7 @@ async function finishRound(page) {
     assert.ok(mythic.length > 0, 'no mythic artifact offered: ' + JSON.stringify(v));
     mythic.forEach(function(row) {
       assert.strictEqual(row.word, 'MYTHIC');
-      assert.strictEqual(row.colour, MYTHIC_GOLD);
+      assert.strictEqual(row.colour, MYTHIC_COLOUR);
     });
     await page.close();
   });
@@ -236,8 +236,8 @@ async function finishRound(page) {
         pops: pop
       };
     }, BIG_POISON);
-    assert.ok(v.enemyIcons.indexOf('P21.8T') !== -1, JSON.stringify(v.enemyIcons));
-    assert.ok(v.playerIcons.indexOf('P12.3K') !== -1, JSON.stringify(v.playerIcons));
+    assert.ok(v.enemyIcons.indexOf('Poison 21.8T') !== -1, JSON.stringify(v.enemyIcons));
+    assert.ok(v.playerIcons.indexOf('Poison 12.3K') !== -1, JSON.stringify(v.playerIcons));
     assert.strictEqual(v.enemyPoison, '21.8T');
     assert.strictEqual(v.block, '25.0K');
     assert.strictEqual(v.debuffs, 'poison x12.3K');
