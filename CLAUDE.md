@@ -78,7 +78,7 @@ If you are writing gameState.anything = x outside a helper function, stop.
 Mods trigger. Never fire. Never activate. Always trigger.
 Soul is the resource spent on cards. Never energy.
 A loaded face has a mod. A blank face does not.
-Status: stacks of poison, stacks of awe. Never a bare number of either.
+Status: stacks of poison, stacks of awe, stacks of Siphon; Stigma counts rounds. Never a bare number of any.
 TEXT RULE (D-125): every mod, card and artifact text is one or two short imperative sentences — a number before its noun, conditions as "If …," or "When …," at the front, no parentheses, never "applied"/"applies" or "this run"; tags ride the tag line, not the text. Texts live in render-text.js and config.artifacts.
 
 ---
@@ -88,7 +88,7 @@ TEXT RULE (D-125): every mod, card and artifact text is one or two short imperat
 gameState (state.js, the field-by-field reference) holds ten objects, each with its own scope:
 
   player    — hp/maxHp (carry between fights), block, soul/maxSoul, deck/hand/discard, ownedCards, classId, poisonStacks, Penitence fields, natOneFiredThisFight, drainNextRound, sealNextRound
-  enemy     — id ('Fight'|'Elite'|'Boss', the panel title) and name (the identity), hp/maxHp, intent and pattern fields, charge fields, wrath fields, hasDie/die, poisonStacks, activeBuffs, natOneFiredThisFight, buffPoisonStacks (fixed at buildAct())
+  enemy     — id ('Fight'|'Elite'|'Boss', the panel title) and name (the identity), hp/maxHp, intent and pattern fields, charge fields, wrath fields, hasDie/die, poisonStacks, aweStacks, siphonStacks, stigmaStacks (D-147), activeBuffs, natOneFiredThisFight, buffPoisonStacks (fixed at buildAct())
   die       — faces: the player's own die, persists across fights (DIE FACE OBJECT STRUCTURE)
   turn      — phase, round, cardsPlayedThisTurn, the roll fields and their enemy mirrors, round flags and counters; round-scoped fields clear at START_OF_TURN
   fight     — fight-scoped counters (blanksRolled), zeroed by clearFightScopedState()
@@ -166,7 +166,7 @@ generateBlock(baseBlock)
 
 Two multipliers compound. () => 2 then () => 3 produces x6 not x5. This is correct. Do not change.
 
-dealDamage(target, amount, sourceType, sourceId, fireListener = true) (pipeline.js) — every damage-dealing card/mod calls this: calculateDamage(), hp through the helper, ON_DAMAGE_DEALT unless fireListener is false (the enemy's own attack only). dealBlock(amount, sourceId) — the same for block through generateBlock(). healPlayer(amount) — a direct clamp at maxHp, not a third pipeline, fires ON_HEAL with the post-cap amount.
+dealDamage(target, amount, sourceType, sourceId, fireListener = true) (pipeline.js) — every damage-dealing card/mod calls this: calculateDamage(), hp through the helper, ON_DAMAGE_DEALT unless fireListener is false (the enemy's own attack only). dealBlock(amount, sourceId) — the same for block through generateBlock(). ON_DAMAGE_DEALT carries { amount, source, target, sourceType, base }; Siphon (siphonOnHit) and Stigma (stigmaOnHit, pipeline.js) are its two listeners (D-147). healPlayer(amount) — a direct clamp at maxHp, not a third pipeline, fires ON_HEAL with the post-cap amount.
 
 All turn-scoped pipeline listeners clear at START_OF_TURN automatically.
 
@@ -174,7 +174,7 @@ All turn-scoped pipeline listeners clear at START_OF_TURN automatically.
 
 # ROUNDING
 
-Always Math.ceil(). No exceptions, but one ruling: D-122's boss heal rounds down, as its own decision says.
+Always Math.ceil(). No exceptions, but two rulings: D-122's boss heal and D-147's Stigma echo (half a mod's base) round down, as their own decisions say.
 
 ---
 
@@ -197,6 +197,7 @@ Cards live in config.cards. Not config.mods.
   type: 'attack' | 'block' | 'utility',
   classRestriction: null | 'ordained',
   getCost: function(gameState) { ... },  // optional, overrides soulCost when present — only Rapture uses this
+  exhaust: true,  // optional: once played it leaves the fight instead of the discard (D-150) — only Second Sight
   effect: function(gameState) {
     // calls helpers and pipeline functions only
     // never mutates gameState directly
@@ -232,7 +233,7 @@ PURIFY (F43) resets a loaded face (not 1/10/20) to a blank's shape, weight untou
 
 Faces 1/20 are single-mod Nat stubs, never loaded. The enemy die shares the face shape, but nothing writes an enemy face's modId2.
 
-TRIGGER COUNTS: in each face's modData — triggerCount for modId, triggerCount2 for modId2; faces 1/20 count their rolls. Run-scoped: only startNewRun()'s fresh faces wipe them. A mod's effect merges into existing modData rather than replacing it, so a trigger never erases a count.
+TRIGGER COUNTS: in each face's modData — triggerCount for modId, triggerCount2 for modId2; faces 1/20 count their rolls. Every face, blank included, also counts its real rolls in rollCount (resolvePlayerRoll(), D-143; Tenet reads it); Purify keeps it. Run-scoped: only startNewRun()'s fresh faces wipe them. A mod's effect merges into existing modData rather than replacing it, so a trigger never erases a count.
 
 ---
 
@@ -321,7 +322,7 @@ THE FIGHT ROLL (D-113): while the player's die icon spins, playAudioEvent() hold
 # FIGHT RESET
 
 Player: block→0, soul→maxSoul, deck/hand/discard reshuffled from ownedCards, poisonStacks→0, penitenceActive→false, penitenceTurnsRemaining→0, natOneFiredThisFight→false. hp carries over.
-Enemy: hp→maxHp, poisonStacks→0, activeBuffs→[], natOneFiredThisFight→false. die is overwritten from the entering slot's own static config on next fight entry (beginFightFromSlot()), not reset here.
+Enemy: hp→maxHp, poisonStacks→0, aweStacks/siphonStacks/stigmaStacks→0, activeBuffs→[], natOneFiredThisFight→false. die is overwritten from the entering slot's own static config on next fight entry (beginFightFromSlot()), not reset here.
 Die (player's): weights and mods unchanged. Persists between fights.
 Turn: phase→'START_OF_TURN', cardsPlayedThisTurn→0, round→0, sealedFaces→[], secondChanceUsedThisFight→false, enemyRoundSkippedThisTurn→false.
 Fight: blanksRolled→0. The run's counters are untouched.
@@ -379,11 +380,11 @@ Notion is the source of truth for planning; neither mirrors the other. The Notio
 
 # CONFIRMED WORKING
 
-(BUILD 188) — repo simplification: tests below build180 deleted, CLAUDE.md under 30,000 bytes, new build rules and paste-back, FACTS block exempt from comment share. No game change. Every earlier build: HISTORY.md.
+(BUILD 189) — the 4 Oct design session, D-143 to D-150: Tenet reads rolls, Verger/Lector/Asperser patterns, act 1 poison only from the Hierophant, Siphon and Stigma, texts, Second Sight exhaust. Every earlier build: HISTORY.md.
 
 ---
 
 
 # CURRENT SUBSTAGE
 
-Stage 3.15 (BUILD 188) — repo simplification, no game change: old build tests deleted, CLAUDE.md cut to rules and architecture, FACTS block exempt from comment share. Tests: build188.test.js.
+Stage 3.16 (BUILD 189) — D-143 to D-150: Tenet counts rolls (modData.rollCount), Verger 7/9/Charge 14 break 8, Lector 13 and break 13, act 1 Afflicts to Attacks, Siphon and Stigma (cards 50, tiers 24/15/11), Tolling Bell and mod texts, Second Sight 2 soul exhaust. Tests: build189.test.js.

@@ -52,7 +52,9 @@ const gameState = {
     name: 'test_enemy',
     natOneFiredThisFight: false,
     buffPoisonStacks: GAME_CONFIG.ENEMY_BUFF_POISON_STACKS,
-    aweStacks: 0
+    aweStacks: 0,
+    siphonStacks: 0,
+    stigmaStacks: 0
   },
 
   die: {

@@ -144,6 +144,10 @@ function runPhase(phase) {
       updateEnemy({ aweStacks: aweRemaining });
       log('[AWE] ' + aweRemaining + ' stacks of awe remaining');
     }
+    if (gameState.enemy.stigmaStacks > 0) {
+      updateEnemy({ stigmaStacks: gameState.enemy.stigmaStacks - 1 });
+      log('[STIGMA] ' + gameState.enemy.stigmaStacks + ' rounds of Stigma remaining');
+    }
 
     // Enemies act from a repeating pattern of 1-4 intents — see
     // advanceEnemyIntentForRound() (pipeline.js). Runs after the enemy's

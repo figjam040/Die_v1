@@ -69,9 +69,11 @@ function playCard(handIndex) {
   callListeners('ON_CARD_PLAY', { card: card });
   updateTurn({ cardsPlayed: gameState.turn.cardsPlayed.concat([card.name]) });
 
+  // An exhaust card (D-150) leaves the fight instead of the discard; the
+  // next fight's deck is rebuilt from ownedCards, so it comes back then.
   const newHand = gameState.player.hand.slice();
   newHand.splice(handIndex, 1);
-  updatePlayer({ hand: newHand, discard: gameState.player.discard.concat([cardId]) });
+  updatePlayer({ hand: newHand, discard: card.exhaust ? gameState.player.discard : gameState.player.discard.concat([cardId]) });
 
   log('[CARD] played ' + card.name + ' (cost ' + cost + ')');
 
@@ -322,17 +324,16 @@ function init() {
     }
   };
 
-  // Reads the rolled face's own modData.triggerCount — a blank roll's
-  // face carries no modData, so the read falls through to 0. Faces 1/20
-  // carry this same field, so a Nat roll reads its own count too.
+  // D-143: reads the rolled face's own modData.rollCount, this roll
+  // included — every face, blank, loaded or Nat, counts its rolls.
   gameState.config.cards['tenet'] = {
     id: 'tenet', name: 'Tenet', soulCost: 2, type: 'attack', classRestriction: null, tier: 'rare', tags: ['growth', 'mass'],
     effect: function(gameState) {
       const faceNumber = gameState.turn.rolledFaceNumber;
       const face = faceNumber ? getPlayerFace(faceNumber) : null;
-      const triggers = (face && face.modData && face.modData.triggerCount) || 0;
-      const damage = dealDamage('enemy', 6 + triggers, 'attack', 'tenet');
-      log('[CARD] tenet: ' + damage + ' damage (face triggered ' + triggers + ' times)');
+      const rolls = (face && face.modData && face.modData.rollCount) || 0;
+      const damage = dealDamage('enemy', 6 + rolls, 'attack', 'tenet');
+      log('[CARD] tenet: ' + damage + ' damage (face rolled ' + rolls + ' times)');
     }
   };
 
@@ -700,10 +701,10 @@ function init() {
     }
   };
 
-  // The real roll path, Loaded Die included — the new face resolves as a
-  // roll, Nats and all. The first roll's own face is left as it landed.
+  // D-150: the real roll path, Loaded Die included. Both rolls stand; the
+  // turn's rolled-face fields now name the new face. exhaust: gone this fight.
   gameState.config.cards['second_sight'] = {
-    id: 'second_sight', name: 'Second Sight', soulCost: 1, type: 'utility', classRestriction: null, tier: 'uncommon', tags: ['die'],
+    id: 'second_sight', name: 'Second Sight', soulCost: 2, type: 'utility', classRestriction: null, tier: 'uncommon', tags: ['die'], exhaust: true,
     effect: function(gameState) {
       const face = rollWithArtifacts(gameState.die.faces);
       log('[CARD] second_sight: rolled face ' + face.number + ' again');
@@ -735,6 +736,21 @@ function init() {
       const stacks = Math.min(8, 2 * weight);
       updateEnemy({ poisonStacks: gameState.enemy.poisonStacks + stacks });
       log('[CARD] blight_weight: ' + stacks + ' stacks of poison applied (rolled face weight ' + weight + ')');
+    }
+  };
+
+  // D-147: both statuses live on the enemy; siphonOnHit()/stigmaOnHit() (pipeline.js) act on them.
+  gameState.config.cards['siphon'] = {
+    id: 'siphon', name: 'Siphon', soulCost: 1, type: 'utility', classRestriction: null, tier: 'uncommon', tags: [],
+    effect: function(gameState) {
+      applySiphon(3);
+    }
+  };
+
+  gameState.config.cards['stigma'] = {
+    id: 'stigma', name: 'Stigma', soulCost: 2, type: 'utility', classRestriction: null, tier: 'rare', tags: [],
+    effect: function(gameState) {
+      applyStigma(2);
     }
   };
 
@@ -786,7 +802,9 @@ function init() {
     second_sight: gameState.config.cards['second_sight'],
     cadence: gameState.config.cards['cadence'],
     watchword: gameState.config.cards['watchword'],
-    blight_weight: gameState.config.cards['blight_weight']
+    blight_weight: gameState.config.cards['blight_weight'],
+    siphon: gameState.config.cards['siphon'],
+    stigma: gameState.config.cards['stigma']
   };
 
   // Ordained class
@@ -858,6 +876,10 @@ function init() {
   registerListener('BLANK_ROLL', 'ordained_blank_passive', gameState.config.classes[gameState.player.classId].onBlankRoll, 'permanent');
   registerListener('NAT_TWENTY', 'ordained_nat_twenty_passive', gameState.config.classes[gameState.player.classId].onNatTwenty, 'permanent');
   registerListener('NAT_ONE', 'ordained_nat_one_passive', gameState.config.classes[gameState.player.classId].onNatOne, 'permanent');
+
+  // D-147: Siphon before Stigma, so a Stigma echo is itself a hit Siphon can spend a stack on.
+  registerListener('ON_DAMAGE_DEALT', 'status_siphon', siphonOnHit, 'permanent');
+  registerListener('ON_DAMAGE_DEALT', 'status_stigma', stigmaOnHit, 'permanent');
 
   // ---------- POISON ANSWER ----------
   // At END_PLAYER_TURN, before the player's poison tick, every
@@ -1510,7 +1532,7 @@ function init() {
   gameState.config.artifacts = {
     third_eye: { id: 'third_eye', name: 'Third Eye', tier: 'uncommon', text: 'Once per act, before you roll, choose the face.' },
     loaded_die: { id: 'loaded_die', name: 'Loaded Die', tier: 'rare', text: 'Roll twice. Keep the higher face.' },
-    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', tags: ['blank'], text: 'When a blank triggers, gain 2 block, plus 1 for every blank you have rolled this fight.' },
+    tolling_bell: { id: 'tolling_bell', name: 'Tolling Bell', tier: 'rare', tags: ['blank'], text: 'When a blank triggers, gain 2 block, plus 1 for every blank rolled earlier this fight.' },
     tithe_box: { id: 'tithe_box', name: 'Tithe Box', tier: 'basic', text: 'When you roll a Nat 20, gain 15 gold.' },
     merchants_seal: { id: 'merchants_seal', name: "Merchant's Seal", tier: 'basic', text: 'Pay a quarter less for everything in the shop. Card removal stays at 75 gold.' },
     leaden_face: { id: 'leaden_face', name: 'Leaden Face', tier: 'rare', text: 'When you Strengthen a face, add 2 weight instead of 1.' },

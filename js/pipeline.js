@@ -45,7 +45,7 @@ function dealDamage(target, amount, sourceType, sourceId, fireListener) {
     playAudioEvent(target === 'enemy' ? 'damage_enemy' : 'damage_player');
   }
   if (fireListener) {
-    callListeners('ON_DAMAGE_DEALT', { amount: damage, source: sourceId });
+    callListeners('ON_DAMAGE_DEALT', { amount: damage, source: sourceId, target: target, sourceType: sourceType, base: amount });
   }
   return damage;
 }
@@ -67,6 +67,42 @@ function healPlayer(amount) {
   updatePlayer({ hp: newHp });
   callListeners('ON_HEAL', { amount: healedAmount });
   return healedAmount;
+}
+
+// ---------- SIPHON AND STIGMA (D-147) ----------
+// Two enemy statuses on poison's and awe's pattern: a field on
+// gameState.enemy, one setter each, a status icon. Both react to
+// ON_DAMAGE_DEALT, registered once in init().
+
+function applySiphon(stacks) {
+  const newStacks = gameState.enemy.siphonStacks + stacks;
+  updateEnemy({ siphonStacks: newStacks });
+  log('[SIPHON] ' + stacks + ' stacks of Siphon, now ' + newStacks + ' stacks of Siphon');
+}
+
+// Decays by 1 at START_OF_TURN like awe, so 2 lasts this round and the next.
+function applyStigma(rounds) {
+  const newStacks = gameState.enemy.stigmaStacks + rounds;
+  updateEnemy({ stigmaStacks: newStacks });
+  log('[STIGMA] ' + rounds + ' rounds of Stigma, now ' + newStacks);
+}
+
+// Each attack hit on the enemy spends 1 stack: block of half the damage, rounded up.
+function siphonOnHit(data) {
+  if (data.target !== 'enemy' || data.sourceType !== 'attack' || data.amount <= 0) { return; }
+  if (gameState.enemy.siphonStacks <= 0) { return; }
+  updateEnemy({ siphonStacks: gameState.enemy.siphonStacks - 1 });
+  const block = dealBlock(Math.ceil(data.amount / 2), 'siphon');
+  log('[SIPHON] ' + block + ' block from a ' + data.amount + ' damage hit, ' + gameState.enemy.siphonStacks + ' stacks of Siphon left');
+}
+
+// A mod's hit lands again on half its base, rounded down as D-147 says,
+// through the pipeline like any hit. The echo is not a mod, so never echoes.
+function stigmaOnHit(data) {
+  if (data.target !== 'enemy' || data.amount <= 0 || gameState.enemy.stigmaStacks <= 0) { return; }
+  if (!gameState.config.mods[data.source]) { return; }
+  const damage = dealDamage('enemy', Math.floor(data.base / 2), 'attack', 'stigma');
+  log('[STIGMA] ' + data.source + ' hits again for ' + damage);
 }
 
 // ---------- DIE FACE HELPERS ----------
@@ -145,6 +181,18 @@ function bumpNatFaceTriggerCount(faceNumber) {
   const existingModData = face.modData || {};
   newFaces[playerFaceIndex(faceNumber)] = Object.assign({}, face, {
     modData: Object.assign({}, existingModData, { triggerCount: (existingModData.triggerCount || 0) + 1 })
+  });
+  updateDie({ faces: newFaces });
+}
+
+// D-143: every face's own run-scoped roll count, modData.rollCount, bumped
+// once per real roll (Second Sight's included), never by an outside trigger.
+function bumpFaceRollCount(faceNumber) {
+  const face = getPlayerFace(faceNumber);
+  const newFaces = gameState.die.faces.slice();
+  const existingModData = face.modData || {};
+  newFaces[playerFaceIndex(faceNumber)] = Object.assign({}, face, {
+    modData: Object.assign({}, existingModData, { rollCount: (existingModData.rollCount || 0) + 1 })
   });
   updateDie({ faces: newFaces });
 }
@@ -264,6 +312,7 @@ function resolvePlayerRoll(face) {
     rollOutcome = 'blank';
   }
   updateTurn({ rollOutcome: rollOutcome, rolledFaceWeight: face.weight, rolledFaceNumber: face.number });
+  bumpFaceRollCount(face.number);
 
   // Held by playAudioEvent() until the die icon, spinning since the
   // updateTurn() above, stops.

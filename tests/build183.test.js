@@ -99,11 +99,11 @@ function setFace(page, faceNumber, changes) {
     await page.close();
   });
 
-  await runTest('Tenet is rare and a rolled face triggered 40 times deals 46', async () => {
+  await runTest('Tenet is rare and a rolled face rolled 40 times deals 46 (D-143)', async () => {
     const page = await freshFight(browser);
     assert.strictEqual(await page.evaluate(() => gameState.config.cards['tenet'].tier), 'rare');
     await rollFace(page, 3);
-    await setFace(page, 3, { modData: { triggerCount: 40 } });
+    await setFace(page, 3, { modData: { rollCount: 40 } });
     assert.strictEqual(await playAndMeasure(page, 'tenet'), 46);
     await page.close();
   });
@@ -139,14 +139,14 @@ function setFace(page, faceNumber, changes) {
     await page.close();
   });
 
-  await runTest('reward-pool card tiers count 24 basic, 14 uncommon, 10 rare', async () => {
+  await runTest('reward-pool card tiers count 24 basic, 15 uncommon, 11 rare (D-147)', async () => {
     const page = await freshFight(browser);
     const poolTierCounts = await page.evaluate(() => {
       const out = { basic: 0, uncommon: 0, rare: 0 };
       Object.keys(gameState.config.cardPool).forEach(function(id) { out[gameState.config.cardPool[id].tier] += 1; });
       return out;
     });
-    assert.deepStrictEqual(poolTierCounts, { basic: 24, uncommon: 14, rare: 10 });
+    assert.deepStrictEqual(poolTierCounts, { basic: 24, uncommon: 15, rare: 11 });
     await page.close();
   });
 
@@ -170,7 +170,7 @@ function setFace(page, faceNumber, changes) {
       reckoning: 'Deal 3 damage, plus 2 per stack of poison on the enemy, up to 12.',
       covenant: 'Deal 2 damage, plus 3 per weight of the rolled face, up to 12.',
       gradual: 'Deal 3 damage, plus 1 per weight of your heaviest loaded face, up to 12.',
-      tenet: 'Deal 6 damage, plus 1 for each time the rolled face has triggered.',
+      tenet: '6 damage. +1 for each time this face has been rolled.',
       exequy: "Deal damage equal to the enemy's stacks of poison.",
       vindication: 'Deal damage equal to twice your block.',
       jubilee: 'Deal 4 damage, plus 2 per weight added to your die.'

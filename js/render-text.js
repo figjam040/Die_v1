@@ -465,7 +465,7 @@ const CARD_EFFECT_TEXT = {
   covenant: 'Deal 2 damage, plus 3 per weight of the rolled face, up to 12.',
   rapture: 'Deal 12 damage. If a mod has triggered this turn, this costs 0 soul.',
   orison: 'Deal 5 damage. If you rolled a blank, deal 9 instead.',
-  tenet: 'Deal 6 damage, plus 1 for each time the rolled face has triggered.',
+  tenet: '6 damage. +1 for each time this face has been rolled.',
   gradual: 'Deal 3 damage, plus 1 per weight of your heaviest loaded face, up to 12.',
   vacancy: 'Deal 1 damage per blank face on your die.',
   lauds: 'Deal 4 damage, plus 3 per Growth mod on your die, up to 13.',
@@ -495,10 +495,12 @@ const CARD_EFFECT_TEXT = {
   venom: 'Apply 2 stacks of poison. If the enemy has poison, apply 4 instead.',
   ballast: 'Deal 3 damage per weight on your heaviest face, up to 12.',
   refrain: 'Trigger the rolled face again.',
-  second_sight: 'Roll your die again. The new face resolves as a roll.',
+  second_sight: 'Roll again. Both rolls stand. Gone this fight.',
   cadence: 'Deal damage equal to twice the round number, up to 12.',
   watchword: 'Gain 5 block. If a Bound face triggered this round, gain 12 instead.',
-  blight_weight: 'Apply 2 stacks of poison per weight on the rolled face, up to 8.'
+  blight_weight: 'Apply 2 stacks of poison per weight on the rolled face, up to 8.',
+  siphon: 'Apply 3 stacks of Siphon.',
+  stigma: 'The enemy gains Stigma for 2 rounds.'
 };
 
 // Every site that draws a card's effect text calls this instead of
@@ -521,15 +523,15 @@ const MOD_DESCRIPTION = {
   virulence: "Apply 3 stacks of poison. Double the enemy's stacks of poison.",
   sanctuary: 'Gain 16 block.',
   vigil: 'Deal 4 damage, plus 1 for every 3 blanks you have rolled this run. Also triggers whenever you roll a blank.',
-  zeal: 'Deal 10 damage, plus 4 for each earlier trigger of this face.',
+  zeal: '10 damage. +4 each trigger.',
   fervour: 'Double your attack damage this turn.',
-  ordain: 'Deal 10 damage. Add 1 weight to this face.',
+  ordain: '10 damage. This face +1 weight.',
   anthem: 'Deal 6 damage, plus 4 per weight on this face.',
-  elevation: 'Deal 10 damage. If the next face up holds a mod, add 1 weight to it.',
+  elevation: '10 damage. The face above +1 weight.',
   largesse: 'Gain 2 soul and 4 block.',
   tithe: 'Gain 1 block per blank face on your die.',
   congregation: 'Deal 8 damage. If another mod on your die has Growth, deal 16 instead.',
-  cope: 'Gain 8 block, plus 2 for each earlier trigger of this face.',
+  cope: '8 block. +2 each trigger.',
   anathema: 'When this turn ends, deal damage equal to your block, up to 16.',
   thurible: 'Deal 8 damage. Apply 3 stacks of poison.',
   magnificat: 'Trigger your heaviest other loaded face.',

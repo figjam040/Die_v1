@@ -777,6 +777,12 @@ function renderStatusRows(poisonTitle) {
     if (gameState.enemy.aweStacks > 0) {
       icon(enemyRow, 'A' + shortNumber(gameState.enemy.aweStacks), 'status-awe', 'Awe: lowers this enemy\'s next Attack by this many stacks, then loses 1 stack at the start of its round.');
     }
+    if (gameState.enemy.siphonStacks > 0) {
+      icon(enemyRow, 'SI' + shortNumber(gameState.enemy.siphonStacks), 'status-siphon', 'Siphon: when you deal attack damage to it, gain block equal to half that damage, rounded up. Each hit spends 1 stack.');
+    }
+    if (gameState.enemy.stigmaStacks > 0) {
+      icon(enemyRow, 'ST' + gameState.enemy.stigmaStacks, 'status-stigma', 'Stigma: every mod that damages it hits again for half, rounded down. Loses 1 at the start of each round.');
+    }
   }
 }
 

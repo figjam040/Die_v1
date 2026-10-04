@@ -319,14 +319,14 @@ function clickFace(page, number) {
     await page.close();
   });
 
-  await runTest('D-139: the reward pool tiers are 24 basic, 14 uncommon, 10 rare', async () => {
+  await runTest('D-139, D-147: the reward pool tiers are 24 basic, 15 uncommon, 11 rare', async () => {
     const page = await mapPage(browser);
     const counts = await page.evaluate(() => {
       const out = { basic: 0, uncommon: 0, rare: 0 };
       Object.keys(gameState.config.cardPool).forEach(function(id) { out[gameState.config.cardPool[id].tier] += 1; });
       return out;
     });
-    assert.deepStrictEqual(counts, { basic: 24, uncommon: 14, rare: 10 });
+    assert.deepStrictEqual(counts, { basic: 24, uncommon: 15, rare: 11 });
     await page.close();
   });
 

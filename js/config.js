@@ -20,17 +20,17 @@
 // F16 lanes 2; slots per lane by act: act 1 9 (rites 2, 6, 9; slot 5 a Verger Fight, D-123), acts 2-3 8 (rites 2, 5, 8); the elite is slot 4 of the upper lane
 // F17 act 1 HP: opening 50, lane fights by position 58/65/78/85, elite 100, boss 100
 // F18 (BUILD 142) intent: opening 4–12, normals 6–18, elite 10–18, boss 10–20 — every enemy acts from a pattern (F36, F37)
-// F19 enemy buff applies 3 stacks of poison (act 1), scaled per act to 4 (act 2) and 5 (act 3) · F20 act 1 elite (Lector) buff faces 3 and 9, both poison, 12-sided, no Nat faces · F21 act 1 boss (Hierophant) buff faces 5, 10, 15, all poison, plus Nat 20 and Nat 1
+// F19 enemy buff applies 3 stacks of poison (act 1), scaled per act to 4 (act 2) and 5 (act 3) · F20 act 1 elite (Lector) 12-sided, no Nat faces, no poison faces (D-146): drain on 6, wrath on 12 ·F21 act 1 boss (Hierophant) buff faces 5, 10, 15, all poison, plus Nat 20 and Nat 1
 // F22 enemy Nat 20 forces the boss's Charge next round (forcedNextIntent, breakable as any Charge); buff faces trigger only when rolled · F23 enemy Nat 1 attack cancelled, self-applies a flat 5 stacks of poison, once per fight
 // F24 mods 27 (BUILD 149: +Dread, Genuflect; 26 offerable plus Consecrate, tiers 13/9/4), each asserted by tests/mods.test.js
-// F25 cards 48, tiers 24/14/10 (Retribution to rare, D-139), asserted by tests/facts.test.js
+// F25 cards 50, tiers 24/15/11 (Siphon uncommon, Stigma rare, D-147), asserted by tests/facts.test.js
 // F26 files under /js/: fifteen — config, state, listener-registry, audio, pipeline, cards-mods, run-and-map, phase-machine, rendering, render-fight, render-map, render-layers, render-text, dev-tools, bootstrap
 // F27 pitch chains cap 8, reset at START_OF_TURN
 // F28 sound duration ceiling 200 ms for every frequent sound; nat_20 (230ms), nat_1 (260ms), fight_won (210ms), fight_lost (260ms), fight_start_boss (320ms) and boss_defeated (400ms) exceed it, all rare
 // F33 (BUILD 141) at END_PLAYER_TURN, before the player's poison tick, every 5 block held removes 1 stack of poison from the player
 // F34 (KI-28) enemies act from a repeating pattern of 1 to 4 intents: Attack (a number rolled evenly in its range), Charge (a no-damage wind-up round, then a release; broken if HP lost from the wind-up's start through the wind-up round's tick reaches the break number) and Afflict (stacks of poison, no damage); an enemy Nat 1 cancels that round's intent
 // F35 (BUILD 141) any enemy may carry a die of any size from DIE_SIZE; buffs: poison, Wrath (every Attack from next round hits harder), Drain (1 less soul next round), Seal (your heaviest loaded face but 1 and 20 counts as blank next round, every rule), Absolve (sheds half its stacks of poison, rounded up; BUILD 184)
-// F36 act 1 enemies: Verger (opening, 6–9), Thurifer (lane positions 1, 3), Asperser (lane positions 2, 4), Lector (elite), Hierophant (boss); an enemy Nat 20 or Nat 1 has its own sound and a pulse on the rolled row (KI-22)
+// F36 act 1 enemies: Verger (opening; Attack 7, Attack 9, Charge 14 break 8, D-144), Thurifer (lane positions 1, 3), Asperser (lane positions 2, 4; Attack 11–15 twice, Attack 4, D-146), Lector (elite; Attack 13, Attack 4, Charge 27 break 13, D-145, D-146), Hierophant (boss, the one act 1 enemy that poisons, D-146); an enemy Nat 20 or Nat 1 has its own sound and a pulse on the rolled row (KI-22)
 // F37 (BUILD 142) acts 2 and 3 enemies: Chorister, Cantor, Flagellant, Archdeacon, Cardinal; Anchorite, Mendicant, Inquisitor, Exarch, Pontifex; normals roll 6-sided dice, elites 12-sided, bosses 20-sided with their own Nat pair
 // F38 (BUILD 142) Threnody's face is set once per run, 2 to 19, in gameState.run
 // F39 (BUILD 142) a Seal lasts one round: the sealed list is replaced at every START_OF_TURN and emptied at fight start
@@ -54,7 +54,7 @@
 
 const GAME_CONFIG = {
 
-  BUILD: 188,
+  BUILD: 189,
 
   // a weight-above-1 face's roll-odds percent drops this far, in this colour.
   ODDS_EMPHASIS: {
@@ -158,7 +158,7 @@ const GAME_CONFIG = {
   ENEMIES: {
     verger_opening: {
       name: 'Verger',
-      pattern: [{ kind: 'attack', min: 6, max: 9 }, { kind: 'attack', min: 6, max: 9 }]
+      pattern: [{ kind: 'attack', min: 7, max: 7 }, { kind: 'attack', min: 9, max: 9 }, { kind: 'charge', release: 14, breakAt: 8 }]
     },
     thurifer: {
       name: 'Thurifer',
@@ -166,12 +166,12 @@ const GAME_CONFIG = {
     },
     asperser: {
       name: 'Asperser',
-      pattern: [{ kind: 'attack', min: 11, max: 15 }, { kind: 'attack', min: 11, max: 15 }, { kind: 'afflict', stacks: 4 }]
+      pattern: [{ kind: 'attack', min: 11, max: 15 }, { kind: 'attack', min: 11, max: 15 }, { kind: 'attack', min: 4, max: 4 }]
     },
     lector: {
       name: 'Lector',
-      pattern: [{ kind: 'attack', min: 13, max: 17 }, { kind: 'afflict', stacks: 4 }, { kind: 'charge', release: 27, breakAt: 15 }],
-      dieSpec: { sizeKey: 'ELITE', faces: { 3: 'enemy_buff_poison', 9: 'enemy_buff_poison', 6: 'enemy_buff_drain', 12: 'enemy_buff_wrath' }, nats: false },
+      pattern: [{ kind: 'attack', min: 13, max: 13 }, { kind: 'attack', min: 4, max: 4 }, { kind: 'charge', release: 27, breakAt: 13 }],
+      dieSpec: { sizeKey: 'ELITE', faces: { 6: 'enemy_buff_drain', 12: 'enemy_buff_wrath' }, nats: false },
       wrathPerTrigger: 2
     },
     hierophant: {

@@ -219,15 +219,14 @@ function specOnlyDeepEqual(actual, expected, label) {
     await page.close();
   });
 
-  // BUILD 142: the act 1 elite is now Lector, a named designed enemy —
-  // 12-sided (DIE_SIZE.ELITE lowered from 20 to 12), poison on faces 3 and
-  // 9 (not the old flat 7/14), plus its own drain/wrath faces, no Nats.
-  await runTest('F20 elite die: Lector, 12-sided, poison on 3 and 9, no Nat faces', async () => {
+  // The act 1 elite, Lector: 12-sided, its own drain/wrath faces, no Nats,
+  // and no poison face — in act 1 only the Hierophant poisons (D-146).
+  await runTest('F20 elite die: Lector, 12-sided, no poison faces, no Nat faces', async () => {
     const page = await freshPage(browser);
     const faces = await page.evaluate(() => gameState.run.act.upper[GAME_CONFIG.ELITE_SLOT_INDEX].enemy.die.faces);
     assert.strictEqual(faces.length, 12, 'the elite die must be 12-sided');
     const poisonFaces = faces.filter(function(f) { return f.modId === 'enemy_buff_poison'; }).map(function(f) { return f.number; });
-    assert.deepStrictEqual(poisonFaces, [3, 9]);
+    assert.deepStrictEqual(poisonFaces, []);
     assert.strictEqual(faces[0].modId, null, 'elite face 1 must be an ordinary blank, no ENEMY_NAT_ONE');
     assert.strictEqual(faces[11].modId, 'enemy_buff_wrath', 'elite face 12 (the top face) is Lector\'s own wrath face, not a Nat — the elite die never carries Nats');
     await page.close();
@@ -250,10 +249,10 @@ function specOnlyDeepEqual(actual, expected, label) {
     await page.close();
   });
 
-  await runTest('F25 cards 48 (reward pool)', async () => {
+  await runTest('F25 cards 50 (reward pool)', async () => {
     const page = await freshPage(browser);
     const n = await page.evaluate(() => Object.keys(gameState.config.cardPool).length);
-    specOnlyEqual(n, 48, 'F25: forty-eight reward-pool cards (documented fact — a single, self-declared source, no independent oracle to check its count against)');
+    specOnlyEqual(n, 50, 'F25: fifty reward-pool cards (documented fact — a single, self-declared source, no independent oracle to check its count against)');
     await page.close();
   });
 

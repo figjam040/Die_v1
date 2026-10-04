@@ -63,7 +63,7 @@ function mapLaneStateClass(laneName) {
 // deals no damage.
 function formatPatternWords(pattern) {
   return pattern.map(function(entry) {
-    if (entry.kind === 'attack') { return 'Attack ' + entry.min + '–' + entry.max; }
+    if (entry.kind === 'attack') { return 'Attack ' + (entry.min === entry.max ? entry.min : entry.min + '–' + entry.max); }
     if (entry.kind === 'charge') { return 'Charge ' + entry.release; }
     if (entry.kind === 'afflict') { return 'Afflict ' + entry.stacks; }
     return '';

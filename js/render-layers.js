@@ -384,8 +384,11 @@ function dieActionPickPurifyFace(faceNumber) {
   if (face.modId2) removedIds.push(face.modId2);
   const removedNames = removedIds.map(function(id) { return gameState.config.mods[id].name; });
 
+  // The face's roll count (D-143) belongs to the face, not its mods, so it stays.
   const newFaces = gameState.die.faces.slice();
-  newFaces[playerFaceIndex(faceNumber)] = { number: face.number, modId: null, modId2: null, weight: face.weight };
+  const purified = { number: face.number, modId: null, modId2: null, weight: face.weight };
+  if (face.modData && face.modData.rollCount) { purified.modData = { rollCount: face.modData.rollCount }; }
+  newFaces[playerFaceIndex(faceNumber)] = purified;
   updateDie({ faces: newFaces });
 
   log('[DIE] purify face ' + faceNumber + ': ' + removedNames.join(', ') + ' removed');

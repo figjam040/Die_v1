@@ -8,7 +8,7 @@ const { createRunner, CLAUDE_MD_MAX_BYTES } = require('./shared-constants');
 
 const ROOT = path.resolve(__dirname, '..');
 const CLAUDE_MD_BYTE_LIMIT = CLAUDE_MD_MAX_BYTES;
-const TOLLING_BELL_TEXT = 'When a blank triggers, gain 2 block, plus 1 for every blank you have rolled this fight.';
+const TOLLING_BELL_TEXT = 'When a blank triggers, gain 2 block, plus 1 for every blank rolled earlier this fight.';
 const STALE_CLAUDE_MD_STRINGS = [
   'no art ships this build',
   "Reverberation's blank sweep, D-127)",

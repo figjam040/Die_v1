@@ -1649,3 +1649,9 @@ Tests: build187.test.js. Corrected: build157, build169, build176, build181, buil
 Verification: see paste-back.
 
 Full write-ups: HISTORY.md.
+
+(BUILD 188) — repo simplification: tests below build180 deleted, CLAUDE.md under 30,000 bytes, new build rules and paste-back, FACTS block exempt from comment share. No game change. Every earlier build: HISTORY.md.
+
+# BUILD 188 — full write-up (moved from CLAUDE.md CURRENT SUBSTAGE by BUILD 189)
+
+Stage 3.15 (BUILD 188) — repo simplification, no game change: old build tests deleted, CLAUDE.md cut to rules and architecture, FACTS block exempt from comment share. Tests: build188.test.js.

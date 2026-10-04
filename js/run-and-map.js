@@ -177,7 +177,7 @@ function clearFightScopedState() {
     natOneFiredThisFight: false
   });
   updatePlayer({ drainNextRound: 0, sealNextRound: [] });
-  updateEnemy({ poisonStacks: 0, activeBuffs: [], natOneFiredThisFight: false, patternIndex: 0, chargeStage: null, chargeBroken: false, windupStartHp: null, currentEntry: null, forcedNextIntent: null, wrath: 0, wrathPending: 0, pontifexDoubleAttackThisRound: false, aweStacks: 0 });
+  updateEnemy({ poisonStacks: 0, activeBuffs: [], natOneFiredThisFight: false, patternIndex: 0, chargeStage: null, chargeBroken: false, windupStartHp: null, currentEntry: null, forcedNextIntent: null, wrath: 0, wrathPending: 0, pontifexDoubleAttackThisRound: false, aweStacks: 0, siphonStacks: 0, stigmaStacks: 0 });
   updateTurn({ round: 0, cardsPlayedThisTurn: 0 });
   updateTurn({ sealedFaces: [], secondChanceUsedThisFight: false, enemyRoundSkippedThisTurn: false });
   updateFight({ blanksRolled: 0 });
@@ -221,7 +221,7 @@ function startNewRun() {
   updateTurn({ sealedFaces: [] });
   // This die is just a blank placeholder — beginFightFromSlot() overwrites
   // it with the entering slot's own die the moment any fight begins.
-  updateEnemy({ die: { faces: buildEnemyDieFaces([], false, GAME_CONFIG.DIE_SIZE.BOSS) }, poisonStacks: 0, activeBuffs: [], natOneFiredThisFight: false, aweStacks: 0 });
+  updateEnemy({ die: { faces: buildEnemyDieFaces([], false, GAME_CONFIG.DIE_SIZE.BOSS) }, poisonStacks: 0, activeBuffs: [], natOneFiredThisFight: false, aweStacks: 0, siphonStacks: 0, stigmaStacks: 0 });
 
   const startingDeck = gameState.config.classes[gameState.player.classId].startingDeck;
   updatePlayer({ ownedCards: startingDeck.slice(), deck: shuffle(startingDeck.slice()) });
@@ -621,6 +621,8 @@ function beginFightFromSlot(slot, nodeLabel) {
     wrathPerTrigger: slot.enemy.wrathPerTrigger || GAME_CONFIG.ENEMY_WRATH_AMOUNT,
     pontifexDoubleAttackThisRound: false,
     aweStacks: 0,
+    siphonStacks: 0,
+    stigmaStacks: 0,
     // Copies the slot's own static die (built once by buildAct(), never
     // mutated) onto the live enemy — the map's own preview reads
     // slot.enemy.die.faces directly, so it never goes stale.
